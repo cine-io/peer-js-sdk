@@ -1,0 +1,32 @@
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>cine.io Test Suite</title>
+  <link rel="stylesheet" href="../node_modules/mocha/mocha.css" />
+</head>
+<body>
+  <div id="mocha"></div>
+  <script src="../node_modules/mocha/mocha.js"></script>
+
+  <script>
+    mocha.setup('bdd')
+    mocha.reporter('html');
+  </script>
+
+  <!-- Tests -->
+  <script src="../compiled/all-tests.js"></script>
+
+  <script>
+    // Only tests run in real browser, injected script run if options.run == true
+    if (navigator.userAgent.indexOf('PhantomJS') < 0) {
+      mocha.checkLeaks();
+      var
+      chromeDevTools = ['__InspectorOverlayPage_html']
+      , allGlobals = chromeDevTools
+      ;
+      mocha.globals(allGlobals);
+      mocha.run();
+    }
+  </script>
+</body>
+</html>

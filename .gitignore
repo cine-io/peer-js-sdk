@@ -1,0 +1,10 @@
+*.DS_Store
+
+compiled/*
+
+ignored/
+
+node_modules/*
+npm-debug.log
+
+tmp/

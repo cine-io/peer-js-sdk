@@ -1,0 +1,35 @@
+{
+  "author": "Cine.io team",
+  "name": "cineio-peer",
+  "domains": [
+    "cine.io"
+  ],
+  "version": "0.0.1",
+  "description": "peer client for cine.io",
+  "scripts": {
+    "test": "coffeelint src/ test/ && grunt test"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "async": "^0.9.0",
+    "chai": "^1.9.1",
+    "coffee-script": "^1.7.1",
+    "coffeeify": "^0.7.0",
+    "coffeelint": "^1.5.2",
+    "grunt": "^0.4.5",
+    "grunt-browserify": "^2.1.4",
+    "grunt-cli": "^0.1.13",
+    "grunt-contrib-coffee": "^0.10.1",
+    "grunt-contrib-uglify": "^0.5.1",
+    "grunt-contrib-watch": "^0.6.1",
+    "grunt-mocha": "^0.4.11",
+    "mocha": "^1.21.3",
+    "sinon": "^1.10.3",
+    "type-of": "^2.0.1"
+  },
+  "license": "Copyrighted / All Rights Reserved",
+  "engines": {
+    "node": "0.10.x"
+  },
+  "private": true
+}
