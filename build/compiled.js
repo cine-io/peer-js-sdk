@@ -3789,32 +3789,15 @@ PeerConnection.prototype.getStats = function (cb) {
 module.exports = PeerConnection;
 
 },{"sdp-jingle-json":7,"traceablepeerconnection":11,"underscore":13,"util":6,"webrtcsupport":14,"wildemitter":15}],17:[function(require,module,exports){
-var CineIOPeer, PeerConnection, config, globStream, gotMyIce, gotRemoteIce, gotRemoteStream, handleLocalOffer, localPeerConnection, remotePeerConnection;
+var CineIOPeer, PeerConnection, gotRemoteStream, handleLocalOffer, remotePeerConnection, signalingConnection;
 
 PeerConnection = require('rtcpeerconnection');
 
-config = {
-  iceServers: [{}]
-};
-
-config = null;
-
-localPeerConnection = null;
-
 remotePeerConnection = null;
-
-gotMyIce = function(candidate) {
-  console.log('got my ice', candidate);
-  return remotePeerConnection.processIce(candidate);
-};
-
-gotRemoteIce = function(candidate) {
-  console.log('got remote ice', candidate);
-  return localPeerConnection.processIce(candidate);
-};
 
 gotRemoteStream = function(event) {
   var videoEl;
+  console.log('got stream yooo');
   videoEl = CineIOPeer._createVideoElementFromStream(event.stream);
   return document.body.appendChild(videoEl);
 };
@@ -3824,29 +3807,71 @@ handleLocalOffer = function(err, offer) {
     console.log('handled remote offer', arguments);
     return remotePeerConnection.answer(function(err, answer) {
       console.log('answering remote', arguments);
-      return localPeerConnection.handleAnswer(answer);
+      return peerConnection.handleAnswer(answer);
     });
   });
 };
 
-globStream = null;
-
-module.exports = function(stream) {
-  globStream = stream;
-  localPeerConnection = new PeerConnection(config);
-  remotePeerConnection = new PeerConnection(config);
-  localPeerConnection.on('ice', gotMyIce);
-  remotePeerConnection.on('ice', gotRemoteIce);
-  localPeerConnection.addStream(stream);
-  remotePeerConnection.on('addStream', gotRemoteStream);
-  return localPeerConnection.offer(handleLocalOffer);
+module.exports = function(name, to, stream) {
+  var localConnection;
+  console.log('I am', name);
+  console.log('Connecting to', to);
+  localConnection = signalingConnection();
+  localConnection.emit('name', {
+    name: name
+  });
+  return localConnection.on('allservers', function(config) {
+    var peerConnection;
+    console.log('setting config', config);
+    peerConnection = new PeerConnection(config);
+    peerConnection.on('addStream', gotRemoteStream);
+    peerConnection.addStream(stream);
+    peerConnection.on('ice', function(candidate) {
+      console.log('got my ice', candidate);
+      return localConnection.emit('ice', {
+        candidate: candidate,
+        name: to
+      });
+    });
+    if (name === 'tom') {
+      peerConnection.offer(function(err, offer) {
+        console.log('offering');
+        return localConnection.emit('offer', {
+          offer: offer,
+          name: to
+        });
+      });
+    }
+    localConnection.on('ice', function(candidate) {
+      console.log('got remote ice', candidate);
+      return peerConnection.processIce(candidate);
+    });
+    localConnection.on('offer', function(offer) {
+      console.log('got offer', offer);
+      return peerConnection.handleOffer(offer, function(err) {
+        console.log('handled offer', err);
+        return peerConnection.answer(function(err, answer) {
+          return localConnection.emit('answer', {
+            answer: answer,
+            name: to
+          });
+        });
+      });
+    });
+    return localConnection.on('answer', function(answer) {
+      console.log('got answer', answer);
+      return peerConnection.handleAnswer(answer);
+    });
+  });
 };
 
 CineIOPeer = require('./main');
 
+signalingConnection = require('./signaling_connection');
 
 
-},{"./main":18,"rtcpeerconnection":16}],18:[function(require,module,exports){
+
+},{"./main":18,"./signaling_connection":19,"rtcpeerconnection":16}],18:[function(require,module,exports){
 var CineIOPeer, attachMediaStream, createPeerConnection, defaultOptions, getUserMedia, userOrDefault;
 
 getUserMedia = require('getusermedia');
@@ -3900,14 +3925,18 @@ CineIOPeer = {
       };
     })(this));
   },
-  quickRun: function() {
+  quickRun2: function(name, to) {
     return CineIOPeer.start(function(err, response) {
       if (err) {
         return console.log("ERROR", err);
       }
+      console.log('connecting');
       document.body.appendChild(response.videoElement);
-      return createPeerConnection(response.stream);
+      return createPeerConnection(name, to, response.stream);
     });
+  },
+  quickRun: function(name, to) {
+    return createPeerConnection(name, to);
   },
   _createVideoElementFromStream: function(stream, options) {
     var videoOptions;
@@ -3933,4 +3962,11 @@ createPeerConnection = require('./create_peer_connection');
 
 
 
-},{"./create_peer_connection":17,"attachmediastream":1,"getusermedia":2}]},{},[18]);
+},{"./create_peer_connection":17,"attachmediastream":1,"getusermedia":2}],19:[function(require,module,exports){
+module.exports = function() {
+  return io.connect('http://localhost:8888');
+};
+
+
+
+},{}]},{},[18]);

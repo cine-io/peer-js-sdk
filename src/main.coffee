@@ -27,11 +27,14 @@ CineIOPeer =
       videoEl = @_createVideoElementFromStream(stream, options)
 
       callback(null, videoElement: videoEl, stream: stream)
-  quickRun: ->
+  quickRun2: (name, to)->
     CineIOPeer.start (err, response)->
       return console.log("ERROR", err) if err
+      console.log('connecting')
       document.body.appendChild(response.videoElement)
-      createPeerConnection(response.stream)
+      createPeerConnection(name, to, response.stream)
+  quickRun: (name, to)->
+    createPeerConnection(name, to)#, response.stream)
   _createVideoElementFromStream: (stream, options={})->
     videoOptions =
       autoplay: userOrDefault(options, 'autoplay')
