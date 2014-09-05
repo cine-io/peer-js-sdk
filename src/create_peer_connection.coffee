@@ -7,7 +7,7 @@ remotePeerConnection = null
 
 gotRemoteStream = (event)->
   console.log('got stream yooo')
-  videoEl = CineIOPeer._createVideoElementFromStream(event.stream)
+  videoEl = CineIOPeer._createVideoElementFromStream(event.stream, muted: false)
   document.body.appendChild(videoEl)
 
 handleLocalOffer = (err, offer)->

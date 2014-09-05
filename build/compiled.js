@@ -3798,7 +3798,9 @@ remotePeerConnection = null;
 gotRemoteStream = function(event) {
   var videoEl;
   console.log('got stream yooo');
-  videoEl = CineIOPeer._createVideoElementFromStream(event.stream);
+  videoEl = CineIOPeer._createVideoElementFromStream(event.stream, {
+    muted: false
+  });
   return document.body.appendChild(videoEl);
 };
 
