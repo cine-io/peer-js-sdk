@@ -6,7 +6,7 @@ remotePeerConnection = null
 
 
 gotRemoteStream = (event)->
-  console.log('got stream yooo')
+  console.log('got stream yooo', event)
   videoEl = CineIOPeer._createVideoElementFromStream(event.stream, muted: false)
   document.body.appendChild(videoEl)
 
@@ -27,16 +27,16 @@ module.exports = (name, to, stream)->
   localConnection.emit('name', name: name)
   localConnection.on 'allservers', (config)->
     console.log('setting config', config)
-    peerConnection = new PeerConnection(config)
+    peerConnection = new PeerConnection(iceServers: config)
     peerConnection.on('addStream', gotRemoteStream)
     peerConnection.addStream(stream)
 
     peerConnection.on 'ice', (candidate)->
-      console.log('got my ice', candidate)
+      console.log('got my ice', candidate.candidate.candidate)
 
       localConnection.emit('ice', candidate: candidate, name: to)
 
-    if name =='tom'
+    if name == 'tom'
       peerConnection.offer (err, offer)->
         console.log('offering')
         localConnection.emit('offer', offer: offer, name: to)

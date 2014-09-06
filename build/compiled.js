@@ -3797,7 +3797,7 @@ remotePeerConnection = null;
 
 gotRemoteStream = function(event) {
   var videoEl;
-  console.log('got stream yooo');
+  console.log('got stream yooo', event);
   videoEl = CineIOPeer._createVideoElementFromStream(event.stream, {
     muted: false
   });
@@ -3825,11 +3825,13 @@ module.exports = function(name, to, stream) {
   return localConnection.on('allservers', function(config) {
     var peerConnection;
     console.log('setting config', config);
-    peerConnection = new PeerConnection(config);
+    peerConnection = new PeerConnection({
+      iceServers: config
+    });
     peerConnection.on('addStream', gotRemoteStream);
     peerConnection.addStream(stream);
     peerConnection.on('ice', function(candidate) {
-      console.log('got my ice', candidate);
+      console.log('got my ice', candidate.candidate.candidate);
       return localConnection.emit('ice', {
         candidate: candidate,
         name: to
