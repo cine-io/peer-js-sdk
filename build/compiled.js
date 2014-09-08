@@ -3789,94 +3789,7 @@ PeerConnection.prototype.getStats = function (cb) {
 module.exports = PeerConnection;
 
 },{"sdp-jingle-json":7,"traceablepeerconnection":11,"underscore":13,"util":6,"webrtcsupport":14,"wildemitter":15}],17:[function(require,module,exports){
-var CineIOPeer, PeerConnection, gotRemoteStream, handleLocalOffer, remotePeerConnection, signalingConnection;
-
-PeerConnection = require('rtcpeerconnection');
-
-remotePeerConnection = null;
-
-gotRemoteStream = function(event) {
-  var videoEl;
-  console.log('got stream yooo', event);
-  videoEl = CineIOPeer._createVideoElementFromStream(event.stream, {
-    muted: false
-  });
-  return document.body.appendChild(videoEl);
-};
-
-handleLocalOffer = function(err, offer) {
-  return remotePeerConnection.handleOffer(offer, function(err) {
-    console.log('handled remote offer', arguments);
-    return remotePeerConnection.answer(function(err, answer) {
-      console.log('answering remote', arguments);
-      return peerConnection.handleAnswer(answer);
-    });
-  });
-};
-
-module.exports = function(name, to, stream) {
-  var localConnection;
-  console.log('I am', name);
-  console.log('Connecting to', to);
-  localConnection = signalingConnection();
-  localConnection.emit('name', {
-    name: name
-  });
-  return localConnection.on('allservers', function(config) {
-    var peerConnection;
-    console.log('setting config', config);
-    peerConnection = new PeerConnection({
-      iceServers: config
-    });
-    peerConnection.on('addStream', gotRemoteStream);
-    peerConnection.addStream(stream);
-    peerConnection.on('ice', function(candidate) {
-      console.log('got my ice', candidate.candidate.candidate);
-      return localConnection.emit('ice', {
-        candidate: candidate,
-        name: to
-      });
-    });
-    if (name === 'tom') {
-      peerConnection.offer(function(err, offer) {
-        console.log('offering');
-        return localConnection.emit('offer', {
-          offer: offer,
-          name: to
-        });
-      });
-    }
-    localConnection.on('ice', function(candidate) {
-      console.log('got remote ice', candidate);
-      return peerConnection.processIce(candidate);
-    });
-    localConnection.on('offer', function(offer) {
-      console.log('got offer', offer);
-      return peerConnection.handleOffer(offer, function(err) {
-        console.log('handled offer', err);
-        return peerConnection.answer(function(err, answer) {
-          return localConnection.emit('answer', {
-            answer: answer,
-            name: to
-          });
-        });
-      });
-    });
-    return localConnection.on('answer', function(answer) {
-      console.log('got answer', answer);
-      return peerConnection.handleAnswer(answer);
-    });
-  });
-};
-
-CineIOPeer = require('./main');
-
-signalingConnection = require('./signaling_connection');
-
-
-
-},{"./main":18,"./signaling_connection":19,"rtcpeerconnection":16}],18:[function(require,module,exports){
-var CineIOPeer, attachMediaStream, createPeerConnection, defaultOptions, getUserMedia, userOrDefault;
+var CineIOPeer, attachMediaStream, defaultOptions, getUserMedia, signalingConnection, userOrDefault;
 
 getUserMedia = require('getusermedia');
 
@@ -3901,7 +3814,21 @@ userOrDefault = function(userOptions, key) {
 CineIOPeer = {
   globalStream: null,
   version: "0.0.1",
-  start: function(options, callback) {
+  config: {},
+  init: function(options) {
+    return CineIOPeer.config.name = options.name;
+  },
+  join: function(room) {
+    return CineIOPeer._fetchMedia(function(err, response) {
+      if (err) {
+        return console.log("ERROR", err);
+      }
+      console.log('connecting');
+      document.body.appendChild(response.videoElement);
+      return signalingConnection.connect(CineIOPeer.config.name, room, response.stream);
+    });
+  },
+  _fetchMedia: function(options, callback) {
     var streamDoptions;
     if (options == null) {
       options = {};
@@ -3914,7 +3841,7 @@ CineIOPeer = {
       video: userOrDefault(options, 'video'),
       audio: userOrDefault(options, 'audio')
     };
-    console.log('starting', options);
+    console.log('fetching media', options);
     return getUserMedia(streamDoptions, (function(_this) {
       return function(err, stream) {
         var videoEl;
@@ -3922,6 +3849,7 @@ CineIOPeer = {
           return callback(err);
         }
         videoEl = _this._createVideoElementFromStream(stream, options);
+        CineIOPeer.stream = stream;
         return callback(null, {
           videoElement: videoEl,
           stream: stream
@@ -3929,18 +3857,17 @@ CineIOPeer = {
       };
     })(this));
   },
-  quickRun2: function(name, to) {
-    return CineIOPeer.start(function(err, response) {
-      if (err) {
-        return console.log("ERROR", err);
-      }
-      console.log('connecting');
-      document.body.appendChild(response.videoElement);
-      return createPeerConnection(name, to, response.stream);
-    });
+  peerAdded: function(peerConnection) {
+    console.log('peer connection added', CineIOPeer.stream);
+    return peerConnection.addStream(CineIOPeer.stream);
   },
-  quickRun: function(name, to) {
-    return createPeerConnection(name, to);
+  remoteStreamAdded: function(peerConnection, stream) {
+    var videoEl;
+    console.log('remote stream added');
+    videoEl = CineIOPeer._createVideoElementFromStream(stream, {
+      muted: true
+    });
+    return document.body.appendChild(videoEl);
   },
   _createVideoElementFromStream: function(stream, options) {
     var videoOptions;
@@ -3962,15 +3889,120 @@ if (typeof window !== 'undefined') {
 
 module.exports = CineIOPeer;
 
-createPeerConnection = require('./create_peer_connection');
+signalingConnection = require('./signaling_connection');
 
 
 
-},{"./create_peer_connection":17,"attachmediastream":1,"getusermedia":2}],19:[function(require,module,exports){
-module.exports = function() {
+},{"./signaling_connection":18,"attachmediastream":1,"getusermedia":2}],18:[function(require,module,exports){
+var CineIOPeer, PeerConnection, gotRemoteStream, newConnection, peerConnections;
+
+PeerConnection = require('rtcpeerconnection');
+
+newConnection = function() {
   return io.connect('http://localhost:8888');
 };
 
+gotRemoteStream = function(event) {
+  var videoEl;
+  console.log('got stream yooo', event);
+  videoEl = CineIOPeer._createVideoElementFromStream(event.stream, {
+    muted: true
+  });
+  return document.body.appendChild(videoEl);
+};
+
+peerConnections = {};
+
+exports.connect = function(name, room, stream) {
+  var iceServers, newMember, signalConnection;
+  signalConnection = newConnection();
+  iceServers = null;
+  signalConnection.emit('name', {
+    name: name
+  });
+  signalConnection.on('allservers', function(data) {
+    console.log('setting config', data);
+    iceServers = data;
+    return signalConnection.emit('join', {
+      room: room
+    });
+  });
+  newMember = function(member, options) {
+    var peerConnection, roomMember;
+    roomMember = member.name;
+    peerConnection = new PeerConnection({
+      iceServers: iceServers
+    });
+    peerConnection.on('ice', function(candidate) {
+      console.log('got my ice', candidate.candidate.candidate);
+      return signalConnection.emit('ice', {
+        candidate: candidate,
+        name: roomMember
+      });
+    });
+    peerConnection.addStream(stream);
+    peerConnection.on('addStream', function(event) {
+      console.log("got remote stream", event);
+      return CineIOPeer.remoteStreamAdded(peerConnection, event.stream);
+    });
+    if (options.offer) {
+      console.log('sending offer');
+      peerConnection.offer(function(err, offer) {
+        console.log('offering');
+        return signalConnection.emit('offer', {
+          offer: offer,
+          name: roomMember
+        });
+      });
+    }
+    return peerConnections[roomMember] = peerConnection;
+  };
+  signalConnection.on('member', function(data) {
+    console.log('got new member', data);
+    return newMember(data, {
+      offer: false
+    });
+  });
+  signalConnection.on('members', function(data) {
+    var member, _i, _len, _ref, _results;
+    console.log('got members', data);
+    _ref = data.members;
+    _results = [];
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      member = _ref[_i];
+      _results.push(newMember(member, {
+        offer: true
+      }));
+    }
+    return _results;
+  });
+  signalConnection.on('ice', function(data) {
+    console.log('got remote ice', data);
+    return peerConnections[data.name].processIce(data.candidate);
+  });
+  signalConnection.on('offer', function(data) {
+    var roomMember;
+    roomMember = data.name;
+    console.log('got offer', data);
+    return peerConnections[data.name].handleOffer(data.offer, function(err) {
+      console.log('handled offer', err);
+      return peerConnections[data.name].answer(function(err, answer) {
+        return signalConnection.emit('answer', {
+          answer: answer,
+          name: roomMember
+        });
+      });
+    });
+  });
+  signalConnection.on('answer', function(data) {
+    console.log('got answer', data);
+    return peerConnections[data.name].handleAnswer(data.answer);
+  });
+  return signalConnection;
+};
+
+CineIOPeer = require('./main');
 
 
-},{}]},{},[18]);
+
+},{"./main":17,"rtcpeerconnection":16}]},{},[17]);
