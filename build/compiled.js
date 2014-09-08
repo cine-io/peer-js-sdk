@@ -3816,7 +3816,12 @@ CineIOPeer = {
   version: "0.0.1",
   config: {},
   init: function(options) {
-    return CineIOPeer.config.name = options.name;
+    var _base;
+    CineIOPeer.config.name = options.name;
+    (_base = CineIOPeer.config).signalConnection || (_base.signalConnection = signalingConnection.connect());
+    return CineIOPeer.config.signalConnection.emit('name', {
+      name: CineIOPeer.config.name
+    });
   },
   join: function(room) {
     return CineIOPeer._fetchMedia(function(err, response) {
@@ -3825,7 +3830,10 @@ CineIOPeer = {
       }
       console.log('connecting');
       document.body.appendChild(response.videoElement);
-      return signalingConnection.connect(CineIOPeer.config.name, room, response.stream);
+      console.log('Joining', room);
+      return CineIOPeer.config.signalConnection.emit('join', {
+        room: room
+      });
     });
   },
   _fetchMedia: function(options, callback) {
@@ -3857,17 +3865,15 @@ CineIOPeer = {
       };
     })(this));
   },
-  peerAdded: function(peerConnection) {
-    console.log('peer connection added', CineIOPeer.stream);
-    return peerConnection.addStream(CineIOPeer.stream);
-  },
-  remoteStreamAdded: function(peerConnection, stream) {
-    var videoEl;
+  remoteStreamAdded: function(peerConnection, videoEl) {
     console.log('remote stream added');
-    videoEl = CineIOPeer._createVideoElementFromStream(stream, {
-      muted: true
-    });
     return document.body.appendChild(videoEl);
+  },
+  remoteStreamRemoved: function(peerConnection) {
+    return console.log('remote stream removed');
+  },
+  _gotIceServers: function(iceServers) {
+    return config.iceServers = iceServers;
   },
   _createVideoElementFromStream: function(stream, options) {
     var videoOptions;
@@ -3913,19 +3919,13 @@ gotRemoteStream = function(event) {
 
 peerConnections = {};
 
-exports.connect = function(name, room, stream) {
+exports.connect = function() {
   var iceServers, newMember, signalConnection;
   signalConnection = newConnection();
   iceServers = null;
-  signalConnection.emit('name', {
-    name: name
-  });
   signalConnection.on('allservers', function(data) {
     console.log('setting config', data);
-    iceServers = data;
-    return signalConnection.emit('join', {
-      room: room
-    });
+    return iceServers = data;
   });
   newMember = function(member, options) {
     var peerConnection, roomMember;
@@ -3940,10 +3940,20 @@ exports.connect = function(name, room, stream) {
         name: roomMember
       });
     });
-    peerConnection.addStream(stream);
+    peerConnection.addStream(CineIOPeer.stream);
     peerConnection.on('addStream', function(event) {
+      var videoEl;
       console.log("got remote stream", event);
-      return CineIOPeer.remoteStreamAdded(peerConnection, event.stream);
+      videoEl = CineIOPeer._createVideoElementFromStream(event.stream, {
+        muted: true
+      });
+      peerConnection.videoEl = videoEl;
+      return CineIOPeer.remoteStreamAdded(peerConnection, videoEl);
+    });
+    peerConnection.on('close', function(event) {
+      console.log("remote closed", event);
+      peerConnection.videoEl.remove();
+      return CineIOPeer.remoteStreamRemoved(peerConnection);
     });
     if (options.offer) {
       console.log('sending offer');
@@ -3957,6 +3967,10 @@ exports.connect = function(name, room, stream) {
     }
     return peerConnections[roomMember] = peerConnection;
   };
+  signalConnection.on('leave', function(data) {
+    peerConnections[data.name].close();
+    return peerConnections[data.name] = null;
+  });
   signalConnection.on('member', function(data) {
     console.log('got new member', data);
     return newMember(data, {

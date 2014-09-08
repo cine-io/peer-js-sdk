@@ -18,6 +18,8 @@ CineIOPeer =
 
   init: (options)->
     CineIOPeer.config.name = options.name
+    CineIOPeer.config.signalConnection ||= signalingConnection.connect()
+    CineIOPeer.config.signalConnection.emit 'name', name: CineIOPeer.config.name
 
   join: (room)->
     CineIOPeer._fetchMedia (err, response)->
@@ -25,7 +27,8 @@ CineIOPeer =
       console.log('connecting')
       document.body.appendChild(response.videoElement)
 
-      signalingConnection.connect(CineIOPeer.config.name, room, response.stream)
+      console.log('Joining', room)
+      CineIOPeer.config.signalConnection.emit 'join', room: room
 
   _fetchMedia: (options={}, callback)->
     if typeof options == 'function'
@@ -41,14 +44,15 @@ CineIOPeer =
       CineIOPeer.stream = stream
       callback(null, videoElement: videoEl, stream: stream)
 
-  peerAdded: (peerConnection)->
-    console.log('peer connection added', CineIOPeer.stream)
-    peerConnection.addStream(CineIOPeer.stream)
-
-  remoteStreamAdded: (peerConnection, stream)->
+  remoteStreamAdded: (peerConnection, videoEl)->
     console.log('remote stream added')
-    videoEl = CineIOPeer._createVideoElementFromStream(stream, muted: true)
     document.body.appendChild(videoEl)
+
+  remoteStreamRemoved: (peerConnection)->
+    console.log('remote stream removed')
+
+  _gotIceServers: (iceServers)->
+    config.iceServers = iceServers
 
   _createVideoElementFromStream: (stream, options={})->
     videoOptions =

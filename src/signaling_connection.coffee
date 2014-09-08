@@ -10,16 +10,13 @@ gotRemoteStream = (event)->
 
 peerConnections = {}
 
-exports.connect = (name, room, stream)->
+exports.connect = ->
   signalConnection = newConnection()
   iceServers = null
-
-  signalConnection.emit 'name', name: name
 
   signalConnection.on 'allservers', (data)->
     console.log('setting config', data)
     iceServers = data
-    signalConnection.emit 'join', room: room
 
   newMember = (member, options)->
     roomMember = member.name
@@ -28,11 +25,18 @@ exports.connect = (name, room, stream)->
       console.log('got my ice', candidate.candidate.candidate)
       signalConnection.emit('ice', candidate: candidate, name: roomMember)
 
-    peerConnection.addStream(stream)
+    peerConnection.addStream(CineIOPeer.stream)
 
     peerConnection.on 'addStream', (event)->
       console.log("got remote stream", event)
-      CineIOPeer.remoteStreamAdded(peerConnection, event.stream)
+      videoEl = CineIOPeer._createVideoElementFromStream(event.stream, muted: true)
+      peerConnection.videoEl = videoEl
+      CineIOPeer.remoteStreamAdded(peerConnection, videoEl)
+
+    peerConnection.on 'close', (event)->
+      console.log("remote closed", event)
+      peerConnection.videoEl.remove()
+      CineIOPeer.remoteStreamRemoved(peerConnection)
 
     if options.offer
       console.log('sending offer')
@@ -40,8 +44,11 @@ exports.connect = (name, room, stream)->
         console.log('offering')
         signalConnection.emit('offer', offer: offer, name: roomMember)
 
-
     peerConnections[roomMember] = peerConnection
+
+  signalConnection.on 'leave', (data)->
+    peerConnections[data.name].close()
+    peerConnections[data.name] = null
 
   signalConnection.on 'member', (data)->
     console.log('got new member', data)
