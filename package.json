@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "attachmediastream": "^1.0.1",
+    "backbone-events-standalone": "^0.2.4",
     "getusermedia": "^1.0.0",
     "rtcpeerconnection": "^2.4.5"
   },

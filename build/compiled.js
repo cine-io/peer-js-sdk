@@ -40,6 +40,288 @@ module.exports = function (stream, el, options) {
 };
 
 },{}],2:[function(require,module,exports){
+/**
+ * Standalone extraction of Backbone.Events, no external dependency required.
+ * Degrades nicely when Backone/underscore are already available in the current
+ * global context.
+ *
+ * Note that docs suggest to use underscore's `_.extend()` method to add Events
+ * support to some given object. A `mixin()` method has been added to the Events
+ * prototype to avoid using underscore for that sole purpose:
+ *
+ *     var myEventEmitter = BackboneEvents.mixin({});
+ *
+ * Or for a function constructor:
+ *
+ *     function MyConstructor(){}
+ *     MyConstructor.prototype.foo = function(){}
+ *     BackboneEvents.mixin(MyConstructor.prototype);
+ *
+ * (c) 2009-2013 Jeremy Ashkenas, DocumentCloud Inc.
+ * (c) 2013 Nicolas Perriault
+ */
+/* global exports:true, define, module */
+(function() {
+  var root = this,
+      breaker = {},
+      nativeForEach = Array.prototype.forEach,
+      hasOwnProperty = Object.prototype.hasOwnProperty,
+      slice = Array.prototype.slice,
+      idCounter = 0;
+
+  // Returns a partial implementation matching the minimal API subset required
+  // by Backbone.Events
+  function miniscore() {
+    return {
+      keys: Object.keys || function (obj) {
+        if (typeof obj !== "object" && typeof obj !== "function" || obj === null) {
+          throw new TypeError("keys() called on a non-object");
+        }
+        var key, keys = [];
+        for (key in obj) {
+          if (obj.hasOwnProperty(key)) {
+            keys[keys.length] = key;
+          }
+        }
+        return keys;
+      },
+
+      uniqueId: function(prefix) {
+        var id = ++idCounter + '';
+        return prefix ? prefix + id : id;
+      },
+
+      has: function(obj, key) {
+        return hasOwnProperty.call(obj, key);
+      },
+
+      each: function(obj, iterator, context) {
+        if (obj == null) return;
+        if (nativeForEach && obj.forEach === nativeForEach) {
+          obj.forEach(iterator, context);
+        } else if (obj.length === +obj.length) {
+          for (var i = 0, l = obj.length; i < l; i++) {
+            if (iterator.call(context, obj[i], i, obj) === breaker) return;
+          }
+        } else {
+          for (var key in obj) {
+            if (this.has(obj, key)) {
+              if (iterator.call(context, obj[key], key, obj) === breaker) return;
+            }
+          }
+        }
+      },
+
+      once: function(func) {
+        var ran = false, memo;
+        return function() {
+          if (ran) return memo;
+          ran = true;
+          memo = func.apply(this, arguments);
+          func = null;
+          return memo;
+        };
+      }
+    };
+  }
+
+  var _ = miniscore(), Events;
+
+  // Backbone.Events
+  // ---------------
+
+  // A module that can be mixed in to *any object* in order to provide it with
+  // custom events. You may bind with `on` or remove with `off` callback
+  // functions to an event; `trigger`-ing an event fires all callbacks in
+  // succession.
+  //
+  //     var object = {};
+  //     _.extend(object, Backbone.Events);
+  //     object.on('expand', function(){ alert('expanded'); });
+  //     object.trigger('expand');
+  //
+  Events = {
+
+    // Bind an event to a `callback` function. Passing `"all"` will bind
+    // the callback to all events fired.
+    on: function(name, callback, context) {
+      if (!eventsApi(this, 'on', name, [callback, context]) || !callback) return this;
+      this._events || (this._events = {});
+      var events = this._events[name] || (this._events[name] = []);
+      events.push({callback: callback, context: context, ctx: context || this});
+      return this;
+    },
+
+    // Bind an event to only be triggered a single time. After the first time
+    // the callback is invoked, it will be removed.
+    once: function(name, callback, context) {
+      if (!eventsApi(this, 'once', name, [callback, context]) || !callback) return this;
+      var self = this;
+      var once = _.once(function() {
+        self.off(name, once);
+        callback.apply(this, arguments);
+      });
+      once._callback = callback;
+      return this.on(name, once, context);
+    },
+
+    // Remove one or many callbacks. If `context` is null, removes all
+    // callbacks with that function. If `callback` is null, removes all
+    // callbacks for the event. If `name` is null, removes all bound
+    // callbacks for all events.
+    off: function(name, callback, context) {
+      var retain, ev, events, names, i, l, j, k;
+      if (!this._events || !eventsApi(this, 'off', name, [callback, context])) return this;
+      if (!name && !callback && !context) {
+        this._events = {};
+        return this;
+      }
+
+      names = name ? [name] : _.keys(this._events);
+      for (i = 0, l = names.length; i < l; i++) {
+        name = names[i];
+        if (events = this._events[name]) {
+          this._events[name] = retain = [];
+          if (callback || context) {
+            for (j = 0, k = events.length; j < k; j++) {
+              ev = events[j];
+              if ((callback && callback !== ev.callback && callback !== ev.callback._callback) ||
+                  (context && context !== ev.context)) {
+                retain.push(ev);
+              }
+            }
+          }
+          if (!retain.length) delete this._events[name];
+        }
+      }
+
+      return this;
+    },
+
+    // Trigger one or many events, firing all bound callbacks. Callbacks are
+    // passed the same arguments as `trigger` is, apart from the event name
+    // (unless you're listening on `"all"`, which will cause your callback to
+    // receive the true name of the event as the first argument).
+    trigger: function(name) {
+      if (!this._events) return this;
+      var args = slice.call(arguments, 1);
+      if (!eventsApi(this, 'trigger', name, args)) return this;
+      var events = this._events[name];
+      var allEvents = this._events.all;
+      if (events) triggerEvents(events, args);
+      if (allEvents) triggerEvents(allEvents, arguments);
+      return this;
+    },
+
+    // Tell this object to stop listening to either specific events ... or
+    // to every object it's currently listening to.
+    stopListening: function(obj, name, callback) {
+      var listeners = this._listeners;
+      if (!listeners) return this;
+      var deleteListener = !name && !callback;
+      if (typeof name === 'object') callback = this;
+      if (obj) (listeners = {})[obj._listenerId] = obj;
+      for (var id in listeners) {
+        listeners[id].off(name, callback, this);
+        if (deleteListener) delete this._listeners[id];
+      }
+      return this;
+    }
+
+  };
+
+  // Regular expression used to split event strings.
+  var eventSplitter = /\s+/;
+
+  // Implement fancy features of the Events API such as multiple event
+  // names `"change blur"` and jQuery-style event maps `{change: action}`
+  // in terms of the existing API.
+  var eventsApi = function(obj, action, name, rest) {
+    if (!name) return true;
+
+    // Handle event maps.
+    if (typeof name === 'object') {
+      for (var key in name) {
+        obj[action].apply(obj, [key, name[key]].concat(rest));
+      }
+      return false;
+    }
+
+    // Handle space separated event names.
+    if (eventSplitter.test(name)) {
+      var names = name.split(eventSplitter);
+      for (var i = 0, l = names.length; i < l; i++) {
+        obj[action].apply(obj, [names[i]].concat(rest));
+      }
+      return false;
+    }
+
+    return true;
+  };
+
+  // A difficult-to-believe, but optimized internal dispatch function for
+  // triggering events. Tries to keep the usual cases speedy (most internal
+  // Backbone events have 3 arguments).
+  var triggerEvents = function(events, args) {
+    var ev, i = -1, l = events.length, a1 = args[0], a2 = args[1], a3 = args[2];
+    switch (args.length) {
+      case 0: while (++i < l) (ev = events[i]).callback.call(ev.ctx); return;
+      case 1: while (++i < l) (ev = events[i]).callback.call(ev.ctx, a1); return;
+      case 2: while (++i < l) (ev = events[i]).callback.call(ev.ctx, a1, a2); return;
+      case 3: while (++i < l) (ev = events[i]).callback.call(ev.ctx, a1, a2, a3); return;
+      default: while (++i < l) (ev = events[i]).callback.apply(ev.ctx, args);
+    }
+  };
+
+  var listenMethods = {listenTo: 'on', listenToOnce: 'once'};
+
+  // Inversion-of-control versions of `on` and `once`. Tell *this* object to
+  // listen to an event in another object ... keeping track of what it's
+  // listening to.
+  _.each(listenMethods, function(implementation, method) {
+    Events[method] = function(obj, name, callback) {
+      var listeners = this._listeners || (this._listeners = {});
+      var id = obj._listenerId || (obj._listenerId = _.uniqueId('l'));
+      listeners[id] = obj;
+      if (typeof name === 'object') callback = this;
+      obj[implementation](name, callback, this);
+      return this;
+    };
+  });
+
+  // Aliases for backwards compatibility.
+  Events.bind   = Events.on;
+  Events.unbind = Events.off;
+
+  // Mixin utility
+  Events.mixin = function(proto) {
+    var exports = ['on', 'once', 'off', 'trigger', 'stopListening', 'listenTo',
+                   'listenToOnce', 'bind', 'unbind'];
+    _.each(exports, function(name) {
+      proto[name] = this[name];
+    }, this);
+    return proto;
+  };
+
+  // Export Events as BackboneEvents depending on current context
+  if (typeof define === "function") {
+    define(function() {
+      return Events;
+    });
+  } else if (typeof exports !== 'undefined') {
+    if (typeof module !== 'undefined' && module.exports) {
+      exports = module.exports = Events;
+    }
+    exports.BackboneEvents = Events;
+  } else {
+    root.BackboneEvents = Events;
+  }
+})(this);
+
+},{}],3:[function(require,module,exports){
+module.exports = require('./backbone-events-standalone');
+
+},{"./backbone-events-standalone":2}],4:[function(require,module,exports){
 // getUserMedia helper by @HenrikJoreteg
 var func = (window.navigator.getUserMedia ||
             window.navigator.webkitGetUserMedia ||
@@ -103,7 +385,7 @@ module.exports = function (constraints, cb) {
     });
 };
 
-},{}],3:[function(require,module,exports){
+},{}],5:[function(require,module,exports){
 if (typeof Object.create === 'function') {
   // implementation from standard node.js 'util' module
   module.exports = function inherits(ctor, superCtor) {
@@ -128,7 +410,7 @@ if (typeof Object.create === 'function') {
   }
 }
 
-},{}],4:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};
@@ -193,14 +475,14 @@ process.chdir = function (dir) {
     throw new Error('process.chdir is not supported');
 };
 
-},{}],5:[function(require,module,exports){
+},{}],7:[function(require,module,exports){
 module.exports = function isBuffer(arg) {
   return arg && typeof arg === 'object'
     && typeof arg.copy === 'function'
     && typeof arg.fill === 'function'
     && typeof arg.readUInt8 === 'function';
 }
-},{}],6:[function(require,module,exports){
+},{}],8:[function(require,module,exports){
 (function (process,global){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -790,7 +1072,7 @@ function hasOwnProperty(obj, prop) {
 }
 
 }).call(this,require("JkpR2F"),typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./support/isBuffer":5,"JkpR2F":4,"inherits":3}],7:[function(require,module,exports){
+},{"./support/isBuffer":7,"JkpR2F":6,"inherits":5}],9:[function(require,module,exports){
 var tosdp = require('./lib/tosdp');
 var tojson = require('./lib/tojson');
 
@@ -803,7 +1085,7 @@ exports.toSessionJSON = tojson.toSessionJSON;
 exports.toMediaJSON = tojson.toMediaJSON;
 exports.toCandidateJSON = tojson.toCandidateJSON;
 
-},{"./lib/tojson":9,"./lib/tosdp":10}],8:[function(require,module,exports){
+},{"./lib/tojson":11,"./lib/tosdp":12}],10:[function(require,module,exports){
 exports.lines = function (sdp) {
     return sdp.split('\r\n').filter(function (line) {
         return line.length > 0;
@@ -1064,7 +1346,7 @@ exports.bandwidth = function (line) {
     return parsed;
 };
 
-},{}],9:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 var parsers = require('./parsers');
 var idCounter = Math.random();
 
@@ -1254,7 +1536,7 @@ exports.toCandidateJSON = function (line) {
     return candidate;
 };
 
-},{"./parsers":8}],10:[function(require,module,exports){
+},{"./parsers":10}],12:[function(require,module,exports){
 var senders = {
     'initiator': 'sendonly',
     'responder': 'recvonly',
@@ -1468,7 +1750,7 @@ exports.toCandidateSDP = function (candidate) {
     return 'a=candidate:' + sdp.join(' ');
 };
 
-},{}],11:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 // based on https://github.com/ESTOS/strophe.jingle/
 // adds wildemitter support
 var util = require('util');
@@ -1688,7 +1970,7 @@ TraceablePeerConnection.prototype.getStats = function (callback, errback) {
 
 module.exports = TraceablePeerConnection;
 
-},{"util":6,"webrtcsupport":12,"wildemitter":15}],12:[function(require,module,exports){
+},{"util":8,"webrtcsupport":14,"wildemitter":17}],14:[function(require,module,exports){
 // created by @HenrikJoreteg
 var prefix;
 var isChrome = false;
@@ -1726,7 +2008,7 @@ module.exports = {
     IceCandidate: IceCandidate
 };
 
-},{}],13:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 //     Underscore.js 1.7.0
 //     http://underscorejs.org
 //     (c) 2009-2014 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
@@ -3143,7 +3425,7 @@ module.exports = {
   }
 }.call(this));
 
-},{}],14:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 // created by @HenrikJoreteg
 var prefix;
 var isChrome = false;
@@ -3183,7 +3465,7 @@ module.exports = {
     IceCandidate: IceCandidate
 };
 
-},{}],15:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 /*
 WildEmitter.js is a slim little event emitter by @henrikjoreteg largely based
 on @visionmedia's Emitter from UI Kit.
@@ -3324,7 +3606,7 @@ WildEmitter.prototype.getWildcardCallbacks = function (eventName) {
     return result;
 };
 
-},{}],16:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 var _ = require('underscore');
 var util = require('util');
 var webrtc = require('webrtcsupport');
@@ -3788,12 +4070,14 @@ PeerConnection.prototype.getStats = function (cb) {
 
 module.exports = PeerConnection;
 
-},{"sdp-jingle-json":7,"traceablepeerconnection":11,"underscore":13,"util":6,"webrtcsupport":14,"wildemitter":15}],17:[function(require,module,exports){
-var CineIOPeer, attachMediaStream, defaultOptions, getUserMedia, signalingConnection, userOrDefault;
+},{"sdp-jingle-json":9,"traceablepeerconnection":13,"underscore":15,"util":8,"webrtcsupport":16,"wildemitter":17}],19:[function(require,module,exports){
+var BackboneEvents, CineIOPeer, attachMediaStream, defaultOptions, getUserMedia, signalingConnection, userOrDefault;
 
 getUserMedia = require('getusermedia');
 
 attachMediaStream = require('attachmediastream');
+
+BackboneEvents = require("backbone-events-standalone");
 
 defaultOptions = {
   video: true,
@@ -3829,7 +4113,7 @@ CineIOPeer = {
         return console.log("ERROR", err);
       }
       console.log('connecting');
-      document.body.appendChild(response.videoElement);
+      CineIOPeer.trigger('media', response);
       console.log('Joining', room);
       return CineIOPeer.config.signalConnection.emit('join', {
         room: room
@@ -3865,16 +4149,6 @@ CineIOPeer = {
       };
     })(this));
   },
-  remoteStreamAdded: function(peerConnection, videoEl) {
-    console.log('remote stream added');
-    return document.body.appendChild(videoEl);
-  },
-  remoteStreamRemoved: function(peerConnection) {
-    return console.log('remote stream removed');
-  },
-  _gotIceServers: function(iceServers) {
-    return config.iceServers = iceServers;
-  },
   _createVideoElementFromStream: function(stream, options) {
     var videoOptions;
     if (options == null) {
@@ -3889,6 +4163,8 @@ CineIOPeer = {
   }
 };
 
+BackboneEvents.mixin(CineIOPeer);
+
 if (typeof window !== 'undefined') {
   window.CineIOPeer = CineIOPeer;
 }
@@ -3899,8 +4175,8 @@ signalingConnection = require('./signaling_connection');
 
 
 
-},{"./signaling_connection":18,"attachmediastream":1,"getusermedia":2}],18:[function(require,module,exports){
-var CineIOPeer, PeerConnection, gotRemoteStream, newConnection, peerConnections;
+},{"./signaling_connection":20,"attachmediastream":1,"backbone-events-standalone":3,"getusermedia":4}],20:[function(require,module,exports){
+var CineIOPeer, PeerConnection, newConnection, peerConnections;
 
 PeerConnection = require('rtcpeerconnection');
 
@@ -3908,64 +4184,71 @@ newConnection = function() {
   return io.connect('http://localhost:8888');
 };
 
-gotRemoteStream = function(event) {
-  var videoEl;
-  console.log('got stream yooo', event);
-  videoEl = CineIOPeer._createVideoElementFromStream(event.stream, {
-    muted: true
-  });
-  return document.body.appendChild(videoEl);
-};
-
 peerConnections = {};
 
 exports.connect = function() {
-  var iceServers, newMember, signalConnection;
+  var ensureIce, fetchedIce, iceServers, newMember, signalConnection;
   signalConnection = newConnection();
   iceServers = null;
+  fetchedIce = false;
+  ensureIce = function(callback) {
+    if (fetchedIce) {
+      return callback();
+    }
+    return CineIOPeer.on('gotIceServers', callback);
+  };
   signalConnection.on('allservers', function(data) {
     console.log('setting config', data);
-    return iceServers = data;
+    iceServers = data;
+    fetchedIce = true;
+    return CineIOPeer.trigger('gotIceServers');
   });
   newMember = function(member, options) {
-    var peerConnection, roomMember;
-    roomMember = member.name;
-    peerConnection = new PeerConnection({
-      iceServers: iceServers
-    });
-    peerConnection.on('ice', function(candidate) {
-      console.log('got my ice', candidate.candidate.candidate);
-      return signalConnection.emit('ice', {
-        candidate: candidate,
-        name: roomMember
+    return ensureIce(function() {
+      var peerConnection, roomMember;
+      roomMember = member.name;
+      peerConnection = new PeerConnection({
+        iceServers: iceServers
       });
-    });
-    peerConnection.addStream(CineIOPeer.stream);
-    peerConnection.on('addStream', function(event) {
-      var videoEl;
-      console.log("got remote stream", event);
-      videoEl = CineIOPeer._createVideoElementFromStream(event.stream, {
-        muted: true
-      });
-      peerConnection.videoEl = videoEl;
-      return CineIOPeer.remoteStreamAdded(peerConnection, videoEl);
-    });
-    peerConnection.on('close', function(event) {
-      console.log("remote closed", event);
-      peerConnection.videoEl.remove();
-      return CineIOPeer.remoteStreamRemoved(peerConnection);
-    });
-    if (options.offer) {
-      console.log('sending offer');
-      peerConnection.offer(function(err, offer) {
-        console.log('offering');
-        return signalConnection.emit('offer', {
-          offer: offer,
+      peerConnection.on('ice', function(candidate) {
+        console.log('got my ice', candidate.candidate.candidate);
+        return signalConnection.emit('ice', {
+          candidate: candidate,
           name: roomMember
         });
       });
-    }
-    return peerConnections[roomMember] = peerConnection;
+      peerConnection.addStream(CineIOPeer.stream);
+      peerConnection.on('addStream', function(event) {
+        var videoEl;
+        console.log("got remote stream", event);
+        videoEl = CineIOPeer._createVideoElementFromStream(event.stream, {
+          muted: false
+        });
+        peerConnection.videoEl = videoEl;
+        return CineIOPeer.trigger('streamAdded', {
+          peerConnection: peerConnection,
+          videoElement: videoEl
+        });
+      });
+      peerConnection.on('close', function(event) {
+        console.log("remote closed", event);
+        peerConnection.videoEl.remove();
+        return CineIOPeer.trigger('streamRemoved', {
+          peerConnection: peerConnection
+        });
+      });
+      if (options.offer) {
+        console.log('sending offer');
+        peerConnection.offer(function(err, offer) {
+          console.log('offering');
+          return signalConnection.emit('offer', {
+            offer: offer,
+            name: roomMember
+          });
+        });
+      }
+      return peerConnections[roomMember] = peerConnection;
+    });
   };
   signalConnection.on('leave', function(data) {
     peerConnections[data.name].close();
@@ -4019,4 +4302,4 @@ CineIOPeer = require('./main');
 
 
 
-},{"./main":17,"rtcpeerconnection":16}]},{},[17]);
+},{"./main":19,"rtcpeerconnection":18}]},{},[19]);

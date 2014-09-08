@@ -1,5 +1,6 @@
 getUserMedia = require('getusermedia')
 attachMediaStream = require('attachmediastream')
+BackboneEvents = require("backbone-events-standalone")
 
 defaultOptions =
   video: true
@@ -25,7 +26,7 @@ CineIOPeer =
     CineIOPeer._fetchMedia (err, response)->
       return console.log("ERROR", err) if err
       console.log('connecting')
-      document.body.appendChild(response.videoElement)
+      CineIOPeer.trigger 'media', response
 
       console.log('Joining', room)
       CineIOPeer.config.signalConnection.emit 'join', room: room
@@ -38,21 +39,12 @@ CineIOPeer =
       video: userOrDefault(options, 'video')
       audio: userOrDefault(options, 'audio')
     console.log('fetching media', options)
+
     getUserMedia streamDoptions, (err, stream)=>
       return callback(err) if err
       videoEl = @_createVideoElementFromStream(stream, options)
       CineIOPeer.stream = stream
       callback(null, videoElement: videoEl, stream: stream)
-
-  remoteStreamAdded: (peerConnection, videoEl)->
-    console.log('remote stream added')
-    document.body.appendChild(videoEl)
-
-  remoteStreamRemoved: (peerConnection)->
-    console.log('remote stream removed')
-
-  _gotIceServers: (iceServers)->
-    config.iceServers = iceServers
 
   _createVideoElementFromStream: (stream, options={})->
     videoOptions =
@@ -61,6 +53,8 @@ CineIOPeer =
       muted: userOrDefault(options, 'muted')
 
     attachMediaStream(stream, null, videoOptions)
+
+BackboneEvents.mixin CineIOPeer
 
 window.CineIOPeer = CineIOPeer if typeof window isnt 'undefined'
 
