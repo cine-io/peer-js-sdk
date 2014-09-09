@@ -4101,11 +4101,7 @@ CineIOPeer = {
   config: {},
   init: function(options) {
     var _base;
-    CineIOPeer.config.name = options.name;
-    (_base = CineIOPeer.config).signalConnection || (_base.signalConnection = signalingConnection.connect());
-    return CineIOPeer.config.signalConnection.emit('name', {
-      name: CineIOPeer.config.name
-    });
+    return (_base = CineIOPeer.config).signalConnection || (_base.signalConnection = signalingConnection.connect());
   },
   join: function(room) {
     return CineIOPeer._fetchMedia(function(err, response) {
@@ -4115,7 +4111,8 @@ CineIOPeer = {
       console.log('connecting');
       CineIOPeer.trigger('media', response);
       console.log('Joining', room);
-      return CineIOPeer.config.signalConnection.emit('join', {
+      return CineIOPeer.config.signalConnection.write({
+        action: 'join',
         room: room
       });
     });
@@ -4181,14 +4178,14 @@ var CineIOPeer, PeerConnection, newConnection, peerConnections;
 PeerConnection = require('rtcpeerconnection');
 
 newConnection = function() {
-  return io.connect('http://localhost:8888');
+  return Primus.connect('http://localhost:8888');
 };
 
 peerConnections = {};
 
 exports.connect = function() {
-  var ensureIce, fetchedIce, iceServers, newMember, signalConnection;
-  signalConnection = newConnection();
+  var ensureIce, fetchedIce, iceServers, newMember, primus;
+  primus = newConnection();
   iceServers = null;
   fetchedIce = false;
   ensureIce = function(callback) {
@@ -4197,24 +4194,62 @@ exports.connect = function() {
     }
     return CineIOPeer.on('gotIceServers', callback);
   };
-  signalConnection.on('allservers', function(data) {
-    console.log('setting config', data);
-    iceServers = data;
-    fetchedIce = true;
-    return CineIOPeer.trigger('gotIceServers');
+  primus.on('data', function(data) {
+    var pc, roomSparkId;
+    console.log('got data', data);
+    switch (data.action) {
+      case 'allservers':
+        console.log('setting config', data);
+        iceServers = data.data;
+        fetchedIce = true;
+        return CineIOPeer.trigger('gotIceServers');
+      case 'leave':
+        console.log('leaving');
+        peerConnections[data.sparkId].close();
+        return peerConnections[data.sparkId] = null;
+      case 'member':
+        console.log('got new member', data);
+        return newMember(data.sparkId, {
+          offer: true
+        });
+      case 'members':
+        return console.log('got members', data);
+      case 'ice':
+        console.log('got remote ice', data);
+        return peerConnections[data.sparkId].processIce(data.candidate);
+      case 'offer':
+        roomSparkId = data.sparkId;
+        console.log('got offer', data);
+        pc = newMember(data.sparkId, {
+          offer: false
+        });
+        return pc.handleOffer(data.offer, function(err) {
+          console.log('handled offer', err);
+          return peerConnections[data.sparkId].answer(function(err, answer) {
+            return primus.write({
+              action: 'answer',
+              answer: answer,
+              sparkId: roomSparkId
+            });
+          });
+        });
+      case 'answer':
+        console.log('got answer', data);
+        return peerConnections[data.sparkId].handleAnswer(data.answer);
+    }
   });
-  newMember = function(member, options) {
+  newMember = function(roomSparkId, options) {
     return ensureIce(function() {
-      var peerConnection, roomMember;
-      roomMember = member.name;
+      var peerConnection;
       peerConnection = new PeerConnection({
         iceServers: iceServers
       });
       peerConnection.on('ice', function(candidate) {
         console.log('got my ice', candidate.candidate.candidate);
-        return signalConnection.emit('ice', {
+        return primus.write({
+          action: 'ice',
           candidate: candidate,
-          name: roomMember
+          sparkId: roomSparkId
         });
       });
       peerConnection.addStream(CineIOPeer.stream);
@@ -4241,61 +4276,17 @@ exports.connect = function() {
         console.log('sending offer');
         peerConnection.offer(function(err, offer) {
           console.log('offering');
-          return signalConnection.emit('offer', {
+          return primus.write({
+            action: 'offer',
             offer: offer,
-            name: roomMember
+            sparkId: roomSparkId
           });
         });
       }
-      return peerConnections[roomMember] = peerConnection;
+      return peerConnections[roomSparkId] = peerConnection;
     });
   };
-  signalConnection.on('leave', function(data) {
-    peerConnections[data.name].close();
-    return peerConnections[data.name] = null;
-  });
-  signalConnection.on('member', function(data) {
-    console.log('got new member', data);
-    return newMember(data, {
-      offer: false
-    });
-  });
-  signalConnection.on('members', function(data) {
-    var member, _i, _len, _ref, _results;
-    console.log('got members', data);
-    _ref = data.members;
-    _results = [];
-    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-      member = _ref[_i];
-      _results.push(newMember(member, {
-        offer: true
-      }));
-    }
-    return _results;
-  });
-  signalConnection.on('ice', function(data) {
-    console.log('got remote ice', data);
-    return peerConnections[data.name].processIce(data.candidate);
-  });
-  signalConnection.on('offer', function(data) {
-    var roomMember;
-    roomMember = data.name;
-    console.log('got offer', data);
-    return peerConnections[data.name].handleOffer(data.offer, function(err) {
-      console.log('handled offer', err);
-      return peerConnections[data.name].answer(function(err, answer) {
-        return signalConnection.emit('answer', {
-          answer: answer,
-          name: roomMember
-        });
-      });
-    });
-  });
-  signalConnection.on('answer', function(data) {
-    console.log('got answer', data);
-    return peerConnections[data.name].handleAnswer(data.answer);
-  });
-  return signalConnection;
+  return primus;
 };
 
 CineIOPeer = require('./main');

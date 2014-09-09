@@ -18,9 +18,7 @@ CineIOPeer =
   config: {}
 
   init: (options)->
-    CineIOPeer.config.name = options.name
     CineIOPeer.config.signalConnection ||= signalingConnection.connect()
-    CineIOPeer.config.signalConnection.emit 'name', name: CineIOPeer.config.name
 
   join: (room)->
     CineIOPeer._fetchMedia (err, response)->
@@ -29,7 +27,7 @@ CineIOPeer =
       CineIOPeer.trigger 'media', response
 
       console.log('Joining', room)
-      CineIOPeer.config.signalConnection.emit 'join', room: room
+      CineIOPeer.config.signalConnection.write action: 'join', room: room
 
   _fetchMedia: (options={}, callback)->
     if typeof options == 'function'
