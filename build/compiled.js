@@ -4204,7 +4204,7 @@ exports.connect = function() {
         fetchedIce = true;
         return CineIOPeer.trigger('gotIceServers');
       case 'leave':
-        console.log('leaving');
+        console.log('leaving', data);
         peerConnections[data.sparkId].close();
         return peerConnections[data.sparkId] = null;
       case 'member':
@@ -4257,7 +4257,8 @@ exports.connect = function() {
         var videoEl;
         console.log("got remote stream", event);
         videoEl = CineIOPeer._createVideoElementFromStream(event.stream, {
-          muted: false
+          muted: false,
+          mirror: false
         });
         peerConnection.videoEl = videoEl;
         return CineIOPeer.trigger('streamAdded', {

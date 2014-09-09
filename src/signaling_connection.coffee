@@ -65,7 +65,7 @@ exports.connect = ->
 
       peerConnection.on 'addStream', (event)->
         console.log("got remote stream", event)
-        videoEl = CineIOPeer._createVideoElementFromStream(event.stream, muted: false)
+        videoEl = CineIOPeer._createVideoElementFromStream(event.stream, muted: false, mirror: false)
         peerConnection.videoEl = videoEl
         CineIOPeer.trigger 'streamAdded',
           peerConnection: peerConnection
