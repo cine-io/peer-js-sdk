@@ -4189,7 +4189,11 @@ exports.connect = function() {
   iceServers = null;
   fetchedIce = false;
   ensurePeerConnection = function(otherClientSparkId, options) {
-    return peerConnections[otherClientSparkId] || (peerConnections[otherClientSparkId] = newMember(otherClientSparkId, options));
+    if (peerConnections[otherClientSparkId]) {
+      return peerConnections[otherClientSparkId];
+    }
+    console.log("CREATING NEW PEER CONNECTION!!", otherClientSparkId, options);
+    return peerConnections[otherClientSparkId] = newMember(otherClientSparkId, options);
   };
   ensureIce = function(callback) {
     if (fetchedIce) {
@@ -4199,7 +4203,6 @@ exports.connect = function() {
   };
   primus.on('data', function(data) {
     var otherClientSparkId;
-    console.log('got data', data);
     switch (data.action) {
       case 'allservers':
         console.log('setting config', data);
@@ -4240,9 +4243,11 @@ exports.connect = function() {
         });
       case 'answer':
         console.log('got answer', data);
-        return ensurePeerConnection(otherClientSparkId, {
+        return ensurePeerConnection(data.sparkId, {
           offer: false
         }).handleAnswer(data.answer);
+      default:
+        return console.log("UNKNOWN DATA", data);
     }
   });
   newMember = function(otherClientSparkId, options) {
@@ -4251,26 +4256,8 @@ exports.connect = function() {
       peerConnection = new PeerConnection({
         iceServers: iceServers
       });
+      console.log("CineIOPeer.stream", CineIOPeer.stream);
       peerConnection.addStream(CineIOPeer.stream);
-      if (options.offer) {
-        console.log('sending offer');
-        peerConnection.offer(function(err, offer) {
-          console.log('offering');
-          return primus.write({
-            action: 'offer',
-            offer: offer,
-            sparkId: otherClientSparkId
-          });
-        });
-      }
-      peerConnection.on('ice', function(candidate) {
-        console.log('got my ice', candidate.candidate.candidate);
-        return primus.write({
-          action: 'ice',
-          candidate: candidate,
-          sparkId: otherClientSparkId
-        });
-      });
       peerConnection.on('addStream', function(event) {
         var videoEl;
         console.log("got remote stream", event);
@@ -4284,6 +4271,25 @@ exports.connect = function() {
           videoElement: videoEl
         });
       });
+      peerConnection.on('ice', function(candidate) {
+        console.log('got my ice', candidate.candidate.candidate);
+        return primus.write({
+          action: 'ice',
+          candidate: candidate,
+          sparkId: otherClientSparkId
+        });
+      });
+      if (options.offer) {
+        console.log('sending offer');
+        peerConnection.offer(function(err, offer) {
+          console.log('offering');
+          return primus.write({
+            action: 'offer',
+            offer: offer,
+            sparkId: otherClientSparkId
+          });
+        });
+      }
       return peerConnection.on('close', function(event) {
         console.log("remote closed", event);
         peerConnection.videoEl.remove();

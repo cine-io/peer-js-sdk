@@ -11,14 +11,15 @@ exports.connect = ->
   fetchedIce = false
 
   ensurePeerConnection = (otherClientSparkId, options)->
-    peerConnections[otherClientSparkId] ||= newMember(otherClientSparkId, options)
+    return peerConnections[otherClientSparkId] if peerConnections[otherClientSparkId]
+    console.log("CREATING NEW PEER CONNECTION!!", otherClientSparkId, options)
+    peerConnections[otherClientSparkId] = newMember(otherClientSparkId, options)
 
   ensureIce = (callback)->
     return callback() if fetchedIce
     CineIOPeer.on 'gotIceServers', callback
 
   primus.on 'data', (data)->
-    console.log('got data', data)
     switch data.action
       when 'allservers'
         console.log('setting config', data)
@@ -50,23 +51,14 @@ exports.connect = ->
 
       when 'answer'
         console.log('got answer', data)
-        ensurePeerConnection(otherClientSparkId, offer: false).handleAnswer(data.answer)
-
+        ensurePeerConnection(data.sparkId, offer: false).handleAnswer(data.answer)
+      else
+        console.log("UNKNOWN DATA", data)
   newMember = (otherClientSparkId, options)->
     ensureIce ->
       peerConnection = new PeerConnection(iceServers: iceServers)
+      console.log("CineIOPeer.stream", CineIOPeer.stream)
       peerConnection.addStream(CineIOPeer.stream)
-
-      if options.offer
-        console.log('sending offer')
-        peerConnection.offer (err, offer)->
-          console.log('offering')
-          primus.write action: 'offer', offer: offer, sparkId: otherClientSparkId
-
-      peerConnection.on 'ice', (candidate)->
-        console.log('got my ice', candidate.candidate.candidate)
-        primus.write action: 'ice', candidate: candidate, sparkId: otherClientSparkId
-
       peerConnection.on 'addStream', (event)->
         console.log("got remote stream", event)
         videoEl = CineIOPeer._createVideoElementFromStream(event.stream, muted: false, mirror: false)
@@ -74,6 +66,17 @@ exports.connect = ->
         CineIOPeer.trigger 'streamAdded',
           peerConnection: peerConnection
           videoElement: videoEl
+
+      peerConnection.on 'ice', (candidate)->
+        console.log('got my ice', candidate.candidate.candidate)
+        primus.write action: 'ice', candidate: candidate, sparkId: otherClientSparkId
+
+      if options.offer
+        console.log('sending offer')
+        peerConnection.offer (err, offer)->
+          console.log('offering')
+          primus.write action: 'offer', offer: offer, sparkId: otherClientSparkId
+
 
       peerConnection.on 'close', (event)->
         console.log("remote closed", event)
