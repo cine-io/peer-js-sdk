@@ -4220,7 +4220,7 @@ exports.connect = function() {
         });
       case 'ice':
         console.log('got remote ice', data);
-        return ensurePeerConnection(sparkId, {
+        return ensurePeerConnection(data.sparkId, {
           offer: false
         }).processIce(data.candidate);
       case 'offer':

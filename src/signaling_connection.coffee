@@ -38,7 +38,7 @@ exports.connect = ->
 
       when 'ice'
         console.log('got remote ice', data)
-        ensurePeerConnection(sparkId, offer: false).processIce(data.candidate)
+        ensurePeerConnection(data.sparkId, offer: false).processIce(data.candidate)
 
       when 'offer'
         otherClientSparkId = data.sparkId
