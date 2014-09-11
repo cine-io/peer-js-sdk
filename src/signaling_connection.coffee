@@ -10,6 +10,9 @@ exports.connect = ->
   iceServers = null
   fetchedIce = false
 
+  ensurePeerConnection = (otherClientSparkId, options)->
+    peerConnections[otherClientSparkId] ||= newMember(otherClientSparkId, options)
+
   ensureIce = (callback)->
     return callback() if fetchedIce
     CineIOPeer.on 'gotIceServers', callback
@@ -25,43 +28,44 @@ exports.connect = ->
 
       when 'leave'
         console.log('leaving', data)
+        return unless peerConnections[data.sparkId]
         peerConnections[data.sparkId].close()
         peerConnections[data.sparkId] = null
 
       when 'member'
         console.log('got new member', data)
-        newMember(data.sparkId, offer: true)
-
-      when 'members'
-        console.log('got members', data)
-        # for member in data.members
-        #   newMember(member, offer: true)
+        ensurePeerConnection(data.sparkId, offer: true)
 
       when 'ice'
         console.log('got remote ice', data)
-        peerConnections[data.sparkId].processIce(data.candidate)
+        ensurePeerConnection(sparkId, offer: false).processIce(data.candidate)
 
       when 'offer'
-        roomSparkId = data.sparkId
+        otherClientSparkId = data.sparkId
         console.log('got offer', data)
-        pc = newMember(data.sparkId, offer: false)
-        pc.handleOffer data.offer, (err)->
+        ensurePeerConnection(otherClientSparkId, offer: false).handleOffer data.offer, (err)->
           console.log('handled offer', err)
-          peerConnections[data.sparkId].answer (err, answer)->
-            primus.write action: 'answer', answer: answer, sparkId: roomSparkId
+          peerConnections[otherClientSparkId].answer (err, answer)->
+            primus.write action: 'answer', answer: answer, sparkId: otherClientSparkId
 
       when 'answer'
         console.log('got answer', data)
-        peerConnections[data.sparkId].handleAnswer(data.answer)
+        ensurePeerConnection(otherClientSparkId, offer: false).handleAnswer(data.answer)
 
-  newMember = (roomSparkId, options)->
+  newMember = (otherClientSparkId, options)->
     ensureIce ->
       peerConnection = new PeerConnection(iceServers: iceServers)
+      peerConnection.addStream(CineIOPeer.stream)
+
+      if options.offer
+        console.log('sending offer')
+        peerConnection.offer (err, offer)->
+          console.log('offering')
+          primus.write action: 'offer', offer: offer, sparkId: otherClientSparkId
+
       peerConnection.on 'ice', (candidate)->
         console.log('got my ice', candidate.candidate.candidate)
-        primus.write action: 'ice', candidate: candidate, sparkId: roomSparkId
-
-      peerConnection.addStream(CineIOPeer.stream)
+        primus.write action: 'ice', candidate: candidate, sparkId: otherClientSparkId
 
       peerConnection.on 'addStream', (event)->
         console.log("got remote stream", event)
@@ -75,14 +79,6 @@ exports.connect = ->
         console.log("remote closed", event)
         peerConnection.videoEl.remove()
         CineIOPeer.trigger 'streamRemoved', peerConnection: peerConnection
-
-      if options.offer
-        console.log('sending offer')
-        peerConnection.offer (err, offer)->
-          console.log('offering')
-          primus.write action: 'offer', offer: offer, sparkId: roomSparkId
-
-      peerConnections[roomSparkId] = peerConnection
 
   return primus
 
