@@ -47,7 +47,7 @@ exports.connect = ->
         ensurePeerConnection(otherClientSparkId, offer: false).handleOffer data.offer, (err)->
           console.log('handled offer', err)
           peerConnections[otherClientSparkId].answer (err, answer)->
-            primus.write action: 'answer', answer: answer, sparkId: otherClientSparkId
+            primus.write action: 'answer', source: "web", answer: answer, sparkId: otherClientSparkId
 
       when 'answer'
         console.log('got answer', data)
@@ -58,7 +58,10 @@ exports.connect = ->
     ensureIce ->
       peerConnection = new PeerConnection(iceServers: iceServers)
       console.log("CineIOPeer.stream", CineIOPeer.stream)
-      peerConnection.addStream(CineIOPeer.stream)
+      if CineIOPeer.stream
+        peerConnection.addStream(CineIOPeer.stream)
+      else
+        console.warn("No stream attached")
       peerConnection.on 'addStream', (event)->
         console.log("got remote stream", event)
         videoEl = CineIOPeer._createVideoElementFromStream(event.stream, muted: false, mirror: false)
@@ -69,18 +72,18 @@ exports.connect = ->
 
       peerConnection.on 'ice', (candidate)->
         console.log('got my ice', candidate.candidate.candidate)
-        primus.write action: 'ice', candidate: candidate, sparkId: otherClientSparkId
+        primus.write action: 'ice', source: "web", candidate: candidate, sparkId: otherClientSparkId
 
       if options.offer
         console.log('sending offer')
         peerConnection.offer (err, offer)->
           console.log('offering')
-          primus.write action: 'offer', offer: offer, sparkId: otherClientSparkId
+          primus.write action: 'offer', source: "web", offer: offer, sparkId: otherClientSparkId
 
 
       peerConnection.on 'close', (event)->
         console.log("remote closed", event)
-        peerConnection.videoEl.remove()
+        peerConnection.videoEl.remove() if peerConnection.videoEl
         CineIOPeer.trigger 'streamRemoved', peerConnection: peerConnection
 
   return primus

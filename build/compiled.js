@@ -4111,10 +4111,13 @@ CineIOPeer = {
       console.log('connecting');
       CineIOPeer.trigger('media', response);
       console.log('Joining', room);
-      return CineIOPeer.config.signalConnection.write({
-        action: 'join',
-        room: room
-      });
+      return CineIOPeer._unsafeJoin(room);
+    });
+  },
+  _unsafeJoin: function(room) {
+    return CineIOPeer.config.signalConnection.write({
+      action: 'join',
+      room: room
     });
   },
   _fetchMedia: function(options, callback) {
@@ -4236,6 +4239,7 @@ exports.connect = function() {
           return peerConnections[otherClientSparkId].answer(function(err, answer) {
             return primus.write({
               action: 'answer',
+              source: "web",
               answer: answer,
               sparkId: otherClientSparkId
             });
@@ -4257,7 +4261,11 @@ exports.connect = function() {
         iceServers: iceServers
       });
       console.log("CineIOPeer.stream", CineIOPeer.stream);
-      peerConnection.addStream(CineIOPeer.stream);
+      if (CineIOPeer.stream) {
+        peerConnection.addStream(CineIOPeer.stream);
+      } else {
+        console.warn("No stream attached");
+      }
       peerConnection.on('addStream', function(event) {
         var videoEl;
         console.log("got remote stream", event);
@@ -4275,6 +4283,7 @@ exports.connect = function() {
         console.log('got my ice', candidate.candidate.candidate);
         return primus.write({
           action: 'ice',
+          source: "web",
           candidate: candidate,
           sparkId: otherClientSparkId
         });
@@ -4285,6 +4294,7 @@ exports.connect = function() {
           console.log('offering');
           return primus.write({
             action: 'offer',
+            source: "web",
             offer: offer,
             sparkId: otherClientSparkId
           });
@@ -4292,7 +4302,9 @@ exports.connect = function() {
       }
       return peerConnection.on('close', function(event) {
         console.log("remote closed", event);
-        peerConnection.videoEl.remove();
+        if (peerConnection.videoEl) {
+          peerConnection.videoEl.remove();
+        }
         return CineIOPeer.trigger('streamRemoved', {
           peerConnection: peerConnection
         });

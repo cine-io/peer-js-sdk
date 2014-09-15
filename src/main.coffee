@@ -27,7 +27,10 @@ CineIOPeer =
       CineIOPeer.trigger 'media', response
 
       console.log('Joining', room)
-      CineIOPeer.config.signalConnection.write action: 'join', room: room
+      CineIOPeer._unsafeJoin(room)
+
+  _unsafeJoin: (room)->
+    CineIOPeer.config.signalConnection.write action: 'join', room: room
 
   _fetchMedia: (options={}, callback)->
     if typeof options == 'function'
