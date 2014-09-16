@@ -28,18 +28,19 @@ CineIOPeer =
 
   call: (identity)->
     console.log('calling', identity)
-    CineIOPeer._fetchMedia ->
+    CineIOPeer._fetchMediaSafe ->
       CineIOPeer._signalConnection.write action: 'call', otheridentity: identity, apikey: CineIOPeer.config.apiKey, identity: CineIOPeer.config.identity
 
   join: (room)->
-    CineIOPeer._fetchMedia ->
+    CineIOPeer._fetchMediaSafe ->
       console.log('Joining', room)
       CineIOPeer._unsafeJoin(room)
 
   _unsafeJoin: (room)->
     CineIOPeer._signalConnection.write action: 'join', room: room
 
-  _fetchMedia: (callback)->
+  _fetchMediaSafe: (callback)->
+    return callback() if CineIOPeer.stream
     CineIOPeer._askForMedia (err, response)->
       return console.log("ERROR", err) if err
       console.log('got media')

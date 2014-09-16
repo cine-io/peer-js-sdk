@@ -4118,7 +4118,7 @@ CineIOPeer = {
   },
   call: function(identity) {
     console.log('calling', identity);
-    return CineIOPeer._fetchMedia(function() {
+    return CineIOPeer._fetchMediaSafe(function() {
       return CineIOPeer._signalConnection.write({
         action: 'call',
         otheridentity: identity,
@@ -4128,7 +4128,7 @@ CineIOPeer = {
     });
   },
   join: function(room) {
-    return CineIOPeer._fetchMedia(function() {
+    return CineIOPeer._fetchMediaSafe(function() {
       console.log('Joining', room);
       return CineIOPeer._unsafeJoin(room);
     });
@@ -4139,7 +4139,10 @@ CineIOPeer = {
       room: room
     });
   },
-  _fetchMedia: function(callback) {
+  _fetchMediaSafe: function(callback) {
+    if (CineIOPeer.stream) {
+      return callback();
+    }
     return CineIOPeer._askForMedia(function(err, response) {
       if (err) {
         return console.log("ERROR", err);
