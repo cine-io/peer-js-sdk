@@ -28,7 +28,7 @@ CineIOPeer =
 
   call: (identity)->
     console.log('calling', identity)
-    CineIOPeer._fetchMediag ->
+    CineIOPeer._fetchMedia ->
       CineIOPeer._signalConnection.write action: 'call', otheridentity: identity, apikey: CineIOPeer.config.apiKey, identity: CineIOPeer.config.identity
 
   join: (room)->

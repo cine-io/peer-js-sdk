@@ -4118,7 +4118,7 @@ CineIOPeer = {
   },
   call: function(identity) {
     console.log('calling', identity);
-    return CineIOPeer._fetchMediag(function() {
+    return CineIOPeer._fetchMedia(function() {
       return CineIOPeer._signalConnection.write({
         action: 'call',
         otheridentity: identity,
