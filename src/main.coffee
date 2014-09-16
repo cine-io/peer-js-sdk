@@ -16,23 +16,37 @@ CineIOPeer =
   globalStream: null
   version: "0.0.1"
   config: {}
+  _config: {}
+  init: (options={})->
+    CineIOPeer.config.apiKey = options.apiKey
+    CineIOPeer._signalConnection ||= signalingConnection.connect()
 
-  init: (options)->
-    CineIOPeer.config.signalConnection ||= signalingConnection.connect()
+  identify: (identity)->
+    console.debug('identifying as', identity)
+    CineIOPeer.config.identity = identity
+    CineIOPeer._signalConnection.write action: 'identify', identity: identity, apikey: CineIOPeer.config.apiKey
+
+  call: (identity)->
+    console.debug('calling', identity)
+    CineIOPeer._fetchMediag ->
+      CineIOPeer._signalConnection.write action: 'call', otheridentity: identity, apikey: CineIOPeer.config.apiKey, identity: CineIOPeer.config.identity
 
   join: (room)->
-    CineIOPeer._fetchMedia (err, response)->
-      return console.log("ERROR", err) if err
-      console.log('connecting')
-      CineIOPeer.trigger 'media', response
-
+    CineIOPeer._fetchMedia ->
       console.log('Joining', room)
       CineIOPeer._unsafeJoin(room)
 
   _unsafeJoin: (room)->
-    CineIOPeer.config.signalConnection.write action: 'join', room: room
+    CineIOPeer._signalConnection.write action: 'join', room: room
 
-  _fetchMedia: (options={}, callback)->
+  _fetchMedia: (callback)->
+    CineIOPeer._askForMedia (err, response)->
+      return console.log("ERROR", err) if err
+      console.log('got media')
+      CineIOPeer.trigger 'media', response
+      callback()
+
+  _askForMedia: (options={}, callback)->
     if typeof options == 'function'
       callback = options
       options = {}

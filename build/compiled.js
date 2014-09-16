@@ -4099,28 +4099,57 @@ CineIOPeer = {
   globalStream: null,
   version: "0.0.1",
   config: {},
+  _config: {},
   init: function(options) {
-    var _base;
-    return (_base = CineIOPeer.config).signalConnection || (_base.signalConnection = signalingConnection.connect());
+    if (options == null) {
+      options = {};
+    }
+    CineIOPeer.config.apiKey = options.apiKey;
+    return CineIOPeer._signalConnection || (CineIOPeer._signalConnection = signalingConnection.connect());
+  },
+  identify: function(identity) {
+    console.debug('identifying as', identity);
+    CineIOPeer.config.identity = identity;
+    return CineIOPeer._signalConnection.write({
+      action: 'identify',
+      identity: identity,
+      apikey: CineIOPeer.config.apiKey
+    });
+  },
+  call: function(identity) {
+    console.debug('calling', identity);
+    return CineIOPeer._fetchMediag(function() {
+      return CineIOPeer._signalConnection.write({
+        action: 'call',
+        otheridentity: identity,
+        apikey: CineIOPeer.config.apiKey,
+        identity: CineIOPeer.config.identity
+      });
+    });
   },
   join: function(room) {
-    return CineIOPeer._fetchMedia(function(err, response) {
-      if (err) {
-        return console.log("ERROR", err);
-      }
-      console.log('connecting');
-      CineIOPeer.trigger('media', response);
+    return CineIOPeer._fetchMedia(function() {
       console.log('Joining', room);
       return CineIOPeer._unsafeJoin(room);
     });
   },
   _unsafeJoin: function(room) {
-    return CineIOPeer.config.signalConnection.write({
+    return CineIOPeer._signalConnection.write({
       action: 'join',
       room: room
     });
   },
-  _fetchMedia: function(options, callback) {
+  _fetchMedia: function(callback) {
+    return CineIOPeer._askForMedia(function(err, response) {
+      if (err) {
+        return console.log("ERROR", err);
+      }
+      console.log('got media');
+      CineIOPeer.trigger('media', response);
+      return callback();
+    });
+  },
+  _askForMedia: function(options, callback) {
     var streamDoptions;
     if (options == null) {
       options = {};
@@ -4212,6 +4241,9 @@ exports.connect = function() {
         iceServers = data.data;
         fetchedIce = true;
         return CineIOPeer.trigger('gotIceServers');
+      case 'incomingcall':
+        console.log('got incoming call', data);
+        return CineIOPeer.trigger('incomingcall', data);
       case 'leave':
         console.log('leaving', data);
         if (!peerConnections[data.sparkId]) {

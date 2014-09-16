@@ -27,6 +27,10 @@ exports.connect = ->
         fetchedIce = true
         CineIOPeer.trigger('gotIceServers')
 
+      when 'incomingcall'
+        console.log('got incoming call', data)
+        CineIOPeer.trigger('incomingcall', data)
+
       when 'leave'
         console.log('leaving', data)
         return unless peerConnections[data.sparkId]
@@ -37,10 +41,12 @@ exports.connect = ->
         console.log('got new member', data)
         ensurePeerConnection(data.sparkId, offer: true)
 
+      # peerConnection standard config
       when 'ice'
         console.log('got remote ice', data)
         ensurePeerConnection(data.sparkId, offer: false).processIce(data.candidate)
 
+      # peerConnection standard config
       when 'offer'
         otherClientSparkId = data.sparkId
         console.log('got offer', data)
@@ -49,11 +55,13 @@ exports.connect = ->
           peerConnections[otherClientSparkId].answer (err, answer)->
             primus.write action: 'answer', source: "web", answer: answer, sparkId: otherClientSparkId
 
+      # peerConnection standard config
       when 'answer'
         console.log('got answer', data)
         ensurePeerConnection(data.sparkId, offer: false).handleAnswer(data.answer)
       else
         console.log("UNKNOWN DATA", data)
+
   newMember = (otherClientSparkId, options)->
     ensureIce ->
       peerConnection = new PeerConnection(iceServers: iceServers)
@@ -62,6 +70,7 @@ exports.connect = ->
         peerConnection.addStream(CineIOPeer.stream)
       else
         console.warn("No stream attached")
+
       peerConnection.on 'addStream', (event)->
         console.log("got remote stream", event)
         videoEl = CineIOPeer._createVideoElementFromStream(event.stream, muted: false, mirror: false)
