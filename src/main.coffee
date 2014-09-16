@@ -22,12 +22,12 @@ CineIOPeer =
     CineIOPeer._signalConnection ||= signalingConnection.connect()
 
   identify: (identity)->
-    console.debug('identifying as', identity)
+    console.log('identifying as', identity)
     CineIOPeer.config.identity = identity
     CineIOPeer._signalConnection.write action: 'identify', identity: identity, apikey: CineIOPeer.config.apiKey
 
   call: (identity)->
-    console.debug('calling', identity)
+    console.log('calling', identity)
     CineIOPeer._fetchMediag ->
       CineIOPeer._signalConnection.write action: 'call', otheridentity: identity, apikey: CineIOPeer.config.apiKey, identity: CineIOPeer.config.identity
 

@@ -4108,7 +4108,7 @@ CineIOPeer = {
     return CineIOPeer._signalConnection || (CineIOPeer._signalConnection = signalingConnection.connect());
   },
   identify: function(identity) {
-    console.debug('identifying as', identity);
+    console.log('identifying as', identity);
     CineIOPeer.config.identity = identity;
     return CineIOPeer._signalConnection.write({
       action: 'identify',
@@ -4117,7 +4117,7 @@ CineIOPeer = {
     });
   },
   call: function(identity) {
-    console.debug('calling', identity);
+    console.log('calling', identity);
     return CineIOPeer._fetchMediag(function() {
       return CineIOPeer._signalConnection.write({
         action: 'call',
