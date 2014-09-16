@@ -30,7 +30,7 @@ exports.connect = ->
 
       when 'incomingcall'
         console.log('got incoming call', data)
-        CineIOPeer.trigger('incomingcall', data)
+        CineIOPeer.trigger('incomingcall', call: new CallObject(data))
 
       when 'leave'
         console.log('leaving', data)
@@ -99,3 +99,4 @@ exports.connect = ->
   return primus
 
 CineIOPeer = require('./main')
+CallObject = require('./call')

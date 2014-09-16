@@ -4071,6 +4071,31 @@ PeerConnection.prototype.getStats = function (cb) {
 module.exports = PeerConnection;
 
 },{"sdp-jingle-json":9,"traceablepeerconnection":13,"underscore":15,"util":8,"webrtcsupport":16,"wildemitter":17}],19:[function(require,module,exports){
+var CallObject, CineIOPeer,
+  __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
+
+module.exports = CallObject = (function() {
+  function CallObject(_data) {
+    this._data = _data;
+    this.reject = __bind(this.reject, this);
+    this.answer = __bind(this.answer, this);
+  }
+
+  CallObject.prototype.answer = function() {
+    return CineIOPeer.join(this._data.room);
+  };
+
+  CallObject.prototype.reject = function() {};
+
+  return CallObject;
+
+})();
+
+CineIOPeer = require('./main');
+
+
+
+},{"./main":20}],20:[function(require,module,exports){
 var BackboneEvents, CineIOPeer, attachMediaStream, defaultOptions, getUserMedia, signalingConnection, userOrDefault;
 
 getUserMedia = require('getusermedia');
@@ -4207,8 +4232,8 @@ signalingConnection = require('./signaling_connection');
 
 
 
-},{"./signaling_connection":20,"attachmediastream":1,"backbone-events-standalone":3,"getusermedia":4}],20:[function(require,module,exports){
-var CineIOPeer, PeerConnection, Primus, newConnection, peerConnections;
+},{"./signaling_connection":21,"attachmediastream":1,"backbone-events-standalone":3,"getusermedia":4}],21:[function(require,module,exports){
+var CallObject, CineIOPeer, PeerConnection, Primus, newConnection, peerConnections;
 
 PeerConnection = require('rtcpeerconnection');
 
@@ -4248,7 +4273,9 @@ exports.connect = function() {
         return CineIOPeer.trigger('gotIceServers');
       case 'incomingcall':
         console.log('got incoming call', data);
-        return CineIOPeer.trigger('incomingcall', data);
+        return CineIOPeer.trigger('incomingcall', {
+          call: new CallObject(data)
+        });
       case 'leave':
         console.log('leaving', data);
         if (!peerConnections[data.sparkId]) {
@@ -4353,9 +4380,11 @@ exports.connect = function() {
 
 CineIOPeer = require('./main');
 
+CallObject = require('./call');
 
 
-},{"./main":19,"./vendor/primus":21,"rtcpeerconnection":18}],21:[function(require,module,exports){
+
+},{"./call":19,"./main":20,"./vendor/primus":22,"rtcpeerconnection":18}],22:[function(require,module,exports){
 (function (name, context, definition) {  context[name] = definition.call(context);  if (typeof module !== "undefined" && module.exports) {    module.exports = context[name];  } else if (typeof define == "function" && define.amd) {    define(function reference() { return context[name]; });  }})("Primus", this, function Primus() {/*globals require, define */
 'use strict';
 
@@ -8459,4 +8488,4 @@ if (typeof define === 'function' && define.amd) {
 
 // [*] End of lib/all.js
 
-},{}]},{},[19]);
+},{}]},{},[20]);
