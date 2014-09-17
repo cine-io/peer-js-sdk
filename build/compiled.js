@@ -4138,7 +4138,8 @@ CineIOPeer = {
     return CineIOPeer._signalConnection.write({
       action: 'identify',
       identity: identity,
-      apikey: CineIOPeer.config.apiKey
+      apikey: CineIOPeer.config.apiKey,
+      client: 'web'
     });
   },
   call: function(identity) {

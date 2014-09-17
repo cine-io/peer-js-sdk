@@ -24,7 +24,7 @@ CineIOPeer =
   identify: (identity)->
     console.log('identifying as', identity)
     CineIOPeer.config.identity = identity
-    CineIOPeer._signalConnection.write action: 'identify', identity: identity, apikey: CineIOPeer.config.apiKey
+    CineIOPeer._signalConnection.write action: 'identify', identity: identity, apikey: CineIOPeer.config.apiKey, client: 'web'
 
   call: (identity)->
     console.log('calling', identity)
