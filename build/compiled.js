@@ -4071,6 +4071,47 @@ PeerConnection.prototype.getStats = function (cb) {
 module.exports = PeerConnection;
 
 },{"sdp-jingle-json":9,"traceablepeerconnection":13,"underscore":15,"util":8,"webrtcsupport":16,"wildemitter":17}],19:[function(require,module,exports){
+// created by @HenrikJoreteg
+var prefix;
+var isChrome = false;
+var isFirefox = false;
+var ua = window.navigator.userAgent.toLowerCase();
+
+// basic sniffing
+if (ua.indexOf('firefox') !== -1) {
+    prefix = 'moz';
+    isFirefox = true;
+} else if (ua.indexOf('chrome') !== -1) {
+    prefix = 'webkit';
+    isChrome = true;
+}
+
+var PC = window.mozRTCPeerConnection || window.webkitRTCPeerConnection;
+var IceCandidate = window.mozRTCIceCandidate || window.RTCIceCandidate;
+var SessionDescription = window.mozRTCSessionDescription || window.RTCSessionDescription;
+var MediaStream = window.webkitMediaStream || window.MediaStream;
+var screenSharing = window.location.protocol === 'https:' &&
+    ((window.navigator.userAgent.match('Chrome') && parseInt(window.navigator.userAgent.match(/Chrome\/(.*) /)[1], 10) >= 26) ||
+     (window.navigator.userAgent.match('Firefox') && parseInt(window.navigator.userAgent.match(/Firefox\/(.*)/)[1], 10) >= 33));
+var AudioContext = window.webkitAudioContext || window.AudioContext;
+
+
+// export support flags and constructors.prototype && PC
+module.exports = {
+    support: !!PC,
+    dataChannel: isChrome || isFirefox || (PC && PC.prototype && PC.prototype.createDataChannel),
+    prefix: prefix,
+    webAudio: !!(AudioContext && AudioContext.prototype.createMediaStreamSource),
+    mediaStream: !!(MediaStream && MediaStream.prototype.removeTrack),
+    screenSharing: !!screenSharing,
+    AudioContext: AudioContext,
+    PeerConnection: PC,
+    SessionDescription: SessionDescription,
+    IceCandidate: IceCandidate,
+    MediaStream: MediaStream
+};
+
+},{}],20:[function(require,module,exports){
 var CallObject, CineIOPeer,
   __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
@@ -4095,12 +4136,14 @@ CineIOPeer = require('./main');
 
 
 
-},{"./main":20}],20:[function(require,module,exports){
-var BackboneEvents, CineIOPeer, attachMediaStream, defaultOptions, getUserMedia, signalingConnection, userOrDefault;
+},{"./main":21}],21:[function(require,module,exports){
+var BackboneEvents, CineIOPeer, attachMediaStream, defaultOptions, getUserMedia, signalingConnection, userOrDefault, webrtcSupport;
 
 getUserMedia = require('getusermedia');
 
 attachMediaStream = require('attachmediastream');
+
+webrtcSupport = require('webrtcsupport');
 
 BackboneEvents = require("backbone-events-standalone");
 
@@ -4121,16 +4164,15 @@ userOrDefault = function(userOptions, key) {
 };
 
 CineIOPeer = {
-  globalStream: null,
   version: "0.0.1",
   config: {},
-  _config: {},
   init: function(options) {
     if (options == null) {
       options = {};
     }
     CineIOPeer.config.apiKey = options.apiKey;
-    return CineIOPeer._signalConnection || (CineIOPeer._signalConnection = signalingConnection.connect());
+    CineIOPeer._signalConnection || (CineIOPeer._signalConnection = signalingConnection.connect());
+    return setTimeout(CineIOPeer._checkSupport);
   },
   identify: function(identity) {
     console.log('identifying as', identity);
@@ -4159,6 +4201,13 @@ CineIOPeer = {
       return CineIOPeer._unsafeJoin(room);
     });
   },
+  _checkSupport: function() {
+    if (!webrtcSupport.support) {
+      return CineIOPeer.trigger('error', {
+        support: false
+      });
+    }
+  },
   _unsafeJoin: function(room) {
     return CineIOPeer._signalConnection.write({
       action: 'join',
@@ -4166,17 +4215,28 @@ CineIOPeer = {
     });
   },
   _fetchMediaSafe: function(callback) {
+    var requestTimeout;
     if (CineIOPeer.stream) {
       return callback();
     }
+    requestTimeout = setTimeout(CineIOPeer._mediaNotReady, 1000);
     return CineIOPeer._askForMedia(function(err, response) {
+      clearTimeout(requestTimeout);
       if (err) {
-        return console.log("ERROR", err);
+        CineIOPeer.trigger('media', {
+          media: false
+        });
+        console.log("ERROR", err);
+        return;
       }
-      console.log('got media');
+      response.media = true;
+      console.log('got media', response);
       CineIOPeer.trigger('media', response);
       return callback();
     });
+  },
+  _mediaNotReady: function() {
+    return CineIOPeer.trigger('media-request');
   },
   _askForMedia: function(options, callback) {
     var streamDoptions;
@@ -4233,7 +4293,7 @@ signalingConnection = require('./signaling_connection');
 
 
 
-},{"./signaling_connection":21,"attachmediastream":1,"backbone-events-standalone":3,"getusermedia":4}],21:[function(require,module,exports){
+},{"./signaling_connection":22,"attachmediastream":1,"backbone-events-standalone":3,"getusermedia":4,"webrtcsupport":19}],22:[function(require,module,exports){
 var CallObject, CineIOPeer, PeerConnection, Primus, newConnection, peerConnections;
 
 PeerConnection = require('rtcpeerconnection');
@@ -4385,7 +4445,7 @@ CallObject = require('./call');
 
 
 
-},{"./call":19,"./main":20,"./vendor/primus":22,"rtcpeerconnection":18}],22:[function(require,module,exports){
+},{"./call":20,"./main":21,"./vendor/primus":23,"rtcpeerconnection":18}],23:[function(require,module,exports){
 (function (name, context, definition) {  context[name] = definition.call(context);  if (typeof module !== "undefined" && module.exports) {    module.exports = context[name];  } else if (typeof define == "function" && define.amd) {    define(function reference() { return context[name]; });  }})("Primus", this, function Primus() {/*globals require, define */
 'use strict';
 
@@ -8489,4 +8549,4 @@ if (typeof define === 'function' && define.amd) {
 
 // [*] End of lib/all.js
 
-},{}]},{},[20]);
+},{}]},{},[21]);

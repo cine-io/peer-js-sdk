@@ -1,5 +1,6 @@
 getUserMedia = require('getusermedia')
 attachMediaStream = require('attachmediastream')
+webrtcSupport = require('webrtcsupport')
 BackboneEvents = require("backbone-events-standalone")
 
 defaultOptions =
@@ -18,6 +19,7 @@ CineIOPeer =
   init: (options={})->
     CineIOPeer.config.apiKey = options.apiKey
     CineIOPeer._signalConnection ||= signalingConnection.connect()
+    setTimeout CineIOPeer._checkSupport
 
   identify: (identity)->
     console.log('identifying as', identity)
@@ -34,16 +36,28 @@ CineIOPeer =
       console.log('Joining', room)
       CineIOPeer._unsafeJoin(room)
 
+  _checkSupport: ->
+    CineIOPeer.trigger 'error', support: false unless webrtcSupport.support
+
   _unsafeJoin: (room)->
     CineIOPeer._signalConnection.write action: 'join', room: room
 
   _fetchMediaSafe: (callback)->
     return callback() if CineIOPeer.stream
+    requestTimeout = setTimeout CineIOPeer._mediaNotReady, 1000
     CineIOPeer._askForMedia (err, response)->
-      return console.log("ERROR", err) if err
-      console.log('got media')
+      clearTimeout requestTimeout
+      if err
+        CineIOPeer.trigger 'media', media: false
+        console.log("ERROR", err)
+        return
+      response.media = true
+      console.log('got media', response)
       CineIOPeer.trigger 'media', response
       callback()
+
+  _mediaNotReady: ->
+    CineIOPeer.trigger('media-request')
 
   _askForMedia: (options={}, callback)->
     if typeof options == 'function'
