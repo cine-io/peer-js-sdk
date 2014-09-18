@@ -13,10 +13,8 @@ userOrDefault = (userOptions, key)->
   if Object.prototype.hasOwnProperty.call(userOptions, key) then userOptions[key] else defaultOptions[key]
 
 CineIOPeer =
-  globalStream: null
   version: "0.0.1"
   config: {}
-  _config: {}
   init: (options={})->
     CineIOPeer.config.apiKey = options.apiKey
     CineIOPeer._signalConnection ||= signalingConnection.connect()
