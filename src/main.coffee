@@ -15,7 +15,8 @@ userOrDefault = (userOptions, key)->
 
 CineIOPeer =
   version: "0.0.1"
-  config: {}
+  reset: ->
+    CineIOPeer.config = {rooms: [], videoElements: {}}
   init: (options={})->
     CineIOPeer.config.apiKey = options.apiKey
     CineIOPeer._signalConnection ||= signalingConnection.connect()
@@ -36,10 +37,23 @@ CineIOPeer =
       console.log('Joining', room)
       CineIOPeer._unsafeJoin(room)
 
+  leave: (room)->
+    index = CineIOPeer.config.rooms.indexOf(room)
+    return CineIOPeer.trigger('error', msg: 'not connected to room', room: room) unless index > -1
+
+    CineIOPeer.config.rooms.splice(index, 1)
+    CineIOPeer._signalConnection.write action: 'leave', room: room
+
+  screenShare: ->
+    _getScreenShareStream (screenShareStream)->
+      CineIOPeer.screenShareStream = screenShareStream
+      CineIOPeer.signalingConnection.newLocalStream(screenShareStream)
+
   _checkSupport: ->
     CineIOPeer.trigger 'error', support: false unless webrtcSupport.support
 
   _unsafeJoin: (room)->
+    CineIOPeer.config.rooms.push(room)
     CineIOPeer._signalConnection.write action: 'join', room: room
 
   _fetchMediaSafe: (callback)->
@@ -79,9 +93,15 @@ CineIOPeer =
       autoplay: userOrDefault(options, 'autoplay')
       mirror: userOrDefault(options, 'mirror')
       muted: userOrDefault(options, 'muted')
+    videoEl = attachMediaStream(stream, null, videoOptions)
+    videoElements[stream.id] = videoEl
+    videoEl
 
-    attachMediaStream(stream, null, videoOptions)
+  _getVideoElementFromStream: (stream)->
+    videoElements[stream.id]
 
+
+CineIOPeer.reset()
 BackboneEvents.mixin CineIOPeer
 
 window.CineIOPeer = CineIOPeer if typeof window isnt 'undefined'

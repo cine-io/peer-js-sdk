@@ -6,6 +6,10 @@ newConnection = ->
 
 peerConnections = {}
 
+exports.newLocalStream = (stream)->
+  for otherClientSparkId, peerConnection in peerConnections
+    peerConnection.addStream(stream)
+
 exports.connect = ->
   primus = newConnection()
   iceServers = null
@@ -14,7 +18,7 @@ exports.connect = ->
   ensurePeerConnection = (otherClientSparkId, options)->
     return peerConnections[otherClientSparkId] if peerConnections[otherClientSparkId]
     console.log("CREATING NEW PEER CONNECTION!!", otherClientSparkId, options)
-    peerConnections[otherClientSparkId] = newMember(otherClientSparkId, options)
+    newMember(otherClientSparkId, options)
 
   ensureIce = (callback)->
     return callback() if fetchedIce
@@ -66,17 +70,35 @@ exports.connect = ->
   newMember = (otherClientSparkId, options)->
     ensureIce ->
       peerConnection = new PeerConnection(iceServers: iceServers)
-      console.log("CineIOPeer.stream", CineIOPeer.stream)
+      peerConnections[otherClientSparkId] = peerConnection
+
+      # console.log("CineIOPeer.stream", CineIOPeer.stream)
+      streamAttached = false
       if CineIOPeer.stream
         peerConnection.addStream(CineIOPeer.stream)
-      else
-        console.warn("No stream attached")
+        streamAttached = true
+      if CineIOPeer.screenShareStream
+        peerConnection.addStream(CineIOPeer.screenShareStream)
+        streamAttached = true
+
+      console.warn("No stream attached") unless streamAttached
 
       peerConnection.on 'addStream', (event)->
         console.log("got remote stream", event)
         videoEl = CineIOPeer._createVideoElementFromStream(event.stream, muted: false, mirror: false)
-        peerConnection.videoEl = videoEl
+        peerConnection.videoEls ||= []
+        peerConnection.videoEls.push videoEl
         CineIOPeer.trigger 'streamAdded',
+          peerConnection: peerConnection
+          videoElement: videoEl
+
+      peerConnection.on 'removeStream', (event)->
+        console.log("got remote stream", event)
+        videoEl = CineIOPeer._getVideoElementFromStream(event.stream)
+        index = peerConnection.videoEls.indexOf(videoEl)
+        return peerConnection.videoEls.splice(index, 1) unless index > -1
+
+        CineIOPeer.trigger 'removedStream',
           peerConnection: peerConnection
           videoElement: videoEl
 
@@ -93,8 +115,9 @@ exports.connect = ->
 
       peerConnection.on 'close', (event)->
         console.log("remote closed", event)
-        peerConnection.videoEl.remove() if peerConnection.videoEl
-        CineIOPeer.trigger 'streamRemoved', peerConnection: peerConnection
+        for videoEl in peerConnection.videoEls
+          CineIOPeer.trigger 'streamRemoved', peerConnection: peerConnection, videoEl: videoEl
+        delete peerConnection.videoEls
 
   return primus
 
