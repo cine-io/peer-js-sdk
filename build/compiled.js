@@ -4136,7 +4136,18 @@ CineIOPeer = require('./main');
 
 
 
-},{"./main":21}],21:[function(require,module,exports){
+},{"./main":22}],21:[function(require,module,exports){
+(function (process){
+if (process.env.NODE_ENV === 'production') {
+  exports.signalingServer = "http://signaling.cine.io";
+} else {
+  exports.signalingServer = 'http://localhost:8888';
+}
+
+
+
+}).call(this,require("JkpR2F"))
+},{"JkpR2F":6}],22:[function(require,module,exports){
 var BackboneEvents, CineIOPeer, attachMediaStream, defaultOptions, getUserMedia, signalingConnection, userOrDefault, webrtcSupport;
 
 getUserMedia = require('getusermedia');
@@ -4293,15 +4304,17 @@ signalingConnection = require('./signaling_connection');
 
 
 
-},{"./signaling_connection":22,"attachmediastream":1,"backbone-events-standalone":3,"getusermedia":4,"webrtcsupport":19}],22:[function(require,module,exports){
-var CallObject, CineIOPeer, PeerConnection, Primus, newConnection, peerConnections;
+},{"./signaling_connection":23,"attachmediastream":1,"backbone-events-standalone":3,"getusermedia":4,"webrtcsupport":19}],23:[function(require,module,exports){
+var CallObject, CineIOPeer, Config, PeerConnection, Primus, newConnection, peerConnections;
 
 PeerConnection = require('rtcpeerconnection');
 
 Primus = require('./vendor/primus');
 
+Config = require('./config');
+
 newConnection = function() {
-  return Primus.connect('http://localhost:8888');
+  return Primus.connect(Config.signalingServer);
 };
 
 peerConnections = {};
@@ -4445,7 +4458,7 @@ CallObject = require('./call');
 
 
 
-},{"./call":20,"./main":21,"./vendor/primus":23,"rtcpeerconnection":18}],23:[function(require,module,exports){
+},{"./call":20,"./config":21,"./main":22,"./vendor/primus":24,"rtcpeerconnection":18}],24:[function(require,module,exports){
 (function (name, context, definition) {  context[name] = definition.call(context);  if (typeof module !== "undefined" && module.exports) {    module.exports = context[name];  } else if (typeof define == "function" && define.amd) {    define(function reference() { return context[name]; });  }})("Primus", this, function Primus() {/*globals require, define */
 'use strict';
 
@@ -8549,4 +8562,4 @@ if (typeof define === 'function' && define.amd) {
 
 // [*] End of lib/all.js
 
-},{}]},{},[21]);
+},{}]},{},[22]);

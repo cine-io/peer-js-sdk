@@ -1,8 +1,9 @@
 PeerConnection = require('rtcpeerconnection')
 Primus = require('./vendor/primus')
+Config = require('./config')
 
 newConnection = ->
-  Primus.connect('http://localhost:8888')
+  Primus.connect(Config.signalingServer)
 
 peerConnections = {}
 
