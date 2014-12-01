@@ -94,11 +94,11 @@ CineIOPeer =
       mirror: userOrDefault(options, 'mirror')
       muted: userOrDefault(options, 'muted')
     videoEl = attachMediaStream(stream, null, videoOptions)
-    videoElements[stream.id] = videoEl
+    CineIOPeer.config.videoElements[stream.id] = videoEl
     videoEl
 
   _getVideoElementFromStream: (stream)->
-    videoElements[stream.id]
+    CineIOPeer.config.videoElements[stream.id]
 
 
 CineIOPeer.reset()

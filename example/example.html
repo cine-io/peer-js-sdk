@@ -67,6 +67,7 @@
 
     CineIOPeer.on('streamRemoved', function(data){
       console.log('stream removed')
+      data.videoEl.remove();
     });
 
     var room = getQueryVariable('room');
