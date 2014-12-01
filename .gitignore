@@ -6,6 +6,7 @@ compiled/*
 ignored/
 
 node_modules/*
+example/node_modules/*
 npm-debug.log
 
 tmp/

@@ -1,0 +1,20 @@
+{
+  "author": "cine.io",
+  "name": "desktop-streaming",
+  "domains": [],
+  "version": "0.0.1",
+  "description": "Desktop Streaming",
+  "main": "server.js",
+  "scripts": {},
+  "repository": "",
+  "dependencies": {
+    "connect": "^2.15.0",
+    "express": "^4.10.4"
+  },
+  "devDependencies": {},
+  "license": "Copyrighted / All Rights Reserved",
+  "engines": {
+    "node": "0.10.x"
+  },
+  "private": true
+}
