@@ -4,13 +4,21 @@ module.exports = (grunt) ->
     pkg: grunt.file.readJSON("package.json")
 
     browserify:
-      main:
+      development:
         files:
-          'build/compiled.js': ['src/main.coffee']
+          'build/compiled-dev.js': ['src/main.coffee']
         options:
           browserifyOptions:
             extensions: ['.coffee', '.js']
-          transform: ['coffeeify']
+          transform: ['coffeeify', ['envify', NODE_ENV: 'development']]
+
+      production:
+        files:
+          'build/compiled-prod.js': ['src/main.coffee']
+        options:
+          browserifyOptions:
+            extensions: ['.coffee', '.js']
+          transform: ['coffeeify', ['envify', NODE_ENV: 'production']]
 
       tests:
         files:
@@ -46,7 +54,7 @@ module.exports = (grunt) ->
   grunt.loadNpmTasks "grunt-contrib-watch"
 
 
-  grunt.registerTask "compile", ["browserify:main"]
+  grunt.registerTask "compile", ["browserify:development", "browserify:production"]
 
   grunt.registerTask "test", ["browserify:tests", "mocha"]
 
