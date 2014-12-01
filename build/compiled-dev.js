@@ -4159,17 +4159,17 @@ CineIOPeer = require('./main');
 
 
 },{"./main":22}],21:[function(require,module,exports){
-(function (process){
-if (process.env.NODE_ENV === 'production') {
+if ("development" === 'production') {
   exports.signalingServer = "http://signaling.cine.io";
-} else {
+}
+
+if ("development" === 'development') {
   exports.signalingServer = 'http://localhost:8888';
 }
 
 
 
-}).call(this,require('_process'))
-},{"_process":6}],22:[function(require,module,exports){
+},{}],22:[function(require,module,exports){
 var BackboneEvents, CineIOPeer, attachMediaStream, defaultOptions, getUserMedia, signalingConnection, userOrDefault, webrtcSupport;
 
 getUserMedia = require('getusermedia');

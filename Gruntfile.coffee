@@ -28,6 +28,11 @@ module.exports = (grunt) ->
             extensions: ['.coffee', '.js']
           transform: ['coffeeify']
 
+    uglify:
+      production:
+        files:
+          'build/compiled-prod.js': ['build/compiled-prod.js']
+
     watch:
       grunt:
         files: ["Gruntfile.coffee"]
@@ -40,6 +45,10 @@ module.exports = (grunt) ->
         files: ["test/*.coffee", "src/*.coffee", "src/**/*.js"]
         tasks: ["browserify:tests"]
 
+    trimtrailingspaces:
+      development:
+        src: ['build/compiled-dev.js']
+
     mocha:
       all:
         src: ['test/runner.html']
@@ -48,14 +57,17 @@ module.exports = (grunt) ->
         log: true
         reporter: 'Spec'
 
-  grunt.loadNpmTasks('grunt-browserify');
-  grunt.loadNpmTasks('grunt-contrib-coffee');
-  grunt.loadNpmTasks('grunt-mocha');
-  grunt.loadNpmTasks "grunt-contrib-watch"
+  grunt.loadNpmTasks('grunt-browserify')
+  grunt.loadNpmTasks('grunt-contrib-coffee')
+  grunt.loadNpmTasks('grunt-mocha')
+  grunt.loadNpmTasks("grunt-contrib-watch")
+  grunt.loadNpmTasks('grunt-contrib-uglify')
+  grunt.loadNpmTasks('grunt-trimtrailingspaces')
 
-
-  grunt.registerTask "compile", ["browserify:development", "browserify:production"]
+  grunt.registerTask "compile:production", ["browserify:production", "uglify"]
+  grunt.registerTask "compile:development", ["browserify:development", "trimtrailingspaces:development"]
+  grunt.registerTask "compile", ["compile:development", "compile:production"]
 
   grunt.registerTask "test", ["browserify:tests", "mocha"]
 
-  grunt.registerTask "default", ["browserify", "watch"]
+  grunt.registerTask "default", ["compile", "watch"]
