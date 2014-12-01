@@ -4,7 +4,7 @@ module.exports = class CallObject
   answer: =>
     CineIOPeer.join(@_data.room)
 
-  reject: =>
+  reject: ->
     # TODO: send a reject response back
 
 CineIOPeer = require('./main')

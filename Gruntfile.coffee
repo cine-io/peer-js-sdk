@@ -4,13 +4,21 @@ module.exports = (grunt) ->
     pkg: grunt.file.readJSON("package.json")
 
     browserify:
-      main:
+      development:
         files:
-          'build/compiled.js': ['src/main.coffee']
+          'build/compiled-dev.js': ['src/main.coffee']
         options:
           browserifyOptions:
             extensions: ['.coffee', '.js']
-          transform: ['coffeeify']
+          transform: ['coffeeify', ['envify', NODE_ENV: 'development']]
+
+      production:
+        files:
+          'build/compiled-prod.js': ['src/main.coffee']
+        options:
+          browserifyOptions:
+            extensions: ['.coffee', '.js']
+          transform: ['coffeeify', ['envify', NODE_ENV: 'production']]
 
       tests:
         files:
@@ -19,6 +27,11 @@ module.exports = (grunt) ->
           browserifyOptions:
             extensions: ['.coffee', '.js']
           transform: ['coffeeify']
+
+    uglify:
+      production:
+        files:
+          'build/compiled-prod.js': ['build/compiled-prod.js']
 
     watch:
       grunt:
@@ -32,6 +45,10 @@ module.exports = (grunt) ->
         files: ["test/*.coffee", "src/*.coffee", "src/**/*.js"]
         tasks: ["browserify:tests"]
 
+    trimtrailingspaces:
+      development:
+        src: ['build/compiled-dev.js']
+
     mocha:
       all:
         src: ['test/runner.html']
@@ -40,14 +57,17 @@ module.exports = (grunt) ->
         log: true
         reporter: 'Spec'
 
-  grunt.loadNpmTasks('grunt-browserify');
-  grunt.loadNpmTasks('grunt-contrib-coffee');
-  grunt.loadNpmTasks('grunt-mocha');
-  grunt.loadNpmTasks "grunt-contrib-watch"
+  grunt.loadNpmTasks('grunt-browserify')
+  grunt.loadNpmTasks('grunt-contrib-coffee')
+  grunt.loadNpmTasks('grunt-mocha')
+  grunt.loadNpmTasks("grunt-contrib-watch")
+  grunt.loadNpmTasks('grunt-contrib-uglify')
+  grunt.loadNpmTasks('grunt-trimtrailingspaces')
 
-
-  grunt.registerTask "compile", ["browserify:main"]
+  grunt.registerTask "compile:production", ["browserify:production", "uglify"]
+  grunt.registerTask "compile:development", ["browserify:development", "trimtrailingspaces:development"]
+  grunt.registerTask "compile", ["compile:development", "compile:production"]
 
   grunt.registerTask "test", ["browserify:tests", "mocha"]
 
-  grunt.registerTask "default", ["browserify", "watch"]
+  grunt.registerTask "default", ["compile", "watch"]
