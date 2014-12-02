@@ -4126,7 +4126,7 @@ if ("development" === 'production') {
 }
 
 if ("development" === 'development') {
-  exports.signalingServer = 'https://localhost.cine.io:8888';
+  exports.signalingServer = 'https://localhost.cine.io:8443';
 }
 
 
