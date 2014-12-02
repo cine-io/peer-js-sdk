@@ -105,7 +105,7 @@ describe 'CineIOPeer', ->
           done()
 
       it 'adds the room to the list of rooms', (done)->
-        CineIOPeer.join "Gryffindor Common Room", (err)=>
+        CineIOPeer.join "Gryffindor Common Room", (err)->
           expect(err).to.be.undefined
           expect(CineIOPeer.config.rooms).to.deep.equal(['Gryffindor Common Room'])
           done()
@@ -131,7 +131,7 @@ describe 'CineIOPeer', ->
         CineIOPeer.leave "Gryffindor Common Room"
 
       it 'removes the room to the list of rooms', (done)->
-        CineIOPeer.join "Gryffindor Common Room", (err)=>
+        CineIOPeer.join "Gryffindor Common Room", (err)->
           expect(err).to.be.undefined
           expect(CineIOPeer.config.rooms).to.contain("Gryffindor Common Room")
           CineIOPeer.leave("Gryffindor Common Room")
