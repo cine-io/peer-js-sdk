@@ -5,6 +5,6 @@ module.exports = class CallObject
     CineIOPeer.join(@_data.room)
 
   reject: ->
-    # TODO: send a reject response back
+    CineIOPeer._signalConnection.write action: 'reject', room: @_data.room, apikey: CineIOPeer.config.apiKey
 
 CineIOPeer = require('./main')
