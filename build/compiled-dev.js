@@ -4135,8 +4135,10 @@ module.exports = {
 };
 
 },{}],20:[function(require,module,exports){
-var CallObject, CineIOPeer,
+var CallObject, CineIOPeer, noop,
   __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
+
+noop = function() {};
 
 module.exports = CallObject = (function() {
   function CallObject(_data) {
@@ -4144,8 +4146,8 @@ module.exports = CallObject = (function() {
     this.answer = __bind(this.answer, this);
   }
 
-  CallObject.prototype.answer = function() {
-    return CineIOPeer.join(this._data.room);
+  CallObject.prototype.answer = function(callback) {
+    return CineIOPeer.join(this._data.room, callback);
   };
 
   CallObject.prototype.reject = function() {

@@ -1,14 +1,9 @@
+require('./helpers/setup_and_teardown')
 CineIOPeer = require('../src/main')
 stubPrimus = require('./helpers/stub_primus')
 stubUserMedia = require('./helpers/stub_user_media')
+
 describe 'CineIOPeer', ->
-
-  beforeEach ->
-    CineIOPeer.reset()
-
-  afterEach ->
-    delete CineIOPeer._signalConnection
-    delete CineIOPeer.stream
 
   stubPrimus()
 
