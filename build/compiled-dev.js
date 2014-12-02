@@ -1628,7 +1628,7 @@ exports.toMediaSDP = function (content) {
     sdp.push('m=' + mline.join(' '));
 
     sdp.push('c=IN IP4 0.0.0.0');
-    if (desc.bandwidth && desc.bandwidth.type && desc.bandwidth.bandwidth) {
+    if (desc.bandwidth) {
         sdp.push('b=' + desc.bandwidth.type + ':' + desc.bandwidth.bandwidth);
     }
     if (desc.descType == 'rtp') {
@@ -3485,8 +3485,7 @@ module.exports = {
     AudioContext: AudioContext,
     PeerConnection: PC,
     SessionDescription: SessionDescription,
-    IceCandidate: IceCandidate,
-    MediaStream: MediaStream
+    IceCandidate: IceCandidate
 };
 
 },{}],17:[function(require,module,exports){
@@ -4095,8 +4094,47 @@ PeerConnection.prototype.getStats = function (cb) {
 module.exports = PeerConnection;
 
 },{"sdp-jingle-json":9,"traceablepeerconnection":13,"underscore":15,"util":8,"webrtcsupport":16,"wildemitter":17}],19:[function(require,module,exports){
-module.exports=require(16)
-},{"/Users/jeffrey/dev/cine-dev/peer-client/node_modules/rtcpeerconnection/node_modules/webrtcsupport/index-browser.js":16}],20:[function(require,module,exports){
+// created by @HenrikJoreteg
+var prefix;
+var isChrome = false;
+var isFirefox = false;
+var ua = window.navigator.userAgent.toLowerCase();
+
+// basic sniffing
+if (ua.indexOf('firefox') !== -1) {
+    prefix = 'moz';
+    isFirefox = true;
+} else if (ua.indexOf('chrome') !== -1) {
+    prefix = 'webkit';
+    isChrome = true;
+}
+
+var PC = window.mozRTCPeerConnection || window.webkitRTCPeerConnection;
+var IceCandidate = window.mozRTCIceCandidate || window.RTCIceCandidate;
+var SessionDescription = window.mozRTCSessionDescription || window.RTCSessionDescription;
+var MediaStream = window.webkitMediaStream || window.MediaStream;
+var screenSharing = window.location.protocol === 'https:' &&
+    ((window.navigator.userAgent.match('Chrome') && parseInt(window.navigator.userAgent.match(/Chrome\/(.*) /)[1], 10) >= 26) ||
+     (window.navigator.userAgent.match('Firefox') && parseInt(window.navigator.userAgent.match(/Firefox\/(.*)/)[1], 10) >= 33));
+var AudioContext = window.webkitAudioContext || window.AudioContext;
+
+
+// export support flags and constructors.prototype && PC
+module.exports = {
+    support: !!PC,
+    dataChannel: isChrome || isFirefox || (PC && PC.prototype && PC.prototype.createDataChannel),
+    prefix: prefix,
+    webAudio: !!(AudioContext && AudioContext.prototype.createMediaStreamSource),
+    mediaStream: !!(MediaStream && MediaStream.prototype.removeTrack),
+    screenSharing: !!screenSharing,
+    AudioContext: AudioContext,
+    PeerConnection: PC,
+    SessionDescription: SessionDescription,
+    IceCandidate: IceCandidate,
+    MediaStream: MediaStream
+};
+
+},{}],20:[function(require,module,exports){
 var CallObject, CineIOPeer,
   __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
@@ -4110,7 +4148,13 @@ module.exports = CallObject = (function() {
     return CineIOPeer.join(this._data.room);
   };
 
-  CallObject.prototype.reject = function() {};
+  CallObject.prototype.reject = function() {
+    return CineIOPeer._signalConnection.write({
+      action: 'reject',
+      room: this._data.room,
+      publicKey: CineIOPeer.config.publicKey
+    });
+  };
 
   return CallObject;
 
@@ -4121,12 +4165,16 @@ CineIOPeer = require('./main');
 
 
 },{"./main":22}],21:[function(require,module,exports){
+var protocol;
+
+protocol = location.protocol === 'https:' ? 'https' : 'http';
+
 if ("development" === 'production') {
-  exports.signalingServer = "http://signaling.cine.io";
+  exports.signalingServer = "" + protocol + "://signaling.cine.io";
 }
 
 if ("development" === 'development') {
-  exports.signalingServer = 'https://localhost.cine.io:8443';
+  exports.signalingServer = "" + protocol + "://localhost.cine.io:8443";
 }
 
 
@@ -4170,7 +4218,7 @@ CineIOPeer = {
     if (options == null) {
       options = {};
     }
-    CineIOPeer.config.apiKey = options.apiKey;
+    CineIOPeer.config.publicKey = options.publicKey;
     CineIOPeer._signalConnection || (CineIOPeer._signalConnection = signalingConnection.connect());
     return setTimeout(CineIOPeer._checkSupport);
   },
@@ -4180,7 +4228,7 @@ CineIOPeer = {
     return CineIOPeer._signalConnection.write({
       action: 'identify',
       identity: identity,
-      apikey: CineIOPeer.config.apiKey,
+      publicKey: CineIOPeer.config.publicKey,
       client: 'web'
     });
   },
@@ -4190,7 +4238,7 @@ CineIOPeer = {
       return CineIOPeer._signalConnection.write({
         action: 'call',
         otheridentity: identity,
-        apikey: CineIOPeer.config.apiKey,
+        publicKey: CineIOPeer.config.publicKey,
         identity: CineIOPeer.config.identity
       });
     });
