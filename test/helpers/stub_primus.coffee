@@ -8,12 +8,12 @@ class PrimusStub
 
 module.exports = ->
   beforeEach ->
-    @primusStub = sinon.stub Primus, 'connect', (signalingServerUrl)->
-      primusStub = new PrimusStub
+    @primusConnectStub = sinon.stub Primus, 'connect', (signalingServerUrl)=>
+      @primusStub = new PrimusStub
 
-      sinon.stub primusStub, 'write'
+      sinon.stub @primusStub, 'write'
 
-      primusStub
+      @primusStub
 
   afterEach ->
-    @primusStub.restore()
+    @primusConnectStub.restore()

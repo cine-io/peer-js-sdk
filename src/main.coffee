@@ -60,7 +60,7 @@ CineIOPeer =
     CineIOPeer._signalConnection.write action: 'join', room: room
 
   _fetchMediaSafe: (callback)->
-    return callback() if CineIOPeer.stream
+    return setTimeout(callback) if CineIOPeer.stream
     requestTimeout = setTimeout CineIOPeer._mediaNotReady, 1000
     CineIOPeer._askForMedia (err, response)->
       clearTimeout requestTimeout

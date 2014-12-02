@@ -4291,7 +4291,7 @@ CineIOPeer = {
   _fetchMediaSafe: function(callback) {
     var requestTimeout;
     if (CineIOPeer.stream) {
-      return callback();
+      return setTimeout(callback);
     }
     requestTimeout = setTimeout(CineIOPeer._mediaNotReady, 1000);
     return CineIOPeer._askForMedia(function(err, response) {
