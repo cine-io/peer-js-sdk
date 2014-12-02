@@ -1,5 +1,6 @@
 CineIOPeer = require('../src/main')
 stubPrimus = require('./helpers/stub_primus')
+stubUserMedia = require('./helpers/stub_user_media')
 describe 'CineIOPeer', ->
 
   beforeEach ->
@@ -63,3 +64,28 @@ describe 'CineIOPeer', ->
         args = @primusStub.write.firstCall.args
         expect(args).to.have.length
         expect(args[0]).to.deep.equal(action: 'identify', identity: 'Minerva McGonagall', publicKey: 'the-public-key', client: 'web')
+
+    describe '.call', ->
+      stubUserMedia()
+
+      beforeEach ->
+        CineIOPeer.identify('Minerva McGonagall')
+
+      it 'fetches media', (done)->
+        CineIOPeer.call "Albus Dumbledore", (err)->
+          expect(err).to.be.undefined
+          expect(CineIOPeer._unsafeGetUserMedia.calledOnce).to.be.true
+          args = CineIOPeer._unsafeGetUserMedia.firstCall.args
+          expect(args).to.have.length(2)
+          expect(args[0]).to.deep.equal(audio: true, video: true)
+          expect(args[1]).to.be.a('function')
+          done()
+
+      it 'writes to the signaling connection', (done)->
+        CineIOPeer.call "Albus Dumbledore", (err)=>
+          expect(err).to.be.undefined
+          expect(@primusStub.write.calledTwice).to.be.true
+          args = @primusStub.write.secondCall.args
+          expect(args).to.have.length
+          expect(args[0]).to.deep.equal(action: 'call', otheridentity: 'Albus Dumbledore', identity: 'Minerva McGonagall', publicKey: 'the-public-key')
+          done()

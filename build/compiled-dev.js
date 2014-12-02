@@ -4180,7 +4180,7 @@ if ("development" === 'development') {
 
 
 },{}],22:[function(require,module,exports){
-var BackboneEvents, CineIOPeer, attachMediaStream, defaultOptions, getUserMedia, signalingConnection, userOrDefault, webrtcSupport;
+var BackboneEvents, CineIOPeer, attachMediaStream, defaultOptions, getUserMedia, noop, signalingConnection, userOrDefault, webrtcSupport;
 
 getUserMedia = require('getusermedia');
 
@@ -4189,6 +4189,8 @@ attachMediaStream = require('attachmediastream');
 webrtcSupport = require('webrtcsupport');
 
 BackboneEvents = require("backbone-events-standalone");
+
+noop = function() {};
 
 defaultOptions = {
   video: true,
@@ -4232,21 +4234,35 @@ CineIOPeer = {
       client: 'web'
     });
   },
-  call: function(identity) {
+  call: function(identity, callback) {
+    if (callback == null) {
+      callback = noop;
+    }
     console.log('calling', identity);
-    return CineIOPeer._fetchMediaSafe(function() {
-      return CineIOPeer._signalConnection.write({
+    return CineIOPeer._fetchMediaSafe(function(err) {
+      if (err) {
+        return callback(err);
+      }
+      CineIOPeer._signalConnection.write({
         action: 'call',
         otheridentity: identity,
         publicKey: CineIOPeer.config.publicKey,
         identity: CineIOPeer.config.identity
       });
+      return callback();
     });
   },
-  join: function(room) {
-    return CineIOPeer._fetchMediaSafe(function() {
-      console.log('Joining', room);
-      return CineIOPeer._unsafeJoin(room);
+  join: function(room, callback) {
+    if (callback == null) {
+      callback = noop;
+    }
+    console.log('Joining', room);
+    return CineIOPeer._fetchMediaSafe(function(err) {
+      if (err) {
+        return callback(err);
+      }
+      CineIOPeer._unsafeJoin(room);
+      return callback();
     });
   },
   leave: function(room) {
@@ -4301,7 +4317,7 @@ CineIOPeer = {
           media: false
         });
         console.log("ERROR", err);
-        return;
+        return callback(err);
       }
       response.media = true;
       console.log('got media', response);
@@ -4326,7 +4342,7 @@ CineIOPeer = {
       audio: userOrDefault(options, 'audio')
     };
     console.log('fetching media', options);
-    return getUserMedia(streamDoptions, (function(_this) {
+    return CineIOPeer._unsafeGetUserMedia(streamDoptions, (function(_this) {
       return function(err, stream) {
         var videoEl;
         if (err) {
@@ -4340,6 +4356,9 @@ CineIOPeer = {
         });
       };
     })(this));
+  },
+  _unsafeGetUserMedia: function(options, callback) {
+    return getUserMedia(options, callback);
   },
   _createVideoElementFromStream: function(stream, options) {
     var videoEl, videoOptions;

@@ -2,7 +2,7 @@ getUserMedia = require('getusermedia')
 attachMediaStream = require('attachmediastream')
 webrtcSupport = require('webrtcsupport')
 BackboneEvents = require("backbone-events-standalone")
-
+noop = ->
 defaultOptions =
   video: true
   audio: true
@@ -27,15 +27,19 @@ CineIOPeer =
     CineIOPeer.config.identity = identity
     CineIOPeer._signalConnection.write action: 'identify', identity: identity, publicKey: CineIOPeer.config.publicKey, client: 'web'
 
-  call: (identity)->
+  call: (identity, callback=noop)->
     console.log('calling', identity)
-    CineIOPeer._fetchMediaSafe ->
+    CineIOPeer._fetchMediaSafe (err)->
+      return callback(err) if err
       CineIOPeer._signalConnection.write action: 'call', otheridentity: identity, publicKey: CineIOPeer.config.publicKey, identity: CineIOPeer.config.identity
+      callback()
 
-  join: (room)->
-    CineIOPeer._fetchMediaSafe ->
-      console.log('Joining', room)
+  join: (room, callback=noop)->
+    console.log('Joining', room)
+    CineIOPeer._fetchMediaSafe (err)->
+      return callback(err) if err
       CineIOPeer._unsafeJoin(room)
+      callback()
 
   leave: (room)->
     index = CineIOPeer.config.rooms.indexOf(room)
@@ -67,7 +71,7 @@ CineIOPeer =
       if err
         CineIOPeer.trigger 'media', media: false
         console.log("ERROR", err)
-        return
+        return callback(err)
       response.media = true
       console.log('got media', response)
       CineIOPeer.trigger 'media', response
@@ -85,11 +89,14 @@ CineIOPeer =
       audio: userOrDefault(options, 'audio')
     console.log('fetching media', options)
 
-    getUserMedia streamDoptions, (err, stream)=>
+    CineIOPeer._unsafeGetUserMedia streamDoptions, (err, stream)=>
       return callback(err) if err
       videoEl = @_createVideoElementFromStream(stream, options)
       CineIOPeer.stream = stream
       callback(null, videoElement: videoEl, stream: stream)
+
+  _unsafeGetUserMedia: (options, callback)->
+    getUserMedia options, callback
 
   _createVideoElementFromStream: (stream, options={})->
     videoOptions =
