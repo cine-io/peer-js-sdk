@@ -4271,7 +4271,11 @@ CineIOPeer = {
     });
   },
   _checkSupport: function() {
-    if (!webrtcSupport.support) {
+    if (webrtcSupport.support) {
+      return CineIOPeer.trigger('info', {
+        support: true
+      });
+    } else {
       return CineIOPeer.trigger('error', {
         support: false
       });

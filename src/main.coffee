@@ -50,7 +50,10 @@ CineIOPeer =
       CineIOPeer.signalingConnection.newLocalStream(screenShareStream)
 
   _checkSupport: ->
-    CineIOPeer.trigger 'error', support: false unless webrtcSupport.support
+    if webrtcSupport.support
+      CineIOPeer.trigger 'info', support: true
+    else
+      CineIOPeer.trigger 'error', support: false
 
   _unsafeJoin: (room)->
     CineIOPeer.config.rooms.push(room)
