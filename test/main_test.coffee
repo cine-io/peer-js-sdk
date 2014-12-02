@@ -118,3 +118,32 @@ describe 'CineIOPeer', ->
           expect(args).to.have.length
           expect(args[0]).to.deep.equal(action: 'join', room: 'Gryffindor Common Room', publicKey: 'the-public-key')
           done()
+
+    describe '.leave', ->
+      stubUserMedia()
+
+      it 'requires the user have previously joined the room', (done)->
+        errorHandler = (data)->
+          expect(data).to.deep.equal(msg: "not connected to room", room: "Gryffindor Common Room")
+          CineIOPeer.off 'error', errorHandler
+          done()
+        CineIOPeer.on 'error', errorHandler
+        CineIOPeer.leave "Gryffindor Common Room"
+
+      it 'removes the room to the list of rooms', (done)->
+        CineIOPeer.join "Gryffindor Common Room", (err)=>
+          expect(err).to.be.undefined
+          expect(CineIOPeer.config.rooms).to.contain("Gryffindor Common Room")
+          CineIOPeer.leave("Gryffindor Common Room")
+          expect(CineIOPeer.config.rooms).not.to.contain("Gryffindor Common Room")
+          done()
+
+      it 'writes to the signaling connection', (done)->
+        CineIOPeer.join "Gryffindor Common Room", (err)=>
+          expect(err).to.be.undefined
+          CineIOPeer.leave("Gryffindor Common Room")
+          expect(@primusStub.write.calledTwice).to.be.true
+          args = @primusStub.write.secondCall.args
+          expect(args).to.have.length
+          expect(args[0]).to.deep.equal(action: 'leave', room: 'Gryffindor Common Room', publicKey: 'the-public-key')
+          done()

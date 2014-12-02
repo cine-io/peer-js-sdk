@@ -4277,7 +4277,8 @@ CineIOPeer = {
     CineIOPeer.config.rooms.splice(index, 1);
     return CineIOPeer._signalConnection.write({
       action: 'leave',
-      room: room
+      room: room,
+      publicKey: CineIOPeer.config.publicKey
     });
   },
   screenShare: function() {
