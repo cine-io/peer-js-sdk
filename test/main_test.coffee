@@ -29,7 +29,7 @@ describe 'CineIOPeer', ->
     afterEach ->
       CineIOPeer.off 'info', @dataTrigger
 
-    it 'initializes the  the config', (done)->
+    it 'initializes the config', (done)->
       setupDataTrigger.call this, ->
         done()
       CineIOPeer.init(publicKey: 'my-public-key')
