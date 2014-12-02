@@ -42,7 +42,7 @@ module.exports = (grunt) ->
         tasks: ["compile"]
 
       tests:
-        files: ["test/*.coffee", "src/*.coffee", "src/**/*.js"]
+        files: ["test/*.coffee", "test/**/*.coffee", "src/*.coffee", "src/**/*.js"]
         tasks: ["browserify:tests"]
 
     trimtrailingspaces:
@@ -70,4 +70,4 @@ module.exports = (grunt) ->
 
   grunt.registerTask "test", ["browserify:tests", "mocha"]
 
-  grunt.registerTask "default", ["compile", "watch"]
+  grunt.registerTask "default", ["compile", "browserify:tests", "watch"]
