@@ -147,3 +147,56 @@ describe 'CineIOPeer', ->
           expect(args).to.have.length
           expect(args[0]).to.deep.equal(action: 'leave', room: 'Gryffindor Common Room', publicKey: 'the-public-key')
           done()
+
+    describe '.fetchMedia', ->
+      describe 'success', ->
+        stubUserMedia()
+
+        it 'fetches media', (done)->
+          CineIOPeer.fetchMedia (err)->
+            expect(err).to.be.undefined
+            expect(CineIOPeer._unsafeGetUserMedia.calledOnce).to.be.true
+            args = CineIOPeer._unsafeGetUserMedia.firstCall.args
+            expect(args).to.have.length(2)
+            expect(args[0]).to.deep.equal(audio: true, video: true)
+            expect(args[1]).to.be.a('function')
+            done()
+
+        it 'will not fetch twice', (done)->
+          CineIOPeer.fetchMedia (err)->
+            expect(err).to.be.undefined
+            CineIOPeer.fetchMedia (err)->
+              expect(err).to.be.undefined
+              expect(CineIOPeer._unsafeGetUserMedia.calledOnce).to.be.true
+              args = CineIOPeer._unsafeGetUserMedia.firstCall.args
+              expect(args).to.have.length(2)
+              expect(args[0]).to.deep.equal(audio: true, video: true)
+              expect(args[1]).to.be.a('function')
+              done()
+
+        it 'triggers media with the stream and media true', (done)->
+          mediaResponse = (data)->
+            expect(data.media).to.be.true
+            CineIOPeer.off 'media', mediaResponse
+            done()
+          CineIOPeer.on 'media', mediaResponse
+          CineIOPeer.fetchMedia()
+      describe 'failure', ->
+        stubUserMedia(false)
+
+        it 'returns with the error', (done)->
+          mediaResponse = (data)->
+            expect(data.media).to.be.false
+            CineIOPeer.off 'media', mediaResponse
+            done()
+          CineIOPeer.on 'media', mediaResponse
+          CineIOPeer.fetchMedia (err)->
+            expect(err).to.equal('could not fetch media')
+
+        it 'triggers media with the stream and media false', (done)->
+          mediaResponse = (data)->
+            expect(data.media).to.be.false
+            CineIOPeer.off 'media', mediaResponse
+            done()
+          CineIOPeer.on 'media', mediaResponse
+          CineIOPeer.fetchMedia()

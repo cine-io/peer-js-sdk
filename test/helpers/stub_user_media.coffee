@@ -5,10 +5,13 @@ class FakeMediaStream
     @ended = false
     @id = @label = "stream-id"
 
-module.exports = ->
+module.exports = (success=true)->
   beforeEach ->
     sinon.stub CineIOPeer, '_unsafeGetUserMedia', (streamOptions, callback)->
-      callback(null, new FakeMediaStream)
+      if success
+        callback(null, new FakeMediaStream)
+      else
+        callback('could not fetch media')
     sinon.stub window.URL, 'createObjectURL', (mediaStream)->
       return "blob:http%3A//#{window.location.host}/identifier"
 

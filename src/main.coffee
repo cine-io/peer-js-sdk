@@ -29,14 +29,14 @@ CineIOPeer =
 
   call: (identity, callback=noop)->
     console.log('calling', identity)
-    CineIOPeer._fetchMediaSafe (err)->
+    CineIOPeer.fetchMedia (err)->
       return callback(err) if err
       CineIOPeer._signalConnection.write action: 'call', otheridentity: identity, publicKey: CineIOPeer.config.publicKey, identity: CineIOPeer.config.identity
       callback()
 
   join: (room, callback=noop)->
     console.log('Joining', room)
-    CineIOPeer._fetchMediaSafe (err)->
+    CineIOPeer.fetchMedia (err)->
       return callback(err) if err
       CineIOPeer._unsafeJoin(room)
       callback()
@@ -47,6 +47,20 @@ CineIOPeer =
 
     CineIOPeer.config.rooms.splice(index, 1)
     CineIOPeer._signalConnection.write action: 'leave', room: room, publicKey: CineIOPeer.config.publicKey
+
+  fetchMedia: (callback=noop)->
+    return setTimeout(callback) if CineIOPeer.stream
+    requestTimeout = setTimeout CineIOPeer._mediaNotReady, 1000
+    CineIOPeer._askForMedia (err, response)->
+      clearTimeout requestTimeout
+      if err
+        CineIOPeer.trigger 'media', media: false
+        console.log("ERROR", err)
+        return callback(err)
+      response.media = true
+      console.log('got media', response)
+      CineIOPeer.trigger 'media', response
+      callback()
 
   screenShare: ->
     _getScreenShareStream (screenShareStream)->
@@ -62,20 +76,6 @@ CineIOPeer =
   _unsafeJoin: (room)->
     CineIOPeer.config.rooms.push(room)
     CineIOPeer._signalConnection.write action: 'join', room: room, publicKey: 'the-public-key'
-
-  _fetchMediaSafe: (callback)->
-    return setTimeout(callback) if CineIOPeer.stream
-    requestTimeout = setTimeout CineIOPeer._mediaNotReady, 1000
-    CineIOPeer._askForMedia (err, response)->
-      clearTimeout requestTimeout
-      if err
-        CineIOPeer.trigger 'media', media: false
-        console.log("ERROR", err)
-        return callback(err)
-      response.media = true
-      console.log('got media', response)
-      CineIOPeer.trigger 'media', response
-      callback()
 
   _mediaNotReady: ->
     CineIOPeer.trigger('media-request')

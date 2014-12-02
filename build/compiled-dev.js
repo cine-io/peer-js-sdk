@@ -4239,7 +4239,7 @@ CineIOPeer = {
       callback = noop;
     }
     console.log('calling', identity);
-    return CineIOPeer._fetchMediaSafe(function(err) {
+    return CineIOPeer.fetchMedia(function(err) {
       if (err) {
         return callback(err);
       }
@@ -4257,7 +4257,7 @@ CineIOPeer = {
       callback = noop;
     }
     console.log('Joining', room);
-    return CineIOPeer._fetchMediaSafe(function(err) {
+    return CineIOPeer.fetchMedia(function(err) {
       if (err) {
         return callback(err);
       }
@@ -4279,6 +4279,30 @@ CineIOPeer = {
       action: 'leave',
       room: room,
       publicKey: CineIOPeer.config.publicKey
+    });
+  },
+  fetchMedia: function(callback) {
+    var requestTimeout;
+    if (callback == null) {
+      callback = noop;
+    }
+    if (CineIOPeer.stream) {
+      return setTimeout(callback);
+    }
+    requestTimeout = setTimeout(CineIOPeer._mediaNotReady, 1000);
+    return CineIOPeer._askForMedia(function(err, response) {
+      clearTimeout(requestTimeout);
+      if (err) {
+        CineIOPeer.trigger('media', {
+          media: false
+        });
+        console.log("ERROR", err);
+        return callback(err);
+      }
+      response.media = true;
+      console.log('got media', response);
+      CineIOPeer.trigger('media', response);
+      return callback();
     });
   },
   screenShare: function() {
@@ -4304,27 +4328,6 @@ CineIOPeer = {
       action: 'join',
       room: room,
       publicKey: 'the-public-key'
-    });
-  },
-  _fetchMediaSafe: function(callback) {
-    var requestTimeout;
-    if (CineIOPeer.stream) {
-      return setTimeout(callback);
-    }
-    requestTimeout = setTimeout(CineIOPeer._mediaNotReady, 1000);
-    return CineIOPeer._askForMedia(function(err, response) {
-      clearTimeout(requestTimeout);
-      if (err) {
-        CineIOPeer.trigger('media', {
-          media: false
-        });
-        console.log("ERROR", err);
-        return callback(err);
-      }
-      response.media = true;
-      console.log('got media', response);
-      CineIOPeer.trigger('media', response);
-      return callback();
     });
   },
   _mediaNotReady: function() {
