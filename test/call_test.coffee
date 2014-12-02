@@ -13,7 +13,7 @@ describe 'Call', ->
   beforeEach ->
     CineIOPeer.init(publicKey: "the-public-key")
 
-  describe 'answer', ->
+  describe '#answer', ->
     it 'joins the room', (done)->
       @call.answer (err)=>
         expect(@primusStub.write.calledOnce).to.be.true
@@ -22,7 +22,7 @@ describe 'Call', ->
         expect(args[0]).to.deep.equal(action: 'join', room: 'Hogwarts Express', publicKey: 'the-public-key')
         done()
 
-  describe 'reject', ->
+  describe '#reject', ->
     it 'sends a rejection', ->
       @call.reject()
       expect(@primusStub.write.calledOnce).to.be.true
