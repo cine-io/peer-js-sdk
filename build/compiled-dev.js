@@ -4301,7 +4301,8 @@ CineIOPeer = {
     CineIOPeer.config.rooms.push(room);
     return CineIOPeer._signalConnection.write({
       action: 'join',
-      room: room
+      room: room,
+      publicKey: 'the-public-key'
     });
   },
   _fetchMediaSafe: function(callback) {

@@ -8,6 +8,7 @@ describe 'CineIOPeer', ->
 
   afterEach ->
     delete CineIOPeer._signalConnection
+    delete CineIOPeer.stream
 
   stubPrimus()
 
@@ -88,4 +89,32 @@ describe 'CineIOPeer', ->
           args = @primusStub.write.secondCall.args
           expect(args).to.have.length
           expect(args[0]).to.deep.equal(action: 'call', otheridentity: 'Albus Dumbledore', identity: 'Minerva McGonagall', publicKey: 'the-public-key')
+          done()
+
+    describe '.join', ->
+      stubUserMedia()
+
+      it 'fetches media', (done)->
+        CineIOPeer.join "Gryffindor Common Room", (err)->
+          expect(err).to.be.undefined
+          expect(CineIOPeer._unsafeGetUserMedia.calledOnce).to.be.true
+          args = CineIOPeer._unsafeGetUserMedia.firstCall.args
+          expect(args).to.have.length(2)
+          expect(args[0]).to.deep.equal(audio: true, video: true)
+          expect(args[1]).to.be.a('function')
+          done()
+
+      it 'adds the room to the list of rooms', (done)->
+        CineIOPeer.join "Gryffindor Common Room", (err)=>
+          expect(err).to.be.undefined
+          expect(CineIOPeer.config.rooms).to.deep.equal(['Gryffindor Common Room'])
+          done()
+
+      it 'writes to the signaling connection', (done)->
+        CineIOPeer.join "Gryffindor Common Room", (err)=>
+          expect(err).to.be.undefined
+          expect(@primusStub.write.calledOnce).to.be.true
+          args = @primusStub.write.firstCall.args
+          expect(args).to.have.length
+          expect(args[0]).to.deep.equal(action: 'join', room: 'Gryffindor Common Room', publicKey: 'the-public-key')
           done()

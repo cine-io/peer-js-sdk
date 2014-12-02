@@ -61,7 +61,7 @@ CineIOPeer =
 
   _unsafeJoin: (room)->
     CineIOPeer.config.rooms.push(room)
-    CineIOPeer._signalConnection.write action: 'join', room: room
+    CineIOPeer._signalConnection.write action: 'join', room: room, publicKey: 'the-public-key'
 
   _fetchMediaSafe: (callback)->
     return setTimeout(callback) if CineIOPeer.stream
