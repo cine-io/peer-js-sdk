@@ -1,10 +1,10 @@
-require('./helpers/setup_and_teardown')
+setupAndTeardown = require('./helpers/setup_and_teardown')
 CineIOPeer = require('../src/main')
 stubPrimus = require('./helpers/stub_primus')
 stubUserMedia = require('./helpers/stub_user_media')
 
 describe 'CineIOPeer', ->
-
+  setupAndTeardown()
   stubPrimus()
 
   describe '.version', ->

@@ -1,17 +1,27 @@
+setupAndTeardown = require('./helpers/setup_and_teardown')
 CineIOPeer = require('../src/main')
 Call = require('../src/call')
 stubPrimus = require('./helpers/stub_primus')
 stubUserMedia = require('./helpers/stub_user_media')
 
 describe 'Call', ->
-  beforeEach ->
-    @call = new Call(room: 'Hogwarts Express')
+  setupAndTeardown()
 
   stubPrimus()
+
   stubUserMedia()
 
+  beforeEach (done)->
+    @dataTrigger = (data)->
+      done()
+    CineIOPeer.on 'info', @dataTrigger
+    CineIOPeer.init(publicKey: 'the-public-key')
+
+  afterEach ->
+    CineIOPeer.off 'info', @dataTrigger
+
   beforeEach ->
-    CineIOPeer.init(publicKey: "the-public-key")
+    @call = new Call(room: 'Hogwarts Express')
 
   describe '#answer', ->
     it 'joins the room', (done)->

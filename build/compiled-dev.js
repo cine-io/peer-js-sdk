@@ -4147,6 +4147,9 @@ module.exports = CallObject = (function() {
   }
 
   CallObject.prototype.answer = function(callback) {
+    if (callback == null) {
+      callback = noop;
+    }
     return CineIOPeer.join(this._data.room, callback);
   };
 
@@ -4401,7 +4404,7 @@ signalingConnection = require('./signaling_connection');
 
 
 },{"./signaling_connection":23,"attachmediastream":1,"backbone-events-standalone":3,"getusermedia":4,"webrtcsupport":19}],23:[function(require,module,exports){
-var CallObject, CineIOPeer, Config, PeerConnection, Primus, newConnection, peerConnections;
+var CallObject, CineIOPeer, Config, Connection, PeerConnection, Primus, newConnection, peerConnections;
 
 PeerConnection = require('rtcpeerconnection');
 
@@ -4425,162 +4428,186 @@ exports.newLocalStream = function(stream) {
   return _results;
 };
 
-exports.connect = function() {
-  var ensureIce, ensurePeerConnection, fetchedIce, iceServers, newMember, primus;
-  primus = newConnection();
-  iceServers = null;
-  fetchedIce = false;
-  ensurePeerConnection = function(otherClientSparkId, options) {
-    if (peerConnections[otherClientSparkId]) {
-      return peerConnections[otherClientSparkId];
-    }
-    console.log("CREATING NEW PEER CONNECTION!!", otherClientSparkId, options);
-    return newMember(otherClientSparkId, options);
+Connection = (function() {
+  function Connection() {
+    this.primus = newConnection();
+    this.iceServers = null;
+    this.fetchedIce = false;
+    this._setupListeners();
+  }
+
+  Connection.prototype.write = function() {
+    var _ref;
+    return (_ref = this.primus).write.apply(_ref, arguments);
   };
-  ensureIce = function(callback) {
-    if (fetchedIce) {
-      return callback();
-    }
-    return CineIOPeer.on('gotIceServers', callback);
-  };
-  primus.on('data', function(data) {
-    var otherClientSparkId;
-    switch (data.action) {
-      case 'allservers':
-        console.log('setting config', data);
-        iceServers = data.data;
-        fetchedIce = true;
-        return CineIOPeer.trigger('gotIceServers');
-      case 'incomingcall':
-        console.log('got incoming call', data);
-        return CineIOPeer.trigger('incomingcall', {
-          call: new CallObject(data)
-        });
-      case 'leave':
-        console.log('leaving', data);
-        if (!peerConnections[data.sparkId]) {
-          return;
+
+  Connection.prototype._setupListeners = function() {
+    var ensureIce, ensurePeerConnection, newMember;
+    ensurePeerConnection = function(otherClientSparkId, options) {
+      if (peerConnections[otherClientSparkId]) {
+        return peerConnections[otherClientSparkId];
+      }
+      console.log("CREATING NEW PEER CONNECTION!!", otherClientSparkId, options);
+      return newMember(otherClientSparkId, options);
+    };
+    ensureIce = (function(_this) {
+      return function(callback) {
+        if (_this.fetchedIce) {
+          return callback();
         }
-        peerConnections[data.sparkId].close();
-        return peerConnections[data.sparkId] = null;
-      case 'member':
-        console.log('got new member', data);
-        return ensurePeerConnection(data.sparkId, {
-          offer: true
-        });
-      case 'ice':
-        console.log('got remote ice', data);
-        return ensurePeerConnection(data.sparkId, {
-          offer: false
-        }).processIce(data.candidate);
-      case 'offer':
-        otherClientSparkId = data.sparkId;
-        console.log('got offer', data);
-        return ensurePeerConnection(otherClientSparkId, {
-          offer: false
-        }).handleOffer(data.offer, function(err) {
-          console.log('handled offer', err);
-          return peerConnections[otherClientSparkId].answer(function(err, answer) {
-            return primus.write({
-              action: 'answer',
+        return CineIOPeer.on('gotIceServers', callback);
+      };
+    })(this);
+    this.primus.on('data', (function(_this) {
+      return function(data) {
+        var otherClientSparkId;
+        console.log("got data");
+        switch (data.action) {
+          case 'allservers':
+            console.log('setting config', data);
+            _this.iceServers = data.data;
+            _this.fetchedIce = true;
+            return CineIOPeer.trigger('gotIceServers');
+          case 'incomingcall':
+            console.log('got incoming call', data);
+            return CineIOPeer.trigger('incomingcall', {
+              call: new CallObject(data)
+            });
+          case 'leave':
+            console.log('leaving', data);
+            if (!peerConnections[data.sparkId]) {
+              return;
+            }
+            peerConnections[data.sparkId].close();
+            return peerConnections[data.sparkId] = null;
+          case 'member':
+            console.log('got new member', data);
+            return ensurePeerConnection(data.sparkId, {
+              offer: true
+            });
+          case 'ice':
+            console.log('got remote ice', data);
+            return ensurePeerConnection(data.sparkId, {
+              offer: false
+            }).processIce(data.candidate);
+          case 'offer':
+            otherClientSparkId = data.sparkId;
+            console.log('got offer', data);
+            return ensurePeerConnection(otherClientSparkId, {
+              offer: false
+            }).handleOffer(data.offer, function(err) {
+              console.log('handled offer', err);
+              return peerConnections[otherClientSparkId].answer(function(err, answer) {
+                return _this.write({
+                  action: 'answer',
+                  source: "web",
+                  answer: answer,
+                  sparkId: otherClientSparkId
+                });
+              });
+            });
+          case 'answer':
+            console.log('got answer', data);
+            return ensurePeerConnection(data.sparkId, {
+              offer: false
+            }).handleAnswer(data.answer);
+          default:
+            return console.log("UNKNOWN DATA", data);
+        }
+      };
+    })(this));
+    return newMember = (function(_this) {
+      return function(otherClientSparkId, options) {
+        return ensureIce(function() {
+          var peerConnection, streamAttached;
+          peerConnection = new PeerConnection({
+            iceServers: _this.iceServers
+          });
+          peerConnections[otherClientSparkId] = peerConnection;
+          streamAttached = false;
+          if (CineIOPeer.stream) {
+            peerConnection.addStream(CineIOPeer.stream);
+            streamAttached = true;
+          }
+          if (CineIOPeer.screenShareStream) {
+            peerConnection.addStream(CineIOPeer.screenShareStream);
+            streamAttached = true;
+          }
+          if (!streamAttached) {
+            console.warn("No stream attached");
+          }
+          peerConnection.on('addStream', function(event) {
+            var videoEl;
+            console.log("got remote stream", event);
+            videoEl = CineIOPeer._createVideoElementFromStream(event.stream, {
+              muted: false,
+              mirror: false
+            });
+            peerConnection.videoEls || (peerConnection.videoEls = []);
+            peerConnection.videoEls.push(videoEl);
+            return CineIOPeer.trigger('streamAdded', {
+              peerConnection: peerConnection,
+              videoElement: videoEl
+            });
+          });
+          peerConnection.on('removeStream', function(event) {
+            var index, videoEl;
+            console.log("got remote stream", event);
+            videoEl = CineIOPeer._getVideoElementFromStream(event.stream);
+            index = peerConnection.videoEls.indexOf(videoEl);
+            if (!(index > -1)) {
+              return peerConnection.videoEls.splice(index, 1);
+            }
+            return CineIOPeer.trigger('removedStream', {
+              peerConnection: peerConnection,
+              videoElement: videoEl
+            });
+          });
+          peerConnection.on('ice', function(candidate) {
+            console.log('got my ice', candidate.candidate.candidate);
+            return _this.write({
+              action: 'ice',
               source: "web",
-              answer: answer,
+              candidate: candidate,
               sparkId: otherClientSparkId
             });
           });
-        });
-      case 'answer':
-        console.log('got answer', data);
-        return ensurePeerConnection(data.sparkId, {
-          offer: false
-        }).handleAnswer(data.answer);
-      default:
-        return console.log("UNKNOWN DATA", data);
-    }
-  });
-  newMember = function(otherClientSparkId, options) {
-    return ensureIce(function() {
-      var peerConnection, streamAttached;
-      peerConnection = new PeerConnection({
-        iceServers: iceServers
-      });
-      peerConnections[otherClientSparkId] = peerConnection;
-      streamAttached = false;
-      if (CineIOPeer.stream) {
-        peerConnection.addStream(CineIOPeer.stream);
-        streamAttached = true;
-      }
-      if (CineIOPeer.screenShareStream) {
-        peerConnection.addStream(CineIOPeer.screenShareStream);
-        streamAttached = true;
-      }
-      if (!streamAttached) {
-        console.warn("No stream attached");
-      }
-      peerConnection.on('addStream', function(event) {
-        var videoEl;
-        console.log("got remote stream", event);
-        videoEl = CineIOPeer._createVideoElementFromStream(event.stream, {
-          muted: false,
-          mirror: false
-        });
-        peerConnection.videoEls || (peerConnection.videoEls = []);
-        peerConnection.videoEls.push(videoEl);
-        return CineIOPeer.trigger('streamAdded', {
-          peerConnection: peerConnection,
-          videoElement: videoEl
-        });
-      });
-      peerConnection.on('removeStream', function(event) {
-        var index, videoEl;
-        console.log("got remote stream", event);
-        videoEl = CineIOPeer._getVideoElementFromStream(event.stream);
-        index = peerConnection.videoEls.indexOf(videoEl);
-        if (!(index > -1)) {
-          return peerConnection.videoEls.splice(index, 1);
-        }
-        return CineIOPeer.trigger('removedStream', {
-          peerConnection: peerConnection,
-          videoElement: videoEl
-        });
-      });
-      peerConnection.on('ice', function(candidate) {
-        console.log('got my ice', candidate.candidate.candidate);
-        return primus.write({
-          action: 'ice',
-          source: "web",
-          candidate: candidate,
-          sparkId: otherClientSparkId
-        });
-      });
-      if (options.offer) {
-        console.log('sending offer');
-        peerConnection.offer(function(err, offer) {
-          console.log('offering');
-          return primus.write({
-            action: 'offer',
-            source: "web",
-            offer: offer,
-            sparkId: otherClientSparkId
+          if (options.offer) {
+            console.log('sending offer');
+            peerConnection.offer(function(err, offer) {
+              console.log('offering');
+              return _this.write({
+                action: 'offer',
+                source: "web",
+                offer: offer,
+                sparkId: otherClientSparkId
+              });
+            });
+          }
+          return peerConnection.on('close', function(event) {
+            var videoEl, _i, _len, _ref;
+            console.log("remote closed", event);
+            _ref = peerConnection.videoEls;
+            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+              videoEl = _ref[_i];
+              CineIOPeer.trigger('streamRemoved', {
+                peerConnection: peerConnection,
+                videoEl: videoEl
+              });
+            }
+            return delete peerConnection.videoEls;
           });
         });
-      }
-      return peerConnection.on('close', function(event) {
-        var videoEl, _i, _len, _ref;
-        console.log("remote closed", event);
-        _ref = peerConnection.videoEls;
-        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-          videoEl = _ref[_i];
-          CineIOPeer.trigger('streamRemoved', {
-            peerConnection: peerConnection,
-            videoEl: videoEl
-          });
-        }
-        return delete peerConnection.videoEls;
-      });
-    });
+      };
+    })(this);
   };
-  return primus;
+
+  return Connection;
+
+})();
+
+exports.connect = function() {
+  return new Connection;
 };
 
 CineIOPeer = require('./main');
