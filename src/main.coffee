@@ -18,19 +18,19 @@ CineIOPeer =
   reset: ->
     CineIOPeer.config = {rooms: [], videoElements: {}}
   init: (options={})->
-    CineIOPeer.config.apiKey = options.apiKey
+    CineIOPeer.config.publicKey = options.publicKey
     CineIOPeer._signalConnection ||= signalingConnection.connect()
     setTimeout CineIOPeer._checkSupport
 
   identify: (identity)->
     console.log('identifying as', identity)
     CineIOPeer.config.identity = identity
-    CineIOPeer._signalConnection.write action: 'identify', identity: identity, apikey: CineIOPeer.config.apiKey, client: 'web'
+    CineIOPeer._signalConnection.write action: 'identify', identity: identity, publicKey: CineIOPeer.config.publicKey, client: 'web'
 
   call: (identity)->
     console.log('calling', identity)
     CineIOPeer._fetchMediaSafe ->
-      CineIOPeer._signalConnection.write action: 'call', otheridentity: identity, apikey: CineIOPeer.config.apiKey, identity: CineIOPeer.config.identity
+      CineIOPeer._signalConnection.write action: 'call', otheridentity: identity, publicKey: CineIOPeer.config.publicKey, identity: CineIOPeer.config.identity
 
   join: (room)->
     CineIOPeer._fetchMediaSafe ->
