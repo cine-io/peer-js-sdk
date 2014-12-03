@@ -1,102 +1,31 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Cine.io chat example</title>
-
-  <script src="/js/compiled-dev.js"></script>
-
-  <style type="text/css">
-    #participants {
-      width: 100%;
-    }
-    video {
-      width: 100%;
-      max-width: 600px;
-    }
-  </style>
+  <title>cine.io Peer Example</title>
+  <link rel="stylesheet" type="text/css" href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css"/>
+  <link rel="stylesheet" type="text/css" href="/main.css"/>
 </head>
+
 <body>
 
-  <script type="text/javascript">
-  // http://stackoverflow.com/questions/2090551/parse-query-string-in-javascript
-    function getQueryVariable(variable) {
-      var query = window.location.search.substring(1);
-      var vars = query.split('&');
-      for (var i = 0; i < vars.length; i++) {
-          var pair = vars[i].split('=');
-          if (decodeURIComponent(pair[0]) == variable) {
-              return decodeURIComponent(pair[1]);
-          }
-      }
-      console.log('Query variable %s not found', variable);
-    }
-  </script>
-  <script type="text/javascript">
-    // /example.html?room=room-name
-    // /example.html?identity=thomas
-    // /example.html?identity=thomas&call=jeffrey
-    CineIOPeer.init({publicKey: "18b4c471bdc2bc1d16ad3cb338108a33"})
+  <div id="instructions" class="col-md-12">
+    <h2>To test out the peer client, try loading with one of the following URLs:</h2>
 
-    CineIOPeer.on('media', function(data){
-      if (data.media){
-        var participantsDiv = document.getElementById('participants')
-        participantsDiv.appendChild(data.videoElement)
-      }else{
-        document.write('Permission not granted.')
-      }
-    });
+    <ul>
+      <li><a href="/?room=test-room">/?room=test-room</a></li>
+      <li><a href="/?identity=thomas">/?identity=thomas</a></li>
+      <li><a href="/?identity=thomas&call=jeffrey">/?identity=thomas&call=jeffrey</a></li>
+    </ul>
+  </div>
 
-    CineIOPeer.on('media-request', function(data){
-        // document.write("<h1>Asking for media yooo.</h1>");
-    });
-
-    CineIOPeer.on('error', function(err) {
-      if (typeof(err.support) != "undefined" && !err.support) {
-        document.write("<h1>This browser does not support WebRTC.</h1>")
-      } else if (err.msg) {
-        document.write("<h1>" + err.msg + "</h1>")
-      }
-    });
-
-    CineIOPeer.on('streamAdded', function(data){
-      var participantsDiv = document.getElementById('participants')
-      participantsDiv.appendChild(data.videoElement)
-    });
-
-    CineIOPeer.on('incomingcall', function(data){
-      data.call.answer();
-    });
-
-    CineIOPeer.on('streamRemoved', function(data){
-      console.log('stream removed')
-      data.videoEl.remove();
-    });
-
-    var room = getQueryVariable('room');
-    if (room){
-      CineIOPeer.join(room)
-    }
-
-    var identity = getQueryVariable('identity');
-    if (identity){
-      CineIOPeer.identify(identity)
-    }
-
-    var call = getQueryVariable('call');
-    if (call){
-      CineIOPeer.call(call)
-    }
-
-    var screenShare = getQueryVariable('screenshare');
-    if (screenShare) {
-      CineIOPeer.screenShare()
-    }
-
-  </script>
-
-  <div id="participants">
+  <div id="participants" class="col-md-12">
     <!-- video elements go here -->
   </div>
+
+  <script src="//code.jquery.com/jquery-2.1.1.min.js"></script>
+  <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.1/js/bootstrap.min.js"></script>
+  <script src="/js/compiled-dev.js"></script>
+  <script src="/app.js"></script>
 
 </body>
 </html>

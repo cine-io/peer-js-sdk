@@ -1,0 +1,12 @@
+#instructions {
+  display: none;
+}
+
+#participants {
+  width: 100%;
+}
+
+video {
+  width: 100%;
+  max-width: 600px;
+}
