@@ -30,6 +30,17 @@ describe 'SignalingConnection', ->
         console.log("deleting fakeConnection", @fakeConnection.options.sparkId)
         delete @fakeConnection
 
+    createNewPeer = (sparkId, iceCandidates, done)->
+      CineIOPeer.stream = "the stream"
+      @connection.primus.trigger 'data', action: 'allservers', data: iceCandidates
+      @connection.primus.trigger 'data', action: 'member', sparkId: sparkId
+      addedStream = false
+      testFunction = -> addedStream
+      checkFunction = (callback)=>
+        addedStream = true if @fakeConnection && @fakeConnection.stream == 'the stream'
+        setTimeout(callback, 10)
+      async.until testFunction, checkFunction, done
+
     describe "allservers", ->
 
       it 'writes the ice servers', ->
@@ -105,15 +116,7 @@ describe 'SignalingConnection', ->
 
     describe "ice", ->
       beforeEach (done)->
-        CineIOPeer.stream = "the stream"
-        @connection.primus.trigger 'data', action: 'allservers', data: 'the-ice-candidates-4'
-        @connection.primus.trigger 'data', action: 'member', sparkId: 'some-spark-id-4'
-        addedStream = false
-        testFunction = -> addedStream
-        checkFunction = (callback)=>
-          addedStream = true if @fakeConnection && @fakeConnection.stream == 'the stream'
-          setTimeout(callback, 10)
-        async.until testFunction, checkFunction, done
+        createNewPeer.call(this, 'some-spark-id-4', 'the-ice-candidates-4', done)
 
       it 'does not error without a spark id', ->
         @connection.primus.trigger 'data', action: 'ice', candidate: 'the-remote-ice-candidate'
@@ -126,9 +129,41 @@ describe 'SignalingConnection', ->
         expect(@fakeConnection.remoteIce).to.equal('the-remote-ice-candidate')
 
     describe "offer", ->
-      it 'is tested'
+      beforeEach (done)->
+        createNewPeer.call(this, 'some-spark-id-5', 'the-ice-candidates-5', done)
+
+      assertAnswer = (sparkId, done)->
+        wroteOffer = false
+        testFunction = -> wroteOffer
+        checkFunction = (callback)=>
+          if @primusStub.write.calledTwice
+            args = @primusStub.write.secondCall.args
+            expect(args).to.have.length(1)
+            expect(args[0]).to.deep.equal(action: 'answer', source: "web", answer: 'some-answer-string', sparkId: sparkId)
+            wroteOffer = true
+          setTimeout(callback, 10)
+        async.until testFunction, checkFunction, done
+
+      it 'handles the offer', (done)->
+        @connection.primus.trigger 'data', action: 'offer', offer: 'the remote offer', sparkId: 'some-spark-id-5'
+        assertAnswer.call this, 'some-spark-id-5', (err)=>
+          expect(@fakeConnection.remoteOffer).to.equal('the remote offer')
+          done(err)
+
+      it 'returns an answer', (done)->
+        @connection.primus.trigger 'data', action: 'offer', offer: 'the remote offer', sparkId: 'some-spark-id-5'
+        assertAnswer.call this, 'some-spark-id-5', (err)=>
+          expect(@fakeConnection.answer.calledOnce).to.be.true
+          done(err)
+
     describe "answer", ->
-      it 'is tested'
+      beforeEach (done)->
+        createNewPeer.call(this, 'some-spark-id-5', 'the-ice-candidates-5', done)
+
+      it 'handles the answer', ->
+        @connection.primus.trigger 'data', action: 'answer', answer: 'the remote answer', sparkId: 'some-spark-id-5'
+        expect(@fakeConnection.remoteAnswer).to.equal('the remote answer')
+
     describe 'other actions', ->
       it 'does not throw an exception', ->
         @connection.primus.trigger('data', action: 'UNKNOWN_ACTION')
