@@ -16,7 +16,7 @@ class Connection
   write: =>
     @primus.write(arguments...)
 
-  newLocalStream: =>
+  newLocalStream: (stream)=>
     for otherClientSparkId, peerConnection of @peerConnections
       console.log "adding local screen stream", stream.id
       peerConnection.addStream(stream)

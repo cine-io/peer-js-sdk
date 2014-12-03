@@ -4533,7 +4533,7 @@ Connection = (function() {
     return (_ref = this.primus).write.apply(_ref, arguments);
   };
 
-  Connection.prototype.newLocalStream = function() {
+  Connection.prototype.newLocalStream = function(stream) {
     var otherClientSparkId, peerConnection, _ref, _results;
     _ref = this.peerConnections;
     _results = [];
