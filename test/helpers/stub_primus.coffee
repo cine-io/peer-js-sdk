@@ -2,9 +2,9 @@ Primus = require('../../src/vendor/primus')
 BackboneEvents = require("backbone-events-standalone")
 
 class PrimusStub
-  constructor: ->
-    BackboneEvents.mixin this
   write: ->
+
+BackboneEvents.mixin PrimusStub::
 
 module.exports = ->
   beforeEach ->

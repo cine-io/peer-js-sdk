@@ -18,6 +18,18 @@ describe 'SignalingConnection', ->
     beforeEach ->
       @connection = SignalingConnection.connect()
 
+    beforeEach ->
+      sinon.stub @connection, '_initializeNewPeerConnection', (options)=>
+        if @fakeConnection
+          console.log("ugh fakeConnection", options.sparkId, @fakeConnection.options.sparkId)
+          throw new Error("Two connections made!!!")
+        @fakeConnection = new FakePeerConnection(options)
+
+    afterEach ->
+      if @fakeConnection
+        console.log("deleting fakeConnection", @fakeConnection.options.sparkId)
+        delete @fakeConnection
+
     describe "allservers", ->
 
       it 'writes the ice servers', ->
@@ -35,7 +47,6 @@ describe 'SignalingConnection', ->
           done()
         CineIOPeer.on 'gotIceServers', handler
         @connection.primus.trigger 'data', action: 'allservers', data: "some ice servers"
-
     describe "incomingcall", ->
       it 'triggers an event', (done)->
         handler = (data)->
@@ -60,47 +71,60 @@ describe 'SignalingConnection', ->
         @connection.primus.trigger 'data', action: 'leave', sparkId: 'some-spark-id'
         expect(pc.close.calledOnce).to.be.false
         expect(@connection.peerConnections).to.deep.equal('some-second-spark-id': pc)
-
     describe "member", ->
-      beforeEach ->
-        sinon.stub @connection, '_initializeNewPeerConnection', (options)=>
-          throw new Error("Two connections made!!!") if @fakeConnection
-          @fakeConnection = new FakePeerConnection(options)
-      afterEach ->
-        delete @fakeConnection
-      assertOffer = (done)->
+      assertOffer = (sparkId, done)->
         wroteOffer = false
         testFunction = -> wroteOffer
         checkFunction = (callback)=>
           if @primusStub.write.calledOnce
             args = @primusStub.write.firstCall.args
             expect(args).to.have.length(1)
-            expect(args[0]).to.deep.equal(action: 'offer', source: "web", offer: 'some-offer-string', sparkId: 'some-spark-id')
+            expect(args[0]).to.deep.equal(action: 'offer', source: "web", offer: 'some-offer-string', sparkId: sparkId)
             wroteOffer = true
           setTimeout(callback, 10)
         async.until testFunction, checkFunction, done
 
       it 'sends an offer', (done)->
-        @connection.primus.trigger 'data', action: 'allservers', data: 'the-ice-candidates'
+        @connection.primus.trigger 'data', action: 'allservers', data: 'the-ice-candidates-1'
         @connection.primus.trigger 'data', action: 'member', sparkId: 'some-spark-id'
-        assertOffer.call(this, done)
+        assertOffer.call(this, "some-spark-id", done)
 
       it 'attaches the cineio stream', (done)->
         CineIOPeer.stream = "the stream"
-        @connection.primus.trigger 'data', action: 'allservers', data: 'the-ice-candidates'
-        @connection.primus.trigger 'data', action: 'member', sparkId: 'some-spark-id'
-        assertOffer.call this, (err)=>
+        @connection.primus.trigger 'data', action: 'allservers', data: 'the-ice-candidates-2'
+        @connection.primus.trigger 'data', action: 'member', sparkId: 'some-spark-id-2'
+        assertOffer.call this, "some-spark-id-2", (err)=>
           expect(@fakeConnection.stream).to.equal('the stream')
           done(err)
 
       it 'waits for ice candidates', (done)->
-        @connection.primus.trigger 'data', action: 'member', sparkId: 'some-spark-id'
+        @connection.primus.trigger 'data', action: 'member', sparkId: 'some-spark-id-3'
         setTimeout =>
-          @connection.primus.trigger 'data', action: 'allservers', data: 'the-ice-candidates'
-          assertOffer.call(this, done)
+          @connection.primus.trigger 'data', action: 'allservers', data: 'the-ice-candidates-3'
+          assertOffer.call(this, "some-spark-id-3", done)
 
     describe "ice", ->
-      it 'is tested'
+      beforeEach (done)->
+        CineIOPeer.stream = "the stream"
+        @connection.primus.trigger 'data', action: 'allservers', data: 'the-ice-candidates-4'
+        @connection.primus.trigger 'data', action: 'member', sparkId: 'some-spark-id-4'
+        addedStream = false
+        testFunction = -> addedStream
+        checkFunction = (callback)=>
+          addedStream = true if @fakeConnection && @fakeConnection.stream == 'the stream'
+          setTimeout(callback, 10)
+        async.until testFunction, checkFunction, done
+
+      it 'does not error without a spark id', ->
+        @connection.primus.trigger 'data', action: 'ice', candidate: 'the-remote-ice-candidate'
+        expect(@fakeConnection.remoteIce).to.be.undefined
+
+      it 'does not send an offer when creating a new peer client'
+
+      it 'adds iceCandidate to the peer connection', ->
+        @connection.primus.trigger 'data', action: 'ice', candidate: 'the-remote-ice-candidate', sparkId: 'some-spark-id-4'
+        expect(@fakeConnection.remoteIce).to.equal('the-remote-ice-candidate')
+
     describe "offer", ->
       it 'is tested'
     describe "answer", ->
@@ -108,6 +132,7 @@ describe 'SignalingConnection', ->
     describe 'other actions', ->
       it 'does not throw an exception', ->
         @connection.primus.trigger('data', action: 'UNKNOWN_ACTION')
+  describe 'peer connection events'
   describe '#write', ->
     it 'is tested'
   describe '#newLocalStream', ->

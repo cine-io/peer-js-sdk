@@ -23,19 +23,19 @@ CineIOPeer =
     setTimeout CineIOPeer._checkSupport
 
   identify: (identity)->
-    console.log('identifying as', identity)
+    # console.log('identifying as', identity)
     CineIOPeer.config.identity = identity
     CineIOPeer._signalConnection.write action: 'identify', identity: identity, publicKey: CineIOPeer.config.publicKey, client: 'web'
 
   call: (identity, callback=noop)->
-    console.log('calling', identity)
+    # console.log('calling', identity)
     CineIOPeer.fetchMedia (err)->
       return callback(err) if err
       CineIOPeer._signalConnection.write action: 'call', otheridentity: identity, publicKey: CineIOPeer.config.publicKey, identity: CineIOPeer.config.identity
       callback()
 
   join: (room, callback=noop)->
-    console.log('Joining', room)
+    # console.log('Joining', room)
     CineIOPeer.fetchMedia (err)->
       return callback(err) if err
       CineIOPeer._unsafeJoin(room)
@@ -55,10 +55,10 @@ CineIOPeer =
       clearTimeout requestTimeout
       if err
         CineIOPeer.trigger 'media', media: false
-        console.log("ERROR", err)
+        # console.log("ERROR", err)
         return callback(err)
       response.media = true
-      console.log('got media', response)
+      # console.log('got media', response)
       CineIOPeer.trigger 'media', response
       callback()
 
@@ -92,7 +92,7 @@ CineIOPeer =
     streamDoptions =
       video: userOrDefault(options, 'video')
       audio: userOrDefault(options, 'audio')
-    console.log('fetching media', options)
+    # console.log('fetching media', options)
 
     CineIOPeer._unsafeGetUserMedia streamDoptions, (err, stream)=>
       return callback(err) if err
