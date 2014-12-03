@@ -3,7 +3,7 @@
 <head>
   <title>Cine.io chat example</title>
 
-  <script src="../build/compiled.js"></script>
+  <script src="/js/compiled-dev.js"></script>
 
   <style type="text/css">
     #participants {
@@ -67,6 +67,7 @@
 
     CineIOPeer.on('streamRemoved', function(data){
       console.log('stream removed')
+      data.videoEl.remove();
     });
 
     var room = getQueryVariable('room');
@@ -82,6 +83,11 @@
     var call = getQueryVariable('call');
     if (call){
       CineIOPeer.call(call)
+    }
+
+    var screenShare = getQueryVariable('screenshare');
+    if (screenShare) {
+      CineIOPeer.screenShare()
     }
 
   </script>

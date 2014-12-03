@@ -1,4 +1,6 @@
+protocol = if location.protocol == 'https:' then 'https' else 'http'
+
 if process.env.NODE_ENV == 'production'
-  exports.signalingServer = "http://signaling.cine.io"
+  exports.signalingServer = "#{protocol}://signaling.cine.io"
 if process.env.NODE_ENV == 'development'
-  exports.signalingServer = 'http://localhost:8888'
+  exports.signalingServer = "#{protocol}://localhost.cine.io:8443"
