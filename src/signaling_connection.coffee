@@ -9,7 +9,8 @@ newConnection = ->
 peerConnections = {}
 
 exports.newLocalStream = (stream)->
-  for otherClientSparkId, peerConnection in peerConnections
+  for otherClientSparkId, peerConnection of peerConnections
+    console.log "adding local screen stream", stream.id
     peerConnection.addStream(stream)
 
 class Connection
@@ -55,7 +56,7 @@ class Connection
 
         # peerConnection standard config
         when 'ice'
-          console.log('got remote ice', data)
+          #console.log('got remote ice', data)
           ensurePeerConnection(data.sparkId, offer: false).processIce(data.candidate)
 
         # peerConnection standard config
@@ -71,8 +72,8 @@ class Connection
         when 'answer'
           console.log('got answer', data)
           ensurePeerConnection(data.sparkId, offer: false).handleAnswer(data.answer)
-        else
-          console.log("UNKNOWN DATA", data)
+        # else
+        #   console.log("UNKNOWN DATA", data)
 
     newMember = (otherClientSparkId, options)=>
       ensureIce =>
@@ -110,7 +111,7 @@ class Connection
             videoElement: videoEl
 
         peerConnection.on 'ice', (candidate)=>
-          console.log('got my ice', candidate.candidate.candidate)
+          #console.log('got my ice', candidate.candidate.candidate)
           @write action: 'ice', source: "web", candidate: candidate, sparkId: otherClientSparkId
 
         if options.offer

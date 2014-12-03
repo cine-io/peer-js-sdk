@@ -85,6 +85,11 @@
       CineIOPeer.call(call)
     }
 
+    var screenShare = getQueryVariable('screenshare');
+    if (screenShare) {
+      CineIOPeer.screenShare()
+    }
+
   </script>
 
   <div id="participants">
