@@ -56,5 +56,7 @@ describe 'SignalingConnection', ->
     describe 'other actions', ->
       it 'does not throw an exception', ->
         @connection.primus.trigger('data', action: 'UNKNOWN_ACTION')
-  describe '.newLocalStream', ->
+  describe '#write', ->
+    it 'is tested'
+  describe '#newLocalStream', ->
     it 'is tested'
