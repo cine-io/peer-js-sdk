@@ -3,6 +3,7 @@ http = require("http")
 fs = require("fs")
 express = require("express")
 connect = require("connect")
+morgan = require('morgan')
 
 port = process.env.PORT or 9090
 sslPort = process.env.SSL_PORT or 9443
@@ -24,6 +25,8 @@ options =
 app = connect()
 httpRouter = express.Router()
 httpServer = express()
+app.use morgan("dev")
+
 httpsServer = https.createServer(options, app)
 
 # redirect http traffic to https
