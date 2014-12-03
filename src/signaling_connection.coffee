@@ -38,7 +38,7 @@ class Connection
         console.log('leaving', data)
         return unless @peerConnections[data.sparkId]
         @peerConnections[data.sparkId].close()
-        @peerConnections[data.sparkId] = null
+        delete @peerConnections[data.sparkId]
 
       when 'member'
         console.log('got new member', data)
@@ -67,7 +67,7 @@ class Connection
 
   _newMember: (otherClientSparkId, options)=>
     @_ensureIce =>
-      peerConnection = new PeerConnection(iceServers: @iceServers)
+      peerConnection = @_initializeNewPeerConnection(iceServers: @iceServers)
       @peerConnections[otherClientSparkId] = peerConnection
 
       # console.log("CineIOPeer.stream", CineIOPeer.stream)
@@ -123,9 +123,11 @@ class Connection
       @_newMember(otherClientSparkId, options)
 
   _ensureIce: (callback)=>
-      return callback() if @fetchedIce
+      return setTimeout callback if @fetchedIce
       CineIOPeer.on 'gotIceServers', callback
 
+  _initializeNewPeerConnection: (options)->
+    new PeerConnection(options)
 
 exports.connect = ->
   new Connection
