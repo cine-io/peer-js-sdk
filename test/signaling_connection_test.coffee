@@ -35,7 +35,14 @@ describe 'SignalingConnection', ->
         @connection.primus.trigger 'data', action: 'allservers', data: "some ice servers"
 
     describe "incomingcall", ->
-      it 'is tested'
+      it 'triggers an event', (done)->
+        handler = (data)->
+          expect(data.call.answer).to.be.a('function')
+          expect(data.call.reject).to.be.a('function')
+          expect(data.call._data.room).to.equal('some-room')
+          done()
+        CineIOPeer.on 'incomingcall', handler
+        @connection.primus.trigger 'data', action: 'incomingcall', room: 'some-room'
     describe "leave", ->
       it 'is tested'
     describe "member", ->
