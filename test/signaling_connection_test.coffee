@@ -66,9 +66,9 @@ describe 'SignalingConnection', ->
           expect(data.call.answer).to.be.a('function')
           expect(data.call.reject).to.be.a('function')
           expect(data.call._data.room).to.equal('some-room')
-          CineIOPeer.off 'incomingcall', handler
+          CineIOPeer.off 'incomingCall', handler
           done()
-        CineIOPeer.on 'incomingcall', handler
+        CineIOPeer.on 'incomingCall', handler
         @connection.primus.trigger 'data', action: 'incomingcall', room: 'some-room'
     describe "leave", ->
       it 'closes the connection for that peer', ->
@@ -185,11 +185,12 @@ describe 'SignalingConnection', ->
 
       it 'triggers streamAdded', (done)->
         handler = (data)=>
-          CineIOPeer.off 'streamAdded', handler
+          CineIOPeer.off 'mediaAdded', handler
           expect(data.peerConnection).to.equal(@fakeConnection)
           expect(data.videoElement).to.equal(@fakeConnection.videoEls[0])
+          expect(data.remote).to.be.true
           done()
-        CineIOPeer.on 'streamAdded', handler
+        CineIOPeer.on 'mediaAdded', handler
         @fakeConnection.trigger 'addStream', stream: new FakeMediaStream
 
     describe 'removeStream', ->
@@ -206,11 +207,12 @@ describe 'SignalingConnection', ->
       it 'triggers streamRemoved', (done)->
         videoElement = @fakeConnection.videoEls[0]
         handler = (data)=>
-          CineIOPeer.off 'streamRemoved', handler
+          CineIOPeer.off 'mediaRemoved', handler
           expect(data.peerConnection).to.equal(@fakeConnection)
           expect(data.videoElement).to.equal(videoElement)
+          expect(data.remote).to.be.true
           done()
-        CineIOPeer.on 'streamRemoved', handler
+        CineIOPeer.on 'mediaRemoved', handler
         @fakeConnection.trigger 'removeStream', stream: new FakeMediaStream
     describe 'ice', ->
       it 'writes to primus', ->
@@ -229,21 +231,22 @@ describe 'SignalingConnection', ->
         @fakeConnection.trigger 'addStream', stream: @mediaStream2
         expect(@fakeConnection.videoEls).to.have.length(2)
 
-      it 'triggers streamRemoved for all videos', (done)->
+      it 'triggers mediaRemoved for all videos', (done)->
         callCount = 0
         firstVideoIndex = null
         videos = @fakeConnection.videoEls
         handler = (data)=>
           callCount +=1
           expect(data.peerConnection).to.equal(@fakeConnection)
+          expect(data.remote).to.be.true
           index = videos.indexOf(data.videoElement)
           expect(index).to.be.gte(0)
           return firstVideoIndex = index if callCount == 1
           expect(firstVideoIndex).not.to.equal(index)
-          CineIOPeer.off 'streamRemoved', handler
+          CineIOPeer.off 'mediaRemoved', handler
           done()
 
-        CineIOPeer.on 'streamRemoved', handler
+        CineIOPeer.on 'mediaRemoved', handler
         @fakeConnection.trigger 'close'
 
 

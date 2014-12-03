@@ -2,18 +2,31 @@ $(function() {
 
   CineIOPeer.init({ publicKey: "18b4c471bdc2bc1d16ad3cb338108a33" })
 
-  CineIOPeer.on('media', function(data) {
-    if (data.media) {
+  CineIOPeer.on('mediaAdded', function(data) {
+    if (data.local) {
       var $vid = $(data.videoElement)
       $vid.addClass("col-md-4")
       $("#participants").append($vid)
     } else {
-      alert('Permission denied.')
+      var participantsDiv = document.getElementById('participants')
+      participantsDiv.appendChild(data.videoElement)
     }
-  })
+  });
 
-  CineIOPeer.on('media-request', function(data) {
-    //document.write("<h1>Asking for media yooo.</h1>");
+  CineIOPeer.on('mediaRejected', function(data) {
+    alert('Permission denied.')
+  });
+
+  CineIOPeer.on('mediaRemoved', function(data) {
+    data.videoEl.remove()
+  });
+
+  CineIOPeer.on('incomingCall', function(data) {
+    data.call.answer()
+  });
+
+  CineIOPeer.on('mediaRequest', function(data) {
+    //document.write("<h1>Asking for media.</h1>");
   });
 
   CineIOPeer.on('error', function(err) {
@@ -22,20 +35,7 @@ $(function() {
     } else if (err.msg) {
       alert(err.msg)
     }
-  })
-
-  CineIOPeer.on('streamAdded', function(data) {
-    var participantsDiv = document.getElementById('participants')
-    participantsDiv.appendChild(data.videoElement)
-  })
-
-  CineIOPeer.on('incomingcall', function(data) {
-    data.call.answer()
-  })
-
-  CineIOPeer.on('streamRemoved', function(data) {
-    data.videoEl.remove()
-  })
+  });
 
   var qs = {}
   if (location.search) {

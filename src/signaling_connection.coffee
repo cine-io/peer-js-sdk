@@ -5,6 +5,8 @@ Config = require('./config')
 connectToCineSignaling = ->
   Primus.connect(Config.signalingServer)
 
+PENDING = 1
+
 class Connection
   constructor: ->
     @iceServers = null
@@ -32,7 +34,7 @@ class Connection
 
       when 'incomingcall'
         # console.log('got incoming call', data)
-        CineIOPeer.trigger('incomingcall', call: new CallObject(data))
+        CineIOPeer.trigger('incomingCall', call: new CallObject(data))
 
       when 'leave'
         # console.log('leaving', data)
@@ -41,36 +43,46 @@ class Connection
         delete @peerConnections[data.sparkId]
 
       when 'member'
-        # console.log('got new member', data)
+        console.log('got new member', data)
         @_ensurePeerConnection(data.sparkId, offer: true)
 
       # peerConnection standard config
       when 'ice'
         #console.log('got remote ice', data)
         return unless data.sparkId
-        @_ensurePeerConnection(data.sparkId, offer: false).processIce(data.candidate)
+        @_ensurePeerConnection data.sparkId, offer: false, (err, pc)=>
+          pc.processIce(data.candidate)
 
       # peerConnection standard config
       when 'offer'
         otherClientSparkId = data.sparkId
         # console.log('got offer', data)
-        @_ensurePeerConnection(otherClientSparkId, offer: false).handleOffer data.offer, (err)=>
+        @_ensurePeerConnection otherClientSparkId, offer: false, (err, pc)->
+          pc.handleOffer data.offer, (err)=>
           # console.log('handled offer', err)
-          @peerConnections[otherClientSparkId].answer (err, answer)=>
-            @write action: 'answer', source: "web", answer: answer, sparkId: otherClientSparkId
+            pc.answer (err, answer)=>
+              @write action: 'answer', source: "web", answer: answer, sparkId: otherClientSparkId
 
       # peerConnection standard config
       when 'answer'
         # console.log('got answer', data)
-        @_ensurePeerConnection(data.sparkId, offer: false).handleAnswer(data.answer)
+        @_ensurePeerConnection data.sparkId, offer: false, (err, pc)->
+          pc.handleAnswer(data.answer)
       # else
       #   console.log("UNKNOWN DATA", data)
 
-  _newMember: (otherClientSparkId, options)=>
+  _newMember: (otherClientSparkId, options, callback)=>
+    # we must be pending to get ice candidates, do not create a new pc
+    if @peerConnections[otherClientSparkId]
+      return @_ensureIce =>
+        callback(null, @peerConnections[otherClientSparkId])
+
+    @peerConnections[otherClientSparkId] = PENDING
     @_ensureIce =>
+      console.log("CREATING NEW PEER CONNECTION!!", otherClientSparkId, options)
       peerConnection = @_initializeNewPeerConnection(sparkId: otherClientSparkId, iceServers: @iceServers)
       @peerConnections[otherClientSparkId] = peerConnection
-
+      peerConnection.videoEls = []
       # console.log("CineIOPeer.stream", CineIOPeer.stream)
       streamAttached = false
       if CineIOPeer.stream
@@ -85,11 +97,11 @@ class Connection
       peerConnection.on 'addStream', (event)->
         # console.log("got remote stream", event)
         videoEl = CineIOPeer._createVideoElementFromStream(event.stream, muted: false, mirror: false)
-        peerConnection.videoEls ||= []
         peerConnection.videoEls.push videoEl
-        CineIOPeer.trigger 'streamAdded',
+        CineIOPeer.trigger 'mediaAdded',
           peerConnection: peerConnection
           videoElement: videoEl
+          remote: true
 
       peerConnection.on 'removeStream', (event)->
         # console.log("got remote stream", event)
@@ -97,9 +109,10 @@ class Connection
         index = peerConnection.videoEls.indexOf(videoEl)
         peerConnection.videoEls.splice(index, 1) if index > -1
 
-        CineIOPeer.trigger 'streamRemoved',
+        CineIOPeer.trigger 'mediaRemoved',
           peerConnection: peerConnection
           videoElement: videoEl
+          remote: true
 
       peerConnection.on 'ice', (candidate)=>
         #console.log('got my ice', candidate.candidate.candidate)
@@ -115,13 +128,18 @@ class Connection
       peerConnection.on 'close', (event)->
         # console.log("remote closed", event)
         for videoEl in peerConnection.videoEls
-          CineIOPeer.trigger 'streamRemoved', peerConnection: peerConnection, videoElement: videoEl
+          CineIOPeer.trigger 'mediaRemoved',
+            peerConnection: peerConnection
+            videoElement: videoEl
+            remote: true
         delete peerConnection.videoEls
 
-  _ensurePeerConnection: (otherClientSparkId, options)=>
-      return @peerConnections[otherClientSparkId] if @peerConnections[otherClientSparkId]
-      console.log("CREATING NEW PEER CONNECTION!!", otherClientSparkId, options)
-      @_newMember(otherClientSparkId, options)
+  _ensurePeerConnection: (otherClientSparkId, options, callback)=>
+    candidate = @peerConnections[otherClientSparkId]
+    if candidate && candidate != PENDING
+      return setTimeout ->
+        callback null, candidate
+    @_newMember(otherClientSparkId, options, callback)
 
   _ensureIce: (callback)=>
       return setTimeout callback if @fetchedIce

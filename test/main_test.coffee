@@ -171,27 +171,33 @@ describe 'CineIOPeer', ->
 
         it 'triggers media with the stream and media true', (done)->
           mediaResponse = (data)->
-            expect(data.media).to.be.true
-            CineIOPeer.off 'media', mediaResponse
+            expect(data.local).to.be.true
+            expect(data.videoElement.tagName).to.equal('VIDEO')
+            expect(data.videoElement.src).to.equal("blob:http%3A//#{window.location.host}/identifier")
+            expect(data.stream.id).to.equal('stream-id')
+            CineIOPeer.off 'mediaAdded', mediaResponse
             done()
-          CineIOPeer.on 'media', mediaResponse
+          CineIOPeer.on 'mediaAdded', mediaResponse
           CineIOPeer.fetchMedia()
+
       describe 'failure', ->
         stubUserMedia(false)
 
         it 'returns with the error', (done)->
           mediaResponse = (data)->
-            expect(data.media).to.be.false
-            CineIOPeer.off 'media', mediaResponse
+            CineIOPeer.off 'mediaRejected', mediaResponse
             done()
-          CineIOPeer.on 'media', mediaResponse
+          CineIOPeer.on 'mediaRejected', mediaResponse
           CineIOPeer.fetchMedia (err)->
             expect(err).to.equal('could not fetch media')
 
         it 'triggers media with the stream and media false', (done)->
           mediaResponse = (data)->
-            expect(data.media).to.be.false
-            CineIOPeer.off 'media', mediaResponse
+            expect(data.local).to.be.true
+            expect(data.videoElement).to.be.undefined
+            expect(data.stream).to.be.undefined
+
+            CineIOPeer.off 'mediaRejected', mediaResponse
             done()
-          CineIOPeer.on 'media', mediaResponse
+          CineIOPeer.on 'mediaRejected', mediaResponse
           CineIOPeer.fetchMedia()

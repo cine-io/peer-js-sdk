@@ -4411,13 +4411,19 @@ CineIOPeer = {
     return CineIOPeer._askForMedia(function(err, response) {
       clearTimeout(requestTimeout);
       if (err) {
-        CineIOPeer.trigger('media', {
-          media: false
+        CineIOPeer.trigger('mediaRejected', {
+          type: 'camera',
+          local: true
         });
         return callback(err);
       }
-      response.media = true;
-      CineIOPeer.trigger('media', response);
+      response;
+      CineIOPeer.trigger('mediaAdded', {
+        videoElement: response.videoElement,
+        stream: response.stream,
+        type: 'camera',
+        local: true
+      });
       return callback();
     });
   },
@@ -4432,10 +4438,11 @@ CineIOPeer = {
         videoEl = _this._createVideoElementFromStream(screenShareStream);
         CineIOPeer.screenShareStream = screenShareStream;
         CineIOPeer._signalConnection.newLocalStream(screenShareStream);
-        return CineIOPeer.trigger('media', {
+        return CineIOPeer.trigger('mediaAdded', {
           videoElement: videoEl,
           stream: screenShareStream,
-          media: true
+          type: 'screen',
+          local: true
         });
       };
     })(this);
@@ -4461,7 +4468,7 @@ CineIOPeer = {
     });
   },
   _mediaNotReady: function() {
-    return CineIOPeer.trigger('media-request');
+    return CineIOPeer.trigger('mediaRequest');
   },
   _askForMedia: function(options, callback) {
     var streamDoptions;
@@ -4617,7 +4624,7 @@ module.exports = ScreenSharer;
 
 
 },{"./chrome_screen_sharer":21,"./firefox_screen_sharer":23,"./screen_share_base":25}],27:[function(require,module,exports){
-var CallObject, CineIOPeer, Config, Connection, PeerConnection, Primus, connectToCineSignaling,
+var CallObject, CineIOPeer, Config, Connection, PENDING, PeerConnection, Primus, connectToCineSignaling,
   __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
 PeerConnection = require('rtcpeerconnection');
@@ -4629,6 +4636,8 @@ Config = require('./config');
 connectToCineSignaling = function() {
   return Primus.connect(Config.signalingServer);
 };
+
+PENDING = 1;
 
 Connection = (function() {
   function Connection() {
@@ -4670,7 +4679,7 @@ Connection = (function() {
         this.fetchedIce = true;
         return CineIOPeer.trigger('gotIceServers');
       case 'incomingcall':
-        return CineIOPeer.trigger('incomingcall', {
+        return CineIOPeer.trigger('incomingCall', {
           call: new CallObject(data)
         });
       case 'leave':
@@ -4680,6 +4689,7 @@ Connection = (function() {
         this.peerConnections[data.sparkId].close();
         return delete this.peerConnections[data.sparkId];
       case 'member':
+        console.log('got new member', data);
         return this._ensurePeerConnection(data.sparkId, {
           offer: true
         });
@@ -4689,39 +4699,57 @@ Connection = (function() {
         }
         return this._ensurePeerConnection(data.sparkId, {
           offer: false
-        }).processIce(data.candidate);
+        }, (function(_this) {
+          return function(err, pc) {
+            return pc.processIce(data.candidate);
+          };
+        })(this));
       case 'offer':
         otherClientSparkId = data.sparkId;
         return this._ensurePeerConnection(otherClientSparkId, {
           offer: false
-        }).handleOffer(data.offer, (function(_this) {
-          return function(err) {
-            return _this.peerConnections[otherClientSparkId].answer(function(err, answer) {
-              return _this.write({
-                action: 'answer',
-                source: "web",
-                answer: answer,
-                sparkId: otherClientSparkId
+        }, function(err, pc) {
+          return pc.handleOffer(data.offer, (function(_this) {
+            return function(err) {
+              return pc.answer(function(err, answer) {
+                return _this.write({
+                  action: 'answer',
+                  source: "web",
+                  answer: answer,
+                  sparkId: otherClientSparkId
+                });
               });
-            });
-          };
-        })(this));
+            };
+          })(this));
+        });
       case 'answer':
         return this._ensurePeerConnection(data.sparkId, {
           offer: false
-        }).handleAnswer(data.answer);
+        }, function(err, pc) {
+          return pc.handleAnswer(data.answer);
+        });
     }
   };
 
-  Connection.prototype._newMember = function(otherClientSparkId, options) {
+  Connection.prototype._newMember = function(otherClientSparkId, options, callback) {
+    if (this.peerConnections[otherClientSparkId]) {
+      return this._ensureIce((function(_this) {
+        return function() {
+          return callback(null, _this.peerConnections[otherClientSparkId]);
+        };
+      })(this));
+    }
+    this.peerConnections[otherClientSparkId] = PENDING;
     return this._ensureIce((function(_this) {
       return function() {
         var peerConnection, streamAttached;
+        console.log("CREATING NEW PEER CONNECTION!!", otherClientSparkId, options);
         peerConnection = _this._initializeNewPeerConnection({
           sparkId: otherClientSparkId,
           iceServers: _this.iceServers
         });
         _this.peerConnections[otherClientSparkId] = peerConnection;
+        peerConnection.videoEls = [];
         streamAttached = false;
         if (CineIOPeer.stream) {
           peerConnection.addStream(CineIOPeer.stream);
@@ -4740,11 +4768,11 @@ Connection = (function() {
             muted: false,
             mirror: false
           });
-          peerConnection.videoEls || (peerConnection.videoEls = []);
           peerConnection.videoEls.push(videoEl);
-          return CineIOPeer.trigger('streamAdded', {
+          return CineIOPeer.trigger('mediaAdded', {
             peerConnection: peerConnection,
-            videoElement: videoEl
+            videoElement: videoEl,
+            remote: true
           });
         });
         peerConnection.on('removeStream', function(event) {
@@ -4754,9 +4782,10 @@ Connection = (function() {
           if (index > -1) {
             peerConnection.videoEls.splice(index, 1);
           }
-          return CineIOPeer.trigger('streamRemoved', {
+          return CineIOPeer.trigger('mediaRemoved', {
             peerConnection: peerConnection,
-            videoElement: videoEl
+            videoElement: videoEl,
+            remote: true
           });
         });
         peerConnection.on('ice', function(candidate) {
@@ -4783,9 +4812,10 @@ Connection = (function() {
           _ref = peerConnection.videoEls;
           for (_i = 0, _len = _ref.length; _i < _len; _i++) {
             videoEl = _ref[_i];
-            CineIOPeer.trigger('streamRemoved', {
+            CineIOPeer.trigger('mediaRemoved', {
               peerConnection: peerConnection,
-              videoElement: videoEl
+              videoElement: videoEl,
+              remote: true
             });
           }
           return delete peerConnection.videoEls;
@@ -4794,12 +4824,15 @@ Connection = (function() {
     })(this));
   };
 
-  Connection.prototype._ensurePeerConnection = function(otherClientSparkId, options) {
-    if (this.peerConnections[otherClientSparkId]) {
-      return this.peerConnections[otherClientSparkId];
+  Connection.prototype._ensurePeerConnection = function(otherClientSparkId, options, callback) {
+    var candidate;
+    candidate = this.peerConnections[otherClientSparkId];
+    if (candidate && candidate !== PENDING) {
+      return setTimeout(function() {
+        return callback(null, candidate);
+      });
     }
-    console.log("CREATING NEW PEER CONNECTION!!", otherClientSparkId, options);
-    return this._newMember(otherClientSparkId, options);
+    return this._newMember(otherClientSparkId, options, callback);
   };
 
   Connection.prototype._ensureIce = function(callback) {
