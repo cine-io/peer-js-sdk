@@ -5,9 +5,10 @@ module.exports = class FakePeerConnection
     sinon.stub this, 'close'
     sinon.spy this, 'answer'
     sinon.spy this, 'offer'
-
+    @streams = []
   close: ->
-  addStream: (@stream)->
+  addStream: (stream)->
+    @streams.push(stream)
   processIce: (@remoteIce)->
   handleOffer: (@remoteOffer, callback)->
     setTimeout ->

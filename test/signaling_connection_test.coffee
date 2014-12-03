@@ -37,7 +37,7 @@ describe 'SignalingConnection', ->
       addedStream = false
       testFunction = -> addedStream
       checkFunction = (callback)=>
-        addedStream = true if @fakeConnection && @fakeConnection.stream == 'the stream'
+        addedStream = true if @fakeConnection && @fakeConnection.streams[0] == 'the stream'
         setTimeout(callback, 10)
       async.until testFunction, checkFunction, done
 
@@ -105,7 +105,7 @@ describe 'SignalingConnection', ->
         @connection.primus.trigger 'data', action: 'allservers', data: 'the-ice-candidates-2'
         @connection.primus.trigger 'data', action: 'member', sparkId: 'some-spark-id-2'
         assertOffer.call this, "some-spark-id-2", (err)=>
-          expect(@fakeConnection.stream).to.equal('the stream')
+          expect(@fakeConnection.streams).to.deep.equal(['the stream'])
           done(err)
 
       it 'waits for ice candidates', (done)->
@@ -169,6 +169,7 @@ describe 'SignalingConnection', ->
         @connection.primus.trigger('data', action: 'UNKNOWN_ACTION')
   describe 'peer connection events', ->
     it 'is tested'
+
   describe '#write', ->
     it 'calls to primus', ->
       connection = SignalingConnection.connect()
@@ -177,5 +178,16 @@ describe 'SignalingConnection', ->
       args = @primusStub.write.firstCall.args
       expect(args).to.have.length(1)
       expect(args[0]).to.deep.equal(some: 'data')
+
   describe '#newLocalStream', ->
-    it 'is tested'
+    it 'adds the stream to all the', ->
+      connection = SignalingConnection.connect()
+      connection.peerConnections['a'] = new FakePeerConnection
+      connection.peerConnections['a'].addStream('first stream')
+      connection.peerConnections['b'] = new FakePeerConnection
+      connection.peerConnections['b'].addStream('first stream')
+      connection.newLocalStream('my new stream')
+      expect(connection.peerConnections['a'].streams).to.have.length(2)
+      expect(connection.peerConnections['a'].streams).to.deep.equal(['first stream', 'my new stream'])
+      expect(connection.peerConnections['b'].streams).to.have.length(2)
+      expect(connection.peerConnections['b'].streams).to.deep.equal(['first stream', 'my new stream'])
