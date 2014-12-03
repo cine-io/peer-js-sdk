@@ -167,8 +167,15 @@ describe 'SignalingConnection', ->
     describe 'other actions', ->
       it 'does not throw an exception', ->
         @connection.primus.trigger('data', action: 'UNKNOWN_ACTION')
-  describe 'peer connection events'
-  describe '#write', ->
+  describe 'peer connection events', ->
     it 'is tested'
+  describe '#write', ->
+    it 'calls to primus', ->
+      connection = SignalingConnection.connect()
+      connection.write some: 'data'
+      expect(@primusStub.write.calledOnce).to.be.true
+      args = @primusStub.write.firstCall.args
+      expect(args).to.have.length(1)
+      expect(args[0]).to.deep.equal(some: 'data')
   describe '#newLocalStream', ->
     it 'is tested'
