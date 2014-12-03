@@ -67,7 +67,7 @@ CineIOPeer =
       return CineIOPeer.trigger('error', msg: err) if err
       videoEl = @_createVideoElementFromStream(screenShareStream)
       CineIOPeer.screenShareStream = screenShareStream
-      signalingConnection.newLocalStream(screenShareStream)
+      CineIOPeer._signalConnection.newLocalStream(screenShareStream)
       CineIOPeer.trigger('media', videoElement: videoEl, stream: screenShareStream, media: true)
 
   _checkSupport: ->
