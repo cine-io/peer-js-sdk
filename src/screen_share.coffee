@@ -1,3 +1,5 @@
+webrtcSupport = require('webrtcsupport')
+
 ScreenShare =
   getStream: (cb)->
     @_init cb
@@ -15,9 +17,8 @@ ScreenShare =
       }, @_onStreamReceived.bind(this), @_onError.bind(this))
 
   _init: (cb)->
-    return cb("No window object!") unless window
-    return cb("No navigator object!") unless navigator
-    return cb("Screen sharing not implemented in this browser.") unless navigator.webkitGetUserMedia or navigator.mozGetUserMedia
+    return cb("Screen sharing requires a browser environment!") unless window and navigator
+    return cb("Screen sharing not implemented in this browser / environment.") unless webrtcSupport.screenSharing
     @_callback = cb
     window.addEventListener("message", @_receiveMessage.bind(this), false)
 
