@@ -50,9 +50,11 @@
         // document.write("<h1>Asking for media yooo.</h1>");
     });
 
-    CineIOPeer.on('error', function(data){
-      if (!data.support){
-        document.write("<h1>This browser does not support chat.</h1>");
+    CineIOPeer.on('error', function(err) {
+      if (typeof(err.support) != "undefined" && !err.support) {
+        document.write("<h1>This browser does not support WebRTC.</h1>")
+      } else if (err.msg) {
+        document.write("<h1>" + err.msg + "</h1>")
       }
     });
 
