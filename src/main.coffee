@@ -63,12 +63,14 @@ CineIOPeer =
       callback()
 
   screenShare: ->
-    screenShare.getStream (err, screenShareStream)=>
+    onStreamReceived = (err, screenShareStream)=>
       return CineIOPeer.trigger('error', msg: err) if err
       videoEl = @_createVideoElementFromStream(screenShareStream)
       CineIOPeer.screenShareStream = screenShareStream
       CineIOPeer._signalConnection.newLocalStream(screenShareStream)
       CineIOPeer.trigger('media', videoElement: videoEl, stream: screenShareStream, media: true)
+
+    screenSharer.get(onStreamReceived).share()
 
   _checkSupport: ->
     if webrtcSupport.support
@@ -122,4 +124,4 @@ window.CineIOPeer = CineIOPeer if typeof window isnt 'undefined'
 module.exports = CineIOPeer
 
 signalingConnection = require('./signaling_connection')
-screenShare = require('./screen_share')
+screenSharer = require('./screen_sharer')

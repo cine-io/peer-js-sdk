@@ -4264,7 +4264,87 @@ CineIOPeer = require('./main');
 
 
 
-},{"./main":20}],19:[function(require,module,exports){
+},{"./main":22}],19:[function(require,module,exports){
+var ChromeScreenSharer, ScreenShareError, ScreenSharer, ssBase,
+  __hasProp = {}.hasOwnProperty,
+  __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+
+ssBase = require('./screen_share_base');
+
+ScreenSharer = ssBase.ScreenSharer;
+
+ScreenShareError = ssBase.ScreenShareError;
+
+ChromeScreenSharer = (function(_super) {
+  __extends(ChromeScreenSharer, _super);
+
+  function ChromeScreenSharer(_callback) {
+    this._callback = _callback;
+    ChromeScreenSharer.__super__.constructor.call(this, this._callback);
+    this._extensionInstalled = false;
+    this._extensionReplyTries = 0;
+    window.addEventListener("message", this._receiveMessage.bind(this), false);
+    window.postMessage({
+      name: "cineScreenShareCheckForExtension"
+    }, "*");
+  }
+
+  ChromeScreenSharer.prototype.share = function() {
+    return this._shareAfterExtensionReplies();
+  };
+
+  ChromeScreenSharer.prototype._shareAfterExtensionReplies = function() {
+    if (!(this._extensionInstalled || (++this._extensionReplyTries < 3))) {
+      return this._callback(new ScreenShareError("Screen sharing in chrome requires the cine.io Screen Sharing extension.", {
+        url: "https://chrome.google.com/webstore/detail/cineio-screen-sharing/ancoeogeclfnhienkmfmeeomadmofhmi"
+      }));
+    }
+    if (this._extensionInstalled) {
+      return window.postMessage({
+        name: "cineScreenShare"
+      }, "*");
+    } else {
+      console.log("Waiting for the screen sharing extension reply ...");
+      return setTimeout(this._shareAfterExtensionReplies.bind(this), 100);
+    }
+  };
+
+  ChromeScreenSharer.prototype._receiveMessage = function(event) {
+    console.log("received:", event);
+    switch (event.data.name) {
+      case "cineScreenShareHasExtension":
+        console.log("cine.io screen share extension is installed.");
+        this._extensionInstalled = true;
+        break;
+      case "cineScreenShareResponse":
+        return this._onScreenShareResponse(event.data.id);
+    }
+  };
+
+  ChromeScreenSharer.prototype._onScreenShareResponse = function(id) {
+    if (!id) {
+      return this._callback(new ScreenShareError("Screen access rejected."));
+    }
+    navigator.webkitGetUserMedia({
+      audio: false,
+      video: {
+        mandatory: {
+          chromeMediaSource: "desktop",
+          chromeMediaSourceId: id
+        }
+      }
+    }, this._onStreamReceived.bind(this), this._onError.bind(this));
+  };
+
+  return ChromeScreenSharer;
+
+})(ScreenSharer);
+
+module.exports = ChromeScreenSharer;
+
+
+
+},{"./screen_share_base":23}],20:[function(require,module,exports){
 var protocol;
 
 protocol = location.protocol === 'https:' ? 'https' : 'http';
@@ -4279,8 +4359,44 @@ if ("development" === 'development') {
 
 
 
-},{}],20:[function(require,module,exports){
-var BackboneEvents, CineIOPeer, attachMediaStream, defaultOptions, getUserMedia, noop, screenShare, signalingConnection, userOrDefault, webrtcSupport;
+},{}],21:[function(require,module,exports){
+var FirefoxScreenSharer, ScreenShareError, ScreenSharer, ssBase,
+  __hasProp = {}.hasOwnProperty,
+  __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+
+ssBase = require('./screen_share_base');
+
+ScreenSharer = ssBase.ScreenSharer;
+
+ScreenShareError = ssBase.ScreenShareError;
+
+FirefoxScreenSharer = (function(_super) {
+  __extends(FirefoxScreenSharer, _super);
+
+  function FirefoxScreenSharer() {
+    return FirefoxScreenSharer.__super__.constructor.apply(this, arguments);
+  }
+
+  FirefoxScreenSharer.prototype.share = function() {
+    console.log("requesting screen share (moz) ...");
+    return navigator.mozGetUserMedia({
+      audio: false,
+      video: {
+        mediaSource: "screen"
+      }
+    }, this._onStreamReceived.bind(this), this._onError.bind(this));
+  };
+
+  return FirefoxScreenSharer;
+
+})(ScreenSharer);
+
+module.exports = FirefoxScreenSharer;
+
+
+
+},{"./screen_share_base":23}],22:[function(require,module,exports){
+var BackboneEvents, CineIOPeer, attachMediaStream, defaultOptions, getUserMedia, noop, screenSharer, signalingConnection, userOrDefault, webrtcSupport;
 
 getUserMedia = require('getusermedia');
 
@@ -4406,7 +4522,8 @@ CineIOPeer = {
     });
   },
   screenShare: function() {
-    return screenShare.getStream((function(_this) {
+    var onStreamReceived;
+    onStreamReceived = (function(_this) {
       return function(err, screenShareStream) {
         var videoEl;
         if (err) {
@@ -4423,7 +4540,8 @@ CineIOPeer = {
           media: true
         });
       };
-    })(this));
+    })(this);
+    return screenSharer.get(onStreamReceived).share();
   },
   _checkSupport: function() {
     if (webrtcSupport.support) {
@@ -4510,90 +4628,98 @@ module.exports = CineIOPeer;
 
 signalingConnection = require('./signaling_connection');
 
-screenShare = require('./screen_share');
+screenSharer = require('./screen_sharer');
 
 
 
-},{"./screen_share":21,"./signaling_connection":22,"attachmediastream":1,"backbone-events-standalone":3,"getusermedia":4,"webrtcsupport":17}],21:[function(require,module,exports){
-var ScreenShare, webrtcSupport;
+},{"./screen_sharer":24,"./signaling_connection":25,"attachmediastream":1,"backbone-events-standalone":3,"getusermedia":4,"webrtcsupport":17}],23:[function(require,module,exports){
+var ScreenShareError, ScreenSharer, webrtcSupport;
 
 webrtcSupport = require('webrtcsupport');
 
-ScreenShare = {
-  getStream: function(cb) {
-    this._init(cb);
-    if (navigator.webkitGetUserMedia) {
-      return console.log("requesting screen share (webkit) ...");
-    } else if (navigator.mozGetUserMedia) {
-      console.log("requesting screen share (moz) ...");
-      return navigator.mozGetUserMedia({
-        audio: false,
-        video: {
-          mediaSource: "screen"
-        }
-      }, this._onStreamReceived.bind(this), this._onError.bind(this));
+ScreenShareError = (function() {
+  function ScreenShareError(message, data) {
+    var k, v;
+    this.message = message;
+    for (k in data) {
+      v = data[k];
+      this[k] = v;
     }
-  },
-  _init: function(cb) {
+  }
+
+  return ScreenShareError;
+
+})();
+
+ScreenSharer = (function() {
+  function ScreenSharer(_callback) {
+    this._callback = _callback;
     if (!(window && navigator)) {
-      return cb("Screen sharing requires a browser environment!");
+      return this._callback(new ScreenShareError("Screen sharing requires a browser environment!"));
     }
     if (!webrtcSupport.screenSharing) {
-      return cb("Screen sharing not implemented in this browser / environment.");
+      return this._callback(new ScreenShareError("Screen sharing not implemented in this browser / environment."));
     }
-    this._callback = cb;
-    return window.addEventListener("message", this._receiveMessage.bind(this), false);
-  },
-  _receiveMessage: function(event) {
-    console.log("received:", event);
-    switch (event.data.name) {
-      case "cineScreenShareHasExtension":
-        console.log("cine.io screen share extension is installed.");
-        window.postMessage({
-          name: "cineScreenShare"
-        }, "*");
-        break;
-      case "cineScreenShareResponse":
-        console.log(this);
-        return this._onScreenShareResponse(event.data.id);
-    }
-  },
-  _onScreenShareResponse: function(id) {
-    if (!id) {
-      return this._callback("Screen access rejected.");
-    }
-    navigator.webkitGetUserMedia({
-      audio: false,
-      video: {
-        mandatory: {
-          chromeMediaSource: "desktop",
-          chromeMediaSourceId: id
-        }
-      }
-    }, this._onStreamReceived.bind(this), this._onError.bind(this));
-  },
-  _onStreamReceived: function(stream) {
+  }
+
+  ScreenSharer.prototype.share = function() {
+    return this._callback("NOT IMPLEMENTED");
+  };
+
+  ScreenSharer.prototype._onStreamReceived = function(stream) {
     console.log("Received local stream:", stream);
     stream.onended = this._onStreamEnded.bind(this);
     return this._callback(null, stream);
-  },
-  _onStreamEnded: function() {
+  };
+
+  ScreenSharer.prototype._onStreamEnded = function() {
     console.log("Screen share ended.");
-  },
-  _onError: function(err) {
+  };
+
+  ScreenSharer.prototype._onError = function(err) {
     var errMsg;
     errMsg = err.name ? err.name + (err.message ? " (" + err.message + ")" : "") : err;
     errMsg = "Screen share failed: " + errMsg;
     console.log(errMsg);
-    return this._callback(errMsg);
+    return this._callback(new ScreenShareError(errMsg));
+  };
+
+  return ScreenSharer;
+
+})();
+
+module.exports = {
+  ScreenShareError: ScreenShareError,
+  ScreenSharer: ScreenSharer
+};
+
+
+
+},{"webrtcsupport":17}],24:[function(require,module,exports){
+var ScreenShareError, ScreenSharer;
+
+ScreenShareError = require('./screen_share_base').ScreenShareError;
+
+ScreenSharer = {
+  get: function(cb) {
+    var ChromeScreenSharer, FirefoxScreenSharer;
+    if (navigator.webkitGetUserMedia) {
+      ChromeScreenSharer = require('./chrome_screen_sharer');
+      return new ChromeScreenSharer(cb);
+    } else if (navigator.mozGetUserMedia) {
+      FirefoxScreenSharer = require('./firefox_screen_sharer');
+      return new FirefoxScreenSharer(cb);
+    } else {
+      return cb(new ScreenShareError("Screen sharing not implemented in this browser / environment."));
+    }
   }
 };
 
-module.exports = ScreenShare;
+module.exports = ScreenSharer;
 
 
 
-},{"webrtcsupport":17}],22:[function(require,module,exports){
+},{"./chrome_screen_sharer":19,"./firefox_screen_sharer":21,"./screen_share_base":23}],25:[function(require,module,exports){
 var CallObject, CineIOPeer, Config, Connection, PeerConnection, Primus, connectToCineSignaling,
   __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
@@ -4808,7 +4934,7 @@ CallObject = require('./call');
 
 
 
-},{"./call":18,"./config":19,"./main":20,"./vendor/primus":23,"rtcpeerconnection":16}],23:[function(require,module,exports){
+},{"./call":18,"./config":20,"./main":22,"./vendor/primus":26,"rtcpeerconnection":16}],26:[function(require,module,exports){
 (function (name, context, definition) {  context[name] = definition.call(context);  if (typeof module !== "undefined" && module.exports) {    module.exports = context[name];  } else if (typeof define == "function" && define.amd) {    define(function reference() { return context[name]; });  }})("Primus", this, function Primus() {/*globals require, define */
 'use strict';
 
@@ -8912,4 +9038,4 @@ if (typeof define === 'function' && define.amd) {
 
 // [*] End of lib/all.js
 
-},{}]},{},[20]);
+},{}]},{},[22]);
