@@ -58,7 +58,7 @@ describe 'CineIOPeer', ->
         CineIOPeer.identify('Minerva McGonagall')
         expect(@primusStub.write.calledOnce).to.be.true
         args = @primusStub.write.firstCall.args
-        expect(args).to.have.length
+        expect(args).to.have.length(1)
         expect(args[0]).to.deep.equal(action: 'identify', identity: 'Minerva McGonagall', publicKey: 'the-public-key', client: 'web')
 
     describe '.call', ->
