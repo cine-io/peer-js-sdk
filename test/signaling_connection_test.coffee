@@ -3,43 +3,45 @@ CineIOPeer = require('../src/main')
 SignalingConnection = require('../src/signaling_connection')
 stubPrimus = require('./helpers/stub_primus')
 FakePeerConnection = require('./helpers/fake_peer_connection')
+FakeMediaStream = require('./helpers/fake_media_stream')
 async = require('async')
+stubCreateObjectUrl = require("./helpers/stub_create_object_url")
 
 describe 'SignalingConnection', ->
   setupAndTeardown()
   stubPrimus()
 
+  beforeEach ->
+    @connection = SignalingConnection.connect()
+
+  beforeEach ->
+    sinon.stub @connection, '_initializeNewPeerConnection', (options)=>
+      if @fakeConnection
+        console.log("ugh fakeConnection", options.sparkId, @fakeConnection.options.sparkId)
+        throw new Error("Two connections made!!!")
+      @fakeConnection = new FakePeerConnection(options)
+
+  afterEach ->
+    if @fakeConnection
+      console.log("deleting fakeConnection", @fakeConnection.options.sparkId)
+      delete @fakeConnection
+
+  createNewPeer = (sparkId, iceCandidates, done)->
+    CineIOPeer.stream = "the stream"
+    @connection.primus.trigger 'data', action: 'allservers', data: iceCandidates
+    @connection.primus.trigger 'data', action: 'member', sparkId: sparkId
+    addedStream = false
+    testFunction = -> addedStream
+    checkFunction = (callback)=>
+      addedStream = true if @fakeConnection && @fakeConnection.streams[0] == 'the stream'
+      setTimeout(callback, 10)
+    async.until testFunction, checkFunction, done
+
   describe '.connect', ->
     it 'connects', ->
-      connection = SignalingConnection.connect()
-      expect(connection.primus).to.equal(@primusStub)
+      expect(@connection.primus).to.equal(@primusStub)
 
   describe 'connection actions', ->
-    beforeEach ->
-      @connection = SignalingConnection.connect()
-
-    beforeEach ->
-      sinon.stub @connection, '_initializeNewPeerConnection', (options)=>
-        if @fakeConnection
-          console.log("ugh fakeConnection", options.sparkId, @fakeConnection.options.sparkId)
-          throw new Error("Two connections made!!!")
-        @fakeConnection = new FakePeerConnection(options)
-
-    afterEach ->
-      if @fakeConnection
-        console.log("deleting fakeConnection", @fakeConnection.options.sparkId)
-        delete @fakeConnection
-
-    createNewPeer = (sparkId, iceCandidates, done)->
-      CineIOPeer.stream = "the stream"
-      @connection.primus.trigger 'data', action: 'allservers', data: iceCandidates
-      @connection.primus.trigger 'data', action: 'member', sparkId: sparkId
-      addedStream = false
-      testFunction = -> addedStream
-      checkFunction = (callback)=>
-        addedStream = true if @fakeConnection && @fakeConnection.streams[0] == 'the stream'
-        setTimeout(callback, 10)
-      async.until testFunction, checkFunction, done
 
     describe "allservers", ->
 
@@ -167,13 +169,87 @@ describe 'SignalingConnection', ->
     describe 'other actions', ->
       it 'does not throw an exception', ->
         @connection.primus.trigger('data', action: 'UNKNOWN_ACTION')
+
   describe 'peer connection events', ->
-    it 'is tested'
+    beforeEach (done)->
+      createNewPeer.call(this, 'some-spark-id-8', 'the-ice-candidates-5', done)
+
+    describe 'addStream', ->
+      stubCreateObjectUrl("unique-identifier")
+      it 'adds the video element to the peer connection', ->
+        @fakeConnection.trigger 'addStream', stream: new FakeMediaStream
+        expect(@fakeConnection.videoEls).to.have.length(1)
+        video = @fakeConnection.videoEls[0]
+        expect(video.tagName).to.equal("VIDEO")
+        expect(video.src).to.equal("blob:http%3A//#{window.location.host}/unique-identifier")
+
+      it 'triggers streamAdded', (done)->
+        handler = (data)=>
+          CineIOPeer.off 'streamAdded', handler
+          expect(data.peerConnection).to.equal(@fakeConnection)
+          expect(data.videoElement).to.equal(@fakeConnection.videoEls[0])
+          done()
+        CineIOPeer.on 'streamAdded', handler
+        @fakeConnection.trigger 'addStream', stream: new FakeMediaStream
+
+    describe 'removeStream', ->
+      stubCreateObjectUrl("second-unique-identifier")
+      beforeEach ->
+        @mediaStream = new FakeMediaStream
+        @fakeConnection.trigger 'addStream', stream: @mediaStream
+        expect(@fakeConnection.videoEls).to.have.length(1)
+
+      it 'removes the video element from the peer connection', ->
+        @fakeConnection.trigger 'removeStream', stream: @mediaStream
+        expect(@fakeConnection.videoEls).to.have.length(0)
+
+      it 'triggers streamRemoved', (done)->
+        videoElement = @fakeConnection.videoEls[0]
+        handler = (data)=>
+          CineIOPeer.off 'streamRemoved', handler
+          expect(data.peerConnection).to.equal(@fakeConnection)
+          expect(data.videoElement).to.equal(videoElement)
+          done()
+        CineIOPeer.on 'streamRemoved', handler
+        @fakeConnection.trigger 'removeStream', stream: new FakeMediaStream
+    describe 'ice', ->
+      it 'writes to primus', ->
+        @fakeConnection.trigger 'ice', 'some candidate'
+        expect(@primusStub.write.calledTwice).to.be.true
+        args = @primusStub.write.secondCall.args
+        expect(args).to.have.length(1)
+        expect(args[0]).to.deep.equal(action: 'ice', source: 'web', candidate: "some candidate", sparkId: 'some-spark-id-8')
+
+    describe 'close', ->
+      stubCreateObjectUrl("third-unique-identifier")
+      beforeEach ->
+        @mediaStream1 = new FakeMediaStream
+        @fakeConnection.trigger 'addStream', stream: @mediaStream1
+        @mediaStream2 = new FakeMediaStream
+        @fakeConnection.trigger 'addStream', stream: @mediaStream2
+        expect(@fakeConnection.videoEls).to.have.length(2)
+
+      it 'triggers streamRemoved for all videos', (done)->
+        callCount = 0
+        firstVideoIndex = null
+        videos = @fakeConnection.videoEls
+        handler = (data)=>
+          callCount +=1
+          expect(data.peerConnection).to.equal(@fakeConnection)
+          index = videos.indexOf(data.videoElement)
+          expect(index).to.be.gte(0)
+          return firstVideoIndex = index if callCount == 1
+          expect(firstVideoIndex).not.to.equal(index)
+          CineIOPeer.off 'streamRemoved', handler
+          done()
+
+        CineIOPeer.on 'streamRemoved', handler
+        @fakeConnection.trigger 'close'
+
 
   describe '#write', ->
     it 'calls to primus', ->
-      connection = SignalingConnection.connect()
-      connection.write some: 'data'
+      @connection.write some: 'data'
       expect(@primusStub.write.calledOnce).to.be.true
       args = @primusStub.write.firstCall.args
       expect(args).to.have.length(1)
@@ -181,13 +257,12 @@ describe 'SignalingConnection', ->
 
   describe '#newLocalStream', ->
     it 'adds the stream to all the', ->
-      connection = SignalingConnection.connect()
-      connection.peerConnections['a'] = new FakePeerConnection
-      connection.peerConnections['a'].addStream('first stream')
-      connection.peerConnections['b'] = new FakePeerConnection
-      connection.peerConnections['b'].addStream('first stream')
-      connection.newLocalStream('my new stream')
-      expect(connection.peerConnections['a'].streams).to.have.length(2)
-      expect(connection.peerConnections['a'].streams).to.deep.equal(['first stream', 'my new stream'])
-      expect(connection.peerConnections['b'].streams).to.have.length(2)
-      expect(connection.peerConnections['b'].streams).to.deep.equal(['first stream', 'my new stream'])
+      @connection.peerConnections['a'] = new FakePeerConnection
+      @connection.peerConnections['a'].addStream('first stream')
+      @connection.peerConnections['b'] = new FakePeerConnection
+      @connection.peerConnections['b'].addStream('first stream')
+      @connection.newLocalStream('my new stream')
+      expect(@connection.peerConnections['a'].streams).to.have.length(2)
+      expect(@connection.peerConnections['a'].streams).to.deep.equal(['first stream', 'my new stream'])
+      expect(@connection.peerConnections['b'].streams).to.have.length(2)
+      expect(@connection.peerConnections['b'].streams).to.deep.equal(['first stream', 'my new stream'])

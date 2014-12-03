@@ -4751,10 +4751,10 @@ Connection = (function() {
           var index, videoEl;
           videoEl = CineIOPeer._getVideoElementFromStream(event.stream);
           index = peerConnection.videoEls.indexOf(videoEl);
-          if (!(index > -1)) {
-            return peerConnection.videoEls.splice(index, 1);
+          if (index > -1) {
+            peerConnection.videoEls.splice(index, 1);
           }
-          return CineIOPeer.trigger('removedStream', {
+          return CineIOPeer.trigger('streamRemoved', {
             peerConnection: peerConnection,
             videoElement: videoEl
           });
@@ -4785,7 +4785,7 @@ Connection = (function() {
             videoEl = _ref[_i];
             CineIOPeer.trigger('streamRemoved', {
               peerConnection: peerConnection,
-              videoEl: videoEl
+              videoElement: videoEl
             });
           }
           return delete peerConnection.videoEls;

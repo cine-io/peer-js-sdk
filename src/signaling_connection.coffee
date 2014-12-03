@@ -95,9 +95,9 @@ class Connection
         # console.log("got remote stream", event)
         videoEl = CineIOPeer._getVideoElementFromStream(event.stream)
         index = peerConnection.videoEls.indexOf(videoEl)
-        return peerConnection.videoEls.splice(index, 1) unless index > -1
+        peerConnection.videoEls.splice(index, 1) if index > -1
 
-        CineIOPeer.trigger 'removedStream',
+        CineIOPeer.trigger 'streamRemoved',
           peerConnection: peerConnection
           videoElement: videoEl
 
@@ -115,7 +115,7 @@ class Connection
       peerConnection.on 'close', (event)->
         # console.log("remote closed", event)
         for videoEl in peerConnection.videoEls
-          CineIOPeer.trigger 'streamRemoved', peerConnection: peerConnection, videoEl: videoEl
+          CineIOPeer.trigger 'streamRemoved', peerConnection: peerConnection, videoElement: videoEl
         delete peerConnection.videoEls
 
   _ensurePeerConnection: (otherClientSparkId, options)=>
