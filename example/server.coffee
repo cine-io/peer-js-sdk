@@ -24,25 +24,15 @@ options =
 
 app = connect()
 app.use morgan("dev")
-httpRouter = express.Router()
-httpServer = express()
+httpServer = http.createServer(app)
 httpsServer = https.createServer(options, app)
 
-# redirect http traffic to https
-httpRouter.get "*", (req, res) ->
-  hostAndPort = req.headers.host.split(":")
-  hostAndSslPort = hostAndPort[0] + ":" + sslPort
-  redirectUrl = "https://" + hostAndSslPort + req.originalUrl
-  res.redirect redirectUrl
-
-httpServer.use "*", httpRouter
-httpServer.listen port, ->
-  console.log "HTTP server started at port", port
-  return
-
-# serve static files from https
+# serve static files
 app.use "/js", connect.static(__dirname + "/../build")
 app.use connect.static(__dirname)
+
+httpServer.listen port, ->
+  console.log "HTTP server started at http://localhost.cine.io:#{port}"
+
 httpsServer.listen sslPort, ->
-  console.log "HTTPS server started at port", sslPort
-  return
+  console.log "HTTPS server started at https://localhost.cine.io:#{sslPort}"
