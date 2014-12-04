@@ -4852,8 +4852,9 @@ Connection = (function() {
     _results = [];
     for (otherClientSparkId in _ref) {
       peerConnection = _ref[otherClientSparkId];
-      console.log("removing local stream " + stream.id);
-      _results.push(peerConnection.removeStream(stream));
+      console.log("removing local stream " + stream.id + " from " + otherClientSparkId);
+      peerConnection.removeStream(stream);
+      _results.push(this._sendOffer(otherClientSparkId, peerConnection));
     }
     return _results;
   };
@@ -4872,6 +4873,9 @@ Connection = (function() {
         });
       case 'leave':
         if (!this.peerConnections[data.sparkId]) {
+          return;
+        }
+        if (this.peerConnections[data.sparkId] === PENDING) {
           return;
         }
         this.peerConnections[data.sparkId].close();
@@ -4894,6 +4898,7 @@ Connection = (function() {
         })(this));
       case 'offer':
         otherClientSparkId = data.sparkId;
+        console.log('got offer', data);
         return this._ensurePeerConnection(otherClientSparkId, {
           offer: false
         }, (function(_this) {
@@ -4959,9 +4964,6 @@ Connection = (function() {
         if (CineIOPeer.screenShareStream) {
           peerConnection.addStream(CineIOPeer.screenShareStream);
           streamAttached = true;
-        }
-        if (!streamAttached) {
-          console.warn("No stream attached");
         }
         peerConnection.on('addStream', function(event) {
           var videoEl;

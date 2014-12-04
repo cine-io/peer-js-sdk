@@ -25,10 +25,12 @@ class Connection
       # need to reoffer every time there's a new stream
       # http://stackoverflow.com/questions/16015022/webrtc-how-to-add-stream-after-offer-and-answer
       @_sendOffer(otherClientSparkId, peerConnection)
+
   removeLocalStream: (stream)=>
     for otherClientSparkId, peerConnection of @peerConnections
-      console.log "removing local stream #{stream.id}"
+      console.log "removing local stream #{stream.id} from #{otherClientSparkId}"
       peerConnection.removeStream(stream)
+      @_sendOffer(otherClientSparkId, peerConnection)
 
   _signalHandler: (data)=>
     # console.log("got data")
@@ -102,8 +104,6 @@ class Connection
       if CineIOPeer.screenShareStream
         peerConnection.addStream(CineIOPeer.screenShareStream)
         streamAttached = true
-
-      console.warn("No stream attached") unless streamAttached
 
       peerConnection.on 'addStream', (event)->
         console.log("got remote stream", event)
