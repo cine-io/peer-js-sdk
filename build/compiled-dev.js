@@ -4898,7 +4898,6 @@ Connection = (function() {
         })(this));
       case 'offer':
         otherClientSparkId = data.sparkId;
-        console.log('got offer', data);
         return this._ensurePeerConnection(otherClientSparkId, {
           offer: false
         }, (function(_this) {
