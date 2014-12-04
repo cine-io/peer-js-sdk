@@ -48,6 +48,7 @@ class Connection
       when 'leave'
         # console.log('leaving', data)
         return unless @peerConnections[data.sparkId]
+        return if @peerConnections[data.sparkId] == PENDING
         @peerConnections[data.sparkId].close()
         delete @peerConnections[data.sparkId]
 
