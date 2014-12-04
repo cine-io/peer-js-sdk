@@ -1,19 +1,16 @@
 var
   connected = false
-, cameraIsOn = false
 , microphoneIsOn = false
-, sharingScreen = false
 , dummyEvent = new Event("dummy")
 , qs = {}
 
 function toggleCamera(e) {
   e.preventDefault()
-  if (cameraIsOn) {
-    CineIOPeer.disableCamera()
+  if (CineIOPeer.cameraStarted()) {
+    CineIOPeer.stopCameraAndMicrophone()
   } else {
-    CineIOPeer.enableCamera()
+    CineIOPeer.startCameraAndMicrophone()
   }
-  cameraIsOn = !cameraIsOn
 }
 
 function toggleMicrophone(e) {
@@ -28,20 +25,17 @@ function toggleMicrophone(e) {
 
 function toggleScreenShare(e) {
   e.preventDefault()
-  if (sharingScreen) {
+  if (CineIOPeer.screenShareStarted()) {
     CineIOPeer.stopScreenShare()
   } else {
     CineIOPeer.startScreenShare()
   }
-  sharingScreen = !sharingScreen
 }
 
 function connect(e) {
   if (connected) return;
 
   e.preventDefault()
-
-  CineIOPeer.startCameraAndMicrophone()
 
   if (qs.room) {
     CineIOPeer.join(qs.room)
@@ -65,8 +59,6 @@ function disconnect(e) {
   if (!connected) return;
 
   e.preventDefault()
-
-  CineIOPeer.stopCameraAndMicrophone()
 
   if (qs.room) {
     CineIOPeer.leave(qs.room)

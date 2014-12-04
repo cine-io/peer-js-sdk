@@ -97,14 +97,16 @@ class Connection
       peerConnection = @_initializeNewPeerConnection(iceServers: @iceServers)
       @peerConnections[otherClientSparkId] = peerConnection
       peerConnection.videoEls = []
-      # console.log("CineIOPeer.stream", CineIOPeer.stream)
+      # console.log("CineIOPeer.cameraStream", CineIOPeer.cameraStream)
       streamAttached = false
-      if CineIOPeer.stream
-        peerConnection.addStream(CineIOPeer.stream)
+      if CineIOPeer.cameraStream
+        peerConnection.addStream(CineIOPeer.cameraStream)
         streamAttached = true
       if CineIOPeer.screenShareStream
         peerConnection.addStream(CineIOPeer.screenShareStream)
         streamAttached = true
+
+      console.warn("No stream attached") unless streamAttached
 
       peerConnection.on 'addStream', (event)->
         console.log("got remote stream", event)
@@ -151,8 +153,7 @@ class Connection
     @_newMember(otherClientSparkId, options, callback)
 
   _ensureReady: (callback)=>
-    CineIOPeer._waitForLocalMedia =>
-      @_ensureIce callback
+    @_ensureIce callback
 
   _ensureIce: (callback)=>
       return setTimeout callback if @fetchedIce

@@ -27,7 +27,7 @@ describe 'SignalingConnection', ->
       delete @fakeConnection
 
   createNewPeer = (sparkId, iceCandidates, done)->
-    CineIOPeer.stream = "the stream"
+    CineIOPeer.cameraStream = "the stream"
     @connection.primus.trigger 'data', action: 'allservers', data: iceCandidates
     @connection.primus.trigger 'data', action: 'member', sparkId: sparkId
     addedStream = false
@@ -105,7 +105,7 @@ describe 'SignalingConnection', ->
         assertOffer.call(this, "some-spark-id", done)
 
       it 'attaches the cineio stream', (done)->
-        CineIOPeer.stream = "the stream"
+        CineIOPeer.cameraStream = "the stream"
         @connection.primus.trigger 'data', action: 'allservers', data: 'the-ice-candidates-2'
         @connection.primus.trigger 'data', action: 'member', sparkId: 'some-spark-id-2'
         assertOffer.call this, "some-spark-id-2", (err)=>

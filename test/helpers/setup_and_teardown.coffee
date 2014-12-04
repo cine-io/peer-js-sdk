@@ -4,4 +4,4 @@ module.exports = ->
 
   afterEach ->
     delete CineIOPeer._signalConnection
-    delete CineIOPeer.stream
+    delete CineIOPeer.cameraStream

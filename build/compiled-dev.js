@@ -4455,24 +4455,20 @@ CineIOPeer = {
     if (callback == null) {
       callback = noop;
     }
-    return CineIOPeer._waitForLocalMedia(function() {
-      CineIOPeer._signalConnection.write({
-        action: 'call',
-        otheridentity: identity,
-        publicKey: CineIOPeer.config.publicKey,
-        identity: CineIOPeer.config.identity
-      });
-      return callback();
+    CineIOPeer._signalConnection.write({
+      action: 'call',
+      otheridentity: identity,
+      publicKey: CineIOPeer.config.publicKey,
+      identity: CineIOPeer.config.identity
     });
+    return callback();
   },
   join: function(room, callback) {
     if (callback == null) {
       callback = noop;
     }
-    return CineIOPeer._waitForLocalMedia(function() {
-      CineIOPeer._unsafeJoin(room);
-      return callback();
-    });
+    CineIOPeer._unsafeJoin(room);
+    return callback();
   },
   leave: function(room) {
     var index;
@@ -4512,32 +4508,29 @@ CineIOPeer = {
     if (callback == null) {
       callback = noop;
     }
-    if (CineIOPeer.stream != null) {
-      CineIOPeer.stream.stop();
+    if (CineIOPeer.cameraStream != null) {
+      CineIOPeer.cameraStream.stop();
+      CineIOPeer._signalConnection.removeLocalStream(CineIOPeer.cameraStream);
       CineIOPeer.trigger('mediaRemoved', {
-        videoElement: CineIOPeer.config.videoElements[CineIOPeer.stream.id]
+        videoElement: CineIOPeer.config.videoElements[CineIOPeer.cameraStream.id]
       });
-      delete CineIOPeer.config.videoElements[CineIOPeer.stream.id];
-      CineIOPeer.stream = void 0;
+      delete CineIOPeer.config.videoElements[CineIOPeer.cameraStream.id];
+      CineIOPeer.cameraStream = void 0;
     }
     return callback();
   },
-  _waitForLocalMedia: function(callback) {
-    if (CineIOPeer._hasMedia()) {
-      return setTimeout(callback);
-    }
-    console.log("Waiting for local media");
-    return CineIOPeer.once('localMediaRequestSuccess', callback);
+  cameraStarted: function() {
+    return CineIOPeer.cameraStream != null;
   },
-  _hasMedia: function() {
-    return CineIOPeer.stream != null;
+  screenShareStarted: function() {
+    return CineIOPeer.screenShareStream != null;
   },
   _startMedia: function(options, callback) {
     var requestTimeout;
     if (callback == null) {
       callback = noop;
     }
-    if (CineIOPeer.stream) {
+    if (CineIOPeer.cameraStream) {
       return setTimeout(callback);
     }
     requestTimeout = setTimeout(CineIOPeer._mediaNotReady, 1000);
@@ -4551,7 +4544,7 @@ CineIOPeer = {
         return callback(err);
       }
       response;
-      CineIOPeer.trigger('localMediaRequestSuccess');
+      console.log('got media', response);
       CineIOPeer.trigger('mediaAdded', {
         videoElement: response.videoElement,
         stream: response.stream,
@@ -4650,7 +4643,7 @@ CineIOPeer = {
           return callback(err);
         }
         videoEl = _this._createVideoElementFromStream(stream, options);
-        CineIOPeer.stream = stream;
+        CineIOPeer.cameraStream = stream;
         return callback(null, {
           videoElement: videoEl,
           stream: stream
@@ -4956,13 +4949,16 @@ Connection = (function() {
         _this.peerConnections[otherClientSparkId] = peerConnection;
         peerConnection.videoEls = [];
         streamAttached = false;
-        if (CineIOPeer.stream) {
-          peerConnection.addStream(CineIOPeer.stream);
+        if (CineIOPeer.cameraStream) {
+          peerConnection.addStream(CineIOPeer.cameraStream);
           streamAttached = true;
         }
         if (CineIOPeer.screenShareStream) {
           peerConnection.addStream(CineIOPeer.screenShareStream);
           streamAttached = true;
+        }
+        if (!streamAttached) {
+          console.warn("No stream attached");
         }
         peerConnection.on('addStream', function(event) {
           var videoEl;
@@ -5036,11 +5032,7 @@ Connection = (function() {
   };
 
   Connection.prototype._ensureReady = function(callback) {
-    return CineIOPeer._waitForLocalMedia((function(_this) {
-      return function() {
-        return _this._ensureIce(callback);
-      };
-    })(this));
+    return this._ensureIce(callback);
   };
 
   Connection.prototype._ensureIce = function(callback) {

@@ -29,15 +29,13 @@ CineIOPeer =
 
   call: (identity, callback=noop)->
     # console.log('calling', identity)
-    CineIOPeer._waitForLocalMedia ->
-      CineIOPeer._signalConnection.write action: 'call', otheridentity: identity, publicKey: CineIOPeer.config.publicKey, identity: CineIOPeer.config.identity
-      callback()
+    CineIOPeer._signalConnection.write action: 'call', otheridentity: identity, publicKey: CineIOPeer.config.publicKey, identity: CineIOPeer.config.identity
+    callback()
 
   join: (room, callback=noop)->
-    CineIOPeer._waitForLocalMedia ->
-      # console.log('Joining', room)
-      CineIOPeer._unsafeJoin(room)
-      callback()
+    # console.log('Joining', room)
+    CineIOPeer._unsafeJoin(room)
+    callback()
 
   leave: (room)->
     index = CineIOPeer.config.rooms.indexOf(room)
@@ -53,23 +51,22 @@ CineIOPeer =
     CineIOPeer._startMedia(video: true, audio: true, callback)
 
   stopCameraAndMicrophone: (callback=noop)->
-    if CineIOPeer.stream?
-      CineIOPeer.stream.stop()
-      CineIOPeer.trigger('mediaRemoved', videoElement: CineIOPeer.config.videoElements[CineIOPeer.stream.id])
-      delete CineIOPeer.config.videoElements[CineIOPeer.stream.id]
-      CineIOPeer.stream = undefined
+    if CineIOPeer.cameraStream?
+      CineIOPeer.cameraStream.stop()
+      CineIOPeer._signalConnection.removeLocalStream(CineIOPeer.cameraStream)
+      CineIOPeer.trigger('mediaRemoved', videoElement: CineIOPeer.config.videoElements[CineIOPeer.cameraStream.id])
+      delete CineIOPeer.config.videoElements[CineIOPeer.cameraStream.id]
+      CineIOPeer.cameraStream = undefined
     callback()
 
-  _waitForLocalMedia: (callback)->
-    return setTimeout callback if CineIOPeer._hasMedia()
-    console.log("Waiting for local media")
-    CineIOPeer.once 'localMediaRequestSuccess', callback
+  cameraStarted: ->
+    CineIOPeer.cameraStream?
 
-  _hasMedia: ->
-    CineIOPeer.stream?
+  screenShareStarted: ->
+    CineIOPeer.screenShareStream?
 
   _startMedia: (options, callback=noop)->
-    return setTimeout(callback) if CineIOPeer.stream
+    return setTimeout(callback) if CineIOPeer.cameraStream
     requestTimeout = setTimeout CineIOPeer._mediaNotReady, 1000
     CineIOPeer._askForMedia options, (err, response)->
       clearTimeout requestTimeout
@@ -81,8 +78,7 @@ CineIOPeer =
         # console.log("ERROR", err)
         return callback(err)
       response
-      # console.log('got media', response)
-      CineIOPeer.trigger('localMediaRequestSuccess')
+      console.log('got media', response)
       CineIOPeer.trigger 'mediaAdded',
         videoElement: response.videoElement
         stream: response.stream
@@ -142,7 +138,7 @@ CineIOPeer =
     CineIOPeer._unsafeGetUserMedia streamDoptions, (err, stream)=>
       return callback(err) if err
       videoEl = @_createVideoElementFromStream(stream, options)
-      CineIOPeer.stream = stream
+      CineIOPeer.cameraStream = stream
       callback(null, videoElement: videoEl, stream: stream)
 
   _unsafeGetUserMedia: (options, callback)->
