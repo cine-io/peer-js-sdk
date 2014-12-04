@@ -60,6 +60,7 @@ describe 'SignalingConnection', ->
           done()
         CineIOPeer.on 'gotIceServers', handler
         @connection.primus.trigger 'data', action: 'allservers', data: "some ice servers"
+
     describe "incomingcall", ->
       it 'triggers an event', (done)->
         handler = (data)->
@@ -84,6 +85,7 @@ describe 'SignalingConnection', ->
         @connection.primus.trigger 'data', action: 'leave', sparkId: 'some-spark-id'
         expect(pc.close.calledOnce).to.be.false
         expect(@connection.peerConnections).to.deep.equal('some-second-spark-id': pc)
+
     describe "member", ->
       assertOffer = (sparkId, done)->
         wroteOffer = false
@@ -126,9 +128,14 @@ describe 'SignalingConnection', ->
 
       it 'does not send an offer when creating a new peer client'
 
-      it 'adds iceCandidate to the peer connection', ->
+      it 'adds iceCandidate to the peer connection', (done)->
         @connection.primus.trigger 'data', action: 'ice', candidate: 'the-remote-ice-candidate', sparkId: 'some-spark-id-4'
-        expect(@fakeConnection.remoteIce).to.equal('the-remote-ice-candidate')
+        hasIce = false
+        testFunction = -> hasIce
+        checkFunction = (callback)=>
+          hasIce = @fakeConnection.remoteIce == 'the-remote-ice-candidate'
+          setTimeout(callback, 10)
+        async.until testFunction, checkFunction, done
 
     describe "offer", ->
       beforeEach (done)->
@@ -162,9 +169,14 @@ describe 'SignalingConnection', ->
       beforeEach (done)->
         createNewPeer.call(this, 'some-spark-id-5', 'the-ice-candidates-5', done)
 
-      it 'handles the answer', ->
+      it 'handles the answer', (done)->
         @connection.primus.trigger 'data', action: 'answer', answer: 'the remote answer', sparkId: 'some-spark-id-5'
-        expect(@fakeConnection.remoteAnswer).to.equal('the remote answer')
+        hasAnswer = false
+        testFunction = -> hasAnswer
+        checkFunction = (callback)=>
+          hasAnswer = @fakeConnection.remoteAnswer == 'the remote answer'
+          setTimeout(callback, 10)
+        async.until testFunction, checkFunction, done
 
     describe 'other actions', ->
       it 'does not throw an exception', ->

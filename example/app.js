@@ -18,7 +18,7 @@ $(function() {
   });
 
   CineIOPeer.on('mediaRemoved', function(data) {
-    data.videoEl.remove()
+    data.videoElement.remove()
   });
 
   CineIOPeer.on('incomingCall', function(data) {

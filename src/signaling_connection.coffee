@@ -1,7 +1,7 @@
 PeerConnection = require('rtcpeerconnection')
 Primus = require('./vendor/primus')
 Config = require('./config')
-
+noop = ->
 connectToCineSignaling = ->
   Primus.connect(Config.signalingServer)
 
@@ -57,7 +57,7 @@ class Connection
       when 'offer'
         otherClientSparkId = data.sparkId
         # console.log('got offer', data)
-        @_ensurePeerConnection otherClientSparkId, offer: false, (err, pc)->
+        @_ensurePeerConnection otherClientSparkId, offer: false, (err, pc)=>
           pc.handleOffer data.offer, (err)=>
           # console.log('handled offer', err)
             pc.answer (err, answer)=>
@@ -80,7 +80,7 @@ class Connection
     @peerConnections[otherClientSparkId] = PENDING
     @_ensureIce =>
       console.log("CREATING NEW PEER CONNECTION!!", otherClientSparkId, options)
-      peerConnection = @_initializeNewPeerConnection(sparkId: otherClientSparkId, iceServers: @iceServers)
+      peerConnection = @_initializeNewPeerConnection(iceServers: @iceServers)
       @peerConnections[otherClientSparkId] = peerConnection
       peerConnection.videoEls = []
       # console.log("CineIOPeer.stream", CineIOPeer.stream)
@@ -133,8 +133,9 @@ class Connection
             videoElement: videoEl
             remote: true
         delete peerConnection.videoEls
+      callback(null, peerConnection)
 
-  _ensurePeerConnection: (otherClientSparkId, options, callback)=>
+  _ensurePeerConnection: (otherClientSparkId, options, callback=noop)=>
     candidate = @peerConnections[otherClientSparkId]
     if candidate && candidate != PENDING
       return setTimeout ->
