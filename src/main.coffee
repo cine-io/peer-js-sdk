@@ -54,6 +54,7 @@ CineIOPeer =
 
   stopCameraAndMicrophone: (callback=noop)->
     if CineIOPeer.stream?
+      CineIOPeer.stream.stop()
       CineIOPeer.trigger('mediaRemoved', videoElement: CineIOPeer.config.videoElements[CineIOPeer.stream.id])
       delete CineIOPeer.config.videoElements[CineIOPeer.stream.id]
       CineIOPeer.stream = undefined
@@ -86,26 +87,30 @@ CineIOPeer =
         stream: response.stream
         type: 'camera'
         local: true
-      CineIOPeer._signalConnection.newLocalStream(response.stream)
+      CineIOPeer._signalConnection.addLocalStream(response.stream)
       callback()
 
   startScreenShare: (options={}, callback=noop)->
+    CineIOPeer._screenSharer ||= screenSharer.get()
+
     onStreamReceived = (err, screenShareStream)=>
       return CineIOPeer.trigger('error', err) if err
       videoEl = @_createVideoElementFromStream(screenShareStream)
       CineIOPeer.screenShareStream = screenShareStream
-      CineIOPeer._signalConnection.newLocalStream(screenShareStream)
+      CineIOPeer._signalConnection.addLocalStream(screenShareStream)
       CineIOPeer.trigger 'mediaAdded',
         videoElement: videoEl
         stream: screenShareStream
         type: 'screen'
         local: true
+      callback()
 
-    screenSharer.get(options, onStreamReceived).share()
-    callback()
+    CineIOPeer._screenSharer.share(options, onStreamReceived)
 
   stopScreenShare: (callback=noop)->
     if CineIOPeer.screenShareStream?
+      CineIOPeer.screenShareStream.stop()
+      CineIOPeer._signalConnection.removeLocalStream(CineIOPeer.screenShareStream)
       CineIOPeer.trigger('mediaRemoved', videoElement: CineIOPeer.config.videoElements[CineIOPeer.screenShareStream.id])
       delete CineIOPeer.config.videoElements[CineIOPeer.screenShareStream.id]
       CineIOPeer.screenShareStream = undefined

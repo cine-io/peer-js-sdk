@@ -3,7 +3,8 @@ ScreenSharer = ssBase.ScreenSharer
 ScreenShareError = ssBase.ScreenShareError
 
 class FirefoxScreenSharer extends ScreenSharer
-  share: ->
+  share: (options, callback)->
+    super(options, callback)
     console.log "requesting screen share (moz) ..."
     navigator.mozGetUserMedia({
         audio: @options.audio,

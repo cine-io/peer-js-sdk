@@ -8,12 +8,9 @@ class ScreenShareError
 
 
 class ScreenSharer
-  constructor: (@options, @_callback)->
+  share: (@options, @_callback)->
     return @_callback(new ScreenShareError("Screen sharing requires a browser environment!")) unless window and navigator
     return @_callback(new ScreenShareError("Screen sharing not implemented in this browser / environment.")) unless webrtcSupport.screenSharing
-
-  share: ->
-    @_callback("NOT IMPLEMENTED")
 
   _onStreamReceived: (stream)->
     console.log "Received local stream:", stream
@@ -28,6 +25,7 @@ class ScreenSharer
   _onError: (err)->
     errMsg = if err.name then err.name + (if err.message then " (#{err.message})" else "") else err
     errMsg = "Screen share failed: #{errMsg}"
+    console.dir err
     console.log errMsg
     return @_callback(new ScreenShareError(errMsg))
 

@@ -4278,8 +4278,8 @@ ScreenShareError = ssBase.ScreenShareError;
 ChromeScreenSharer = (function(_super) {
   __extends(ChromeScreenSharer, _super);
 
-  function ChromeScreenSharer(options, callback) {
-    ChromeScreenSharer.__super__.constructor.call(this, options, callback);
+  function ChromeScreenSharer() {
+    ChromeScreenSharer.__super__.constructor.call(this);
     this._extensionInstalled = false;
     this._extensionReplyTries = 0;
     window.addEventListener("message", this._receiveMessage.bind(this), false);
@@ -4288,7 +4288,8 @@ ChromeScreenSharer = (function(_super) {
     }, "*");
   }
 
-  ChromeScreenSharer.prototype.share = function() {
+  ChromeScreenSharer.prototype.share = function(options, callback) {
+    ChromeScreenSharer.__super__.share.call(this, options, callback);
     return this._shareAfterExtensionReplies();
   };
 
@@ -4324,6 +4325,7 @@ ChromeScreenSharer = (function(_super) {
     if (!id) {
       return this._callback(new ScreenShareError("Screen access rejected."));
     }
+    console.log("ossr id =", id);
     navigator.webkitGetUserMedia({
       audio: this.options.audio,
       video: {
@@ -4376,7 +4378,8 @@ FirefoxScreenSharer = (function(_super) {
     return FirefoxScreenSharer.__super__.constructor.apply(this, arguments);
   }
 
-  FirefoxScreenSharer.prototype.share = function() {
+  FirefoxScreenSharer.prototype.share = function(options, callback) {
+    FirefoxScreenSharer.__super__.share.call(this, options, callback);
     console.log("requesting screen share (moz) ...");
     return navigator.mozGetUserMedia({
       audio: this.options.audio,
@@ -4504,6 +4507,7 @@ CineIOPeer = {
       callback = noop;
     }
     if (CineIOPeer.stream != null) {
+      CineIOPeer.stream.stop();
       CineIOPeer.trigger('mediaRemoved', {
         videoElement: CineIOPeer.config.videoElements[CineIOPeer.stream.id]
       });
@@ -4547,7 +4551,7 @@ CineIOPeer = {
         type: 'camera',
         local: true
       });
-      CineIOPeer._signalConnection.newLocalStream(response.stream);
+      CineIOPeer._signalConnection.addLocalStream(response.stream);
       return callback();
     });
   },
@@ -4559,6 +4563,7 @@ CineIOPeer = {
     if (callback == null) {
       callback = noop;
     }
+    CineIOPeer._screenSharer || (CineIOPeer._screenSharer = screenSharer.get());
     onStreamReceived = (function(_this) {
       return function(err, screenShareStream) {
         var videoEl;
@@ -4567,23 +4572,25 @@ CineIOPeer = {
         }
         videoEl = _this._createVideoElementFromStream(screenShareStream);
         CineIOPeer.screenShareStream = screenShareStream;
-        CineIOPeer._signalConnection.newLocalStream(screenShareStream);
-        return CineIOPeer.trigger('mediaAdded', {
+        CineIOPeer._signalConnection.addLocalStream(screenShareStream);
+        CineIOPeer.trigger('mediaAdded', {
           videoElement: videoEl,
           stream: screenShareStream,
           type: 'screen',
           local: true
         });
+        return callback();
       };
     })(this);
-    screenSharer.get(options, onStreamReceived).share();
-    return callback();
+    return CineIOPeer._screenSharer.share(options, onStreamReceived);
   },
   stopScreenShare: function(callback) {
     if (callback == null) {
       callback = noop;
     }
     if (CineIOPeer.screenShareStream != null) {
+      CineIOPeer.screenShareStream.stop();
+      CineIOPeer._signalConnection.removeLocalStream(CineIOPeer.screenShareStream);
       CineIOPeer.trigger('mediaRemoved', {
         videoElement: CineIOPeer.config.videoElements[CineIOPeer.screenShareStream.id]
       });
@@ -4700,7 +4707,9 @@ ScreenShareError = (function() {
 })();
 
 ScreenSharer = (function() {
-  function ScreenSharer(options, _callback) {
+  function ScreenSharer() {}
+
+  ScreenSharer.prototype.share = function(options, _callback) {
     this.options = options;
     this._callback = _callback;
     if (!(window && navigator)) {
@@ -4709,10 +4718,6 @@ ScreenSharer = (function() {
     if (!webrtcSupport.screenSharing) {
       return this._callback(new ScreenShareError("Screen sharing not implemented in this browser / environment."));
     }
-  }
-
-  ScreenSharer.prototype.share = function() {
-    return this._callback("NOT IMPLEMENTED");
   };
 
   ScreenSharer.prototype._onStreamReceived = function(stream) {
@@ -4730,6 +4735,7 @@ ScreenSharer = (function() {
     var errMsg;
     errMsg = err.name ? err.name + (err.message ? " (" + err.message + ")" : "") : err;
     errMsg = "Screen share failed: " + errMsg;
+    console.dir(err);
     console.log(errMsg);
     return this._callback(new ScreenShareError(errMsg));
   };
@@ -4802,7 +4808,8 @@ Connection = (function() {
     this._ensurePeerConnection = __bind(this._ensurePeerConnection, this);
     this._newMember = __bind(this._newMember, this);
     this._signalHandler = __bind(this._signalHandler, this);
-    this.newLocalStream = __bind(this.newLocalStream, this);
+    this.removeLocalStream = __bind(this.removeLocalStream, this);
+    this.addLocalStream = __bind(this.addLocalStream, this);
     this.write = __bind(this.write, this);
     this.iceServers = null;
     this.fetchedIce = false;
@@ -4816,13 +4823,28 @@ Connection = (function() {
     return (_ref = this.primus).write.apply(_ref, arguments);
   };
 
-  Connection.prototype.newLocalStream = function(stream) {
+  Connection.prototype.addLocalStream = function(stream) {
     var otherClientSparkId, peerConnection, _ref, _results;
     _ref = this.peerConnections;
     _results = [];
     for (otherClientSparkId in _ref) {
       peerConnection = _ref[otherClientSparkId];
-      _results.push(peerConnection.addStream(stream));
+      console.log("adding local stream", stream.id);
+      peerConnection.addStream(stream);
+      _results.push(console.dir(peerConnection));
+    }
+    return _results;
+  };
+
+  Connection.prototype.removeLocalStream = function(stream) {
+    var otherClientSparkId, peerConnection, _ref, _results;
+    _ref = this.peerConnections;
+    _results = [];
+    for (otherClientSparkId in _ref) {
+      peerConnection = _ref[otherClientSparkId];
+      console.log("removing local stream", stream.id);
+      peerConnection.removeStream(stream);
+      _results.push(console.dir(peerConnection));
     }
     return _results;
   };

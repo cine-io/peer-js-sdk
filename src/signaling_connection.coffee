@@ -18,10 +18,17 @@ class Connection
   write: =>
     @primus.write(arguments...)
 
-  newLocalStream: (stream)=>
+  addLocalStream: (stream)=>
     for otherClientSparkId, peerConnection of @peerConnections
-      # console.log "adding local screen stream", stream.id
+      console.log "adding local stream", stream.id
       peerConnection.addStream(stream)
+      console.dir peerConnection
+
+  removeLocalStream: (stream)=>
+    for otherClientSparkId, peerConnection of @peerConnections
+      console.log "removing local stream", stream.id
+      peerConnection.removeStream(stream)
+      console.dir peerConnection
 
   _signalHandler: (data)=>
     # console.log("got data")

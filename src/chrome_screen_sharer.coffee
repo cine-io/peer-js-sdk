@@ -3,8 +3,8 @@ ScreenSharer = ssBase.ScreenSharer
 ScreenShareError = ssBase.ScreenShareError
 
 class ChromeScreenSharer extends ScreenSharer
-  constructor: (options, callback)->
-    super(options, callback)
+  constructor: ->
+    super()
     @_extensionInstalled = false
     @_extensionReplyTries = 0
 
@@ -14,7 +14,8 @@ class ChromeScreenSharer extends ScreenSharer
     window.addEventListener("message", @_receiveMessage.bind(this), false)
     window.postMessage({ name: "cineScreenShareCheckForExtension" }, "*")
 
-  share: ->
+  share: (options, callback)->
+    super(options, callback)
     @_shareAfterExtensionReplies()
 
   _shareAfterExtensionReplies: ->
@@ -42,6 +43,7 @@ class ChromeScreenSharer extends ScreenSharer
 
   _onScreenShareResponse: (id)->
     return @_callback(new ScreenShareError("Screen access rejected.")) unless id
+    console.log "ossr id =", id
     navigator.webkitGetUserMedia({
         audio: @options.audio,
         video: {
