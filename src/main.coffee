@@ -29,15 +29,13 @@ CineIOPeer =
 
   call: (identity, callback=noop)->
     # console.log('calling', identity)
-    CineIOPeer.fetchMedia (err)->
-      return callback(err) if err
+    CineIOPeer._waitForLocalMedia ->
       CineIOPeer._signalConnection.write action: 'call', otheridentity: identity, publicKey: CineIOPeer.config.publicKey, identity: CineIOPeer.config.identity
       callback()
 
   join: (room, callback=noop)->
-    # console.log('Joining', room)
-    CineIOPeer.fetchMedia (err)->
-      return callback(err) if err
+    CineIOPeer._waitForLocalMedia ->
+      # console.log('Joining', room)
       CineIOPeer._unsafeJoin(room)
       callback()
 
@@ -48,18 +46,40 @@ CineIOPeer =
     CineIOPeer.config.rooms.splice(index, 1)
     CineIOPeer._signalConnection.write action: 'leave', room: room, publicKey: CineIOPeer.config.publicKey
 
-  fetchMedia: (callback=noop)->
+  startMicrophone: (callback)->
+    CineIOPeer._startMedia(video: false, audio: true, callback)
+
+  startCameraAndMicrophone: (callback)->
+    CineIOPeer._startMedia(video: true, audio: true, callback)
+
+  _waitForLocalMedia: (callback)->
+    setTimeout callback if CineIOPeer._hasMedia()
+    CineIOPeer.once 'localMediaRequestSuccess', callback
+
+  _hasMedia: ->
+    CineIOPeer.stream?
+
+  _startMedia: (options, callback=noop)->
     return setTimeout(callback) if CineIOPeer.stream
     requestTimeout = setTimeout CineIOPeer._mediaNotReady, 1000
-    CineIOPeer._askForMedia (err, response)->
+    CineIOPeer._askForMedia options, (err, response)->
       clearTimeout requestTimeout
       if err
-        CineIOPeer.trigger 'media', media: false
+        # did not grant permission
+        CineIOPeer.trigger 'mediaRejected',
+          type: 'camera'
+          local: true
         # console.log("ERROR", err)
         return callback(err)
-      response.media = true
+      response
       # console.log('got media', response)
-      CineIOPeer.trigger 'media', response
+      CineIOPeer.trigger('localMediaRequestSuccess')
+      CineIOPeer.trigger 'mediaAdded',
+        videoElement: response.videoElement
+        stream: response.stream
+        type: 'camera'
+        local: true
+      CineIOPeer._signalConnection.newLocalStream(response.stream)
       callback()
 
   screenShare: ->
@@ -68,7 +88,11 @@ CineIOPeer =
       videoEl = @_createVideoElementFromStream(screenShareStream)
       CineIOPeer.screenShareStream = screenShareStream
       CineIOPeer._signalConnection.newLocalStream(screenShareStream)
-      CineIOPeer.trigger('media', videoElement: videoEl, stream: screenShareStream, media: true)
+      CineIOPeer.trigger 'mediaAdded',
+        videoElement: videoEl
+        stream: screenShareStream
+        type: 'screen'
+        local: true
 
     screenSharer.get(onStreamReceived).share()
 
@@ -83,7 +107,7 @@ CineIOPeer =
     CineIOPeer._signalConnection.write action: 'join', room: room, publicKey: 'the-public-key'
 
   _mediaNotReady: ->
-    CineIOPeer.trigger('media-request')
+    CineIOPeer.trigger('mediaRequest')
 
   _askForMedia: (options={}, callback)->
     if typeof options == 'function'
