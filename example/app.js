@@ -8,38 +8,37 @@ var
 
 function toggleCamera(e) {
   e.preventDefault()
-  if (connected && cameraIsOn) {
+  if (cameraIsOn) {
     CineIOPeer.disableCamera()
-  } else if (connected && !cameraIsOn) {
-    CineIOPeer.enableCamera()
   } else {
-    CineIOPeer.startCameraAndMicrophone()
+    CineIOPeer.enableCamera()
   }
+  cameraIsOn = !cameraIsOn
 }
 
 function toggleMicrophone(e) {
   e.preventDefault()
-  if (connected && microphoneIsOn) {
+  if (microphoneIsOn) {
     CineIOPeer.muteMicrophone()
-  } else if (connected && !microphoneIsOn) {
-    CineIOPeer.unmuteMicrophone()
   } else {
-    CineIOPeer.startMicrophone()
+    CineIOPeer.unmuteMicrophone()
   }
+  microphoneIsOn = !microphoneIsOn
 }
 
 function toggleScreenShare(e) {
   e.preventDefault()
-  if (connected && sharingScreen) {
+  if (sharingScreen) {
     CineIOPeer.stopScreenShare()
-  } else if (connected && !sharingScreen) {
-    CineIOPeer.startScreenShare()
   } else {
-    CineIOPeer.startScreenShare({ audio: true })
+    CineIOPeer.startScreenShare()
   }
+  sharingScreen = !sharingScreen
 }
 
 function connect(e) {
+  if (connected) return;
+
   e.preventDefault()
 
   CineIOPeer.startCameraAndMicrophone()
@@ -63,6 +62,8 @@ function connect(e) {
 }
 
 function disconnect(e) {
+  if (!connected) return;
+
   e.preventDefault()
 
   CineIOPeer.stopCameraAndMicrophone()
@@ -82,11 +83,12 @@ $(function() {
   CineIOPeer.init({ publicKey: "18b4c471bdc2bc1d16ad3cb338108a33" })
 
   CineIOPeer.on('mediaAdded', function(data) {
-    if (data.local) {
+    if (data.local || data.remote) {
       var $vid = $(data.videoElement)
       $vid.addClass("col-md-4")
       $("#participants").append($vid)
     } else {
+      console.log(data)
       alert('Permission denied.')
     }
   })
