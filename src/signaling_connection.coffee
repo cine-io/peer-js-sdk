@@ -20,15 +20,13 @@ class Connection
 
   addLocalStream: (stream)=>
     for otherClientSparkId, peerConnection of @peerConnections
-      console.log "adding local stream", stream.id
+      console.log "adding local stream #{stream.id}"
       peerConnection.addStream(stream)
-      console.dir peerConnection
 
   removeLocalStream: (stream)=>
     for otherClientSparkId, peerConnection of @peerConnections
-      console.log "removing local stream", stream.id
+      console.log "removing local stream #{stream.id}"
       peerConnection.removeStream(stream)
-      console.dir peerConnection
 
   _signalHandler: (data)=>
     # console.log("got data")
@@ -102,7 +100,7 @@ class Connection
       console.warn("No stream attached") unless streamAttached
 
       peerConnection.on 'addStream', (event)->
-        # console.log("got remote stream", event)
+        console.log("got remote stream", event)
         videoEl = CineIOPeer._createVideoElementFromStream(event.stream, muted: false, mirror: false)
         peerConnection.videoEls.push videoEl
         CineIOPeer.trigger 'mediaAdded',
@@ -111,7 +109,7 @@ class Connection
           remote: true
 
       peerConnection.on 'removeStream', (event)->
-        # console.log("got remote stream", event)
+        console.log("removing remote stream", event)
         videoEl = CineIOPeer._getVideoElementFromStream(event.stream)
         index = peerConnection.videoEls.indexOf(videoEl)
         peerConnection.videoEls.splice(index, 1) if index > -1

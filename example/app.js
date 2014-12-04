@@ -98,7 +98,6 @@ $(function() {
   })
 
   CineIOPeer.on('mediaRemoved', function(data) {
-    console.log("data:", data)
     data.videoElement.remove()
   })
 

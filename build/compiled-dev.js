@@ -4570,7 +4570,9 @@ CineIOPeer = {
         if (err) {
           return CineIOPeer.trigger('error', err);
         }
-        videoEl = _this._createVideoElementFromStream(screenShareStream);
+        videoEl = _this._createVideoElementFromStream(screenShareStream, {
+          mirror: false
+        });
         CineIOPeer.screenShareStream = screenShareStream;
         CineIOPeer._signalConnection.addLocalStream(screenShareStream);
         CineIOPeer.trigger('mediaAdded', {
@@ -4829,9 +4831,8 @@ Connection = (function() {
     _results = [];
     for (otherClientSparkId in _ref) {
       peerConnection = _ref[otherClientSparkId];
-      console.log("adding local stream", stream.id);
-      peerConnection.addStream(stream);
-      _results.push(console.dir(peerConnection));
+      console.log("adding local stream " + stream.id);
+      _results.push(peerConnection.addStream(stream));
     }
     return _results;
   };
@@ -4842,9 +4843,8 @@ Connection = (function() {
     _results = [];
     for (otherClientSparkId in _ref) {
       peerConnection = _ref[otherClientSparkId];
-      console.log("removing local stream", stream.id);
-      peerConnection.removeStream(stream);
-      _results.push(console.dir(peerConnection));
+      console.log("removing local stream " + stream.id);
+      _results.push(peerConnection.removeStream(stream));
     }
     return _results;
   };
@@ -4942,6 +4942,7 @@ Connection = (function() {
         }
         peerConnection.on('addStream', function(event) {
           var videoEl;
+          console.log("got remote stream", event);
           videoEl = CineIOPeer._createVideoElementFromStream(event.stream, {
             muted: false,
             mirror: false
@@ -4955,6 +4956,7 @@ Connection = (function() {
         });
         peerConnection.on('removeStream', function(event) {
           var index, videoEl;
+          console.log("removing remote stream", event);
           videoEl = CineIOPeer._getVideoElementFromStream(event.stream);
           index = peerConnection.videoEls.indexOf(videoEl);
           if (index > -1) {

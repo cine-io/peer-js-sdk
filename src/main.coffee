@@ -95,7 +95,7 @@ CineIOPeer =
 
     onStreamReceived = (err, screenShareStream)=>
       return CineIOPeer.trigger('error', err) if err
-      videoEl = @_createVideoElementFromStream(screenShareStream)
+      videoEl = @_createVideoElementFromStream(screenShareStream, mirror: false)
       CineIOPeer.screenShareStream = screenShareStream
       CineIOPeer._signalConnection.addLocalStream(screenShareStream)
       CineIOPeer.trigger 'mediaAdded',
