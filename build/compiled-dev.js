@@ -4491,12 +4491,18 @@ CineIOPeer = {
     });
   },
   startMicrophone: function(callback) {
+    if (callback == null) {
+      callback = noop;
+    }
     return CineIOPeer._startMedia({
       video: false,
       audio: true
     }, callback);
   },
   startCameraAndMicrophone: function(callback) {
+    if (callback == null) {
+      callback = noop;
+    }
     return CineIOPeer._startMedia({
       video: true,
       audio: true
@@ -4518,8 +4524,9 @@ CineIOPeer = {
   },
   _waitForLocalMedia: function(callback) {
     if (CineIOPeer._hasMedia()) {
-      setTimeout(callback);
+      return setTimeout(callback);
     }
+    console.log("Waiting for local media");
     return CineIOPeer.once('localMediaRequestSuccess', callback);
   },
   _hasMedia: function() {
@@ -4809,6 +4816,7 @@ Connection = (function() {
     this._ensureReady = __bind(this._ensureReady, this);
     this._ensurePeerConnection = __bind(this._ensurePeerConnection, this);
     this._newMember = __bind(this._newMember, this);
+    this._sendOffer = __bind(this._sendOffer, this);
     this._signalHandler = __bind(this._signalHandler, this);
     this.removeLocalStream = __bind(this.removeLocalStream, this);
     this.addLocalStream = __bind(this.addLocalStream, this);
@@ -4831,8 +4839,9 @@ Connection = (function() {
     _results = [];
     for (otherClientSparkId in _ref) {
       peerConnection = _ref[otherClientSparkId];
-      console.log("adding local stream " + stream.id);
-      _results.push(peerConnection.addStream(stream));
+      console.log("adding local stream " + stream.id + " to " + otherClientSparkId);
+      peerConnection.addStream(stream);
+      _results.push(this._sendOffer(otherClientSparkId, peerConnection));
     }
     return _results;
   };
@@ -4910,6 +4919,20 @@ Connection = (function() {
     }
   };
 
+  Connection.prototype._sendOffer = function(otherClientSparkId, peerConnection) {
+    return peerConnection.offer((function(_this) {
+      return function(err, offer) {
+        console.log('offering', otherClientSparkId);
+        return _this.write({
+          action: 'offer',
+          source: "web",
+          offer: offer,
+          sparkId: otherClientSparkId
+        });
+      };
+    })(this));
+  };
+
   Connection.prototype._newMember = function(otherClientSparkId, options, callback) {
     if (this.peerConnections[otherClientSparkId]) {
       return this._ensureReady((function(_this) {
@@ -4977,15 +5000,7 @@ Connection = (function() {
           });
         });
         if (options.offer) {
-          peerConnection.offer(function(err, offer) {
-            console.log('offering', otherClientSparkId);
-            return _this.write({
-              action: 'offer',
-              source: "web",
-              offer: offer,
-              sparkId: otherClientSparkId
-            });
-          });
+          _this._sendOffer(otherClientSparkId, peerConnection);
         }
         peerConnection.on('close', function(event) {
           var videoEl, _i, _len, _ref;

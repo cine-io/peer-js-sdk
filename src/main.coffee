@@ -46,10 +46,10 @@ CineIOPeer =
     CineIOPeer.config.rooms.splice(index, 1)
     CineIOPeer._signalConnection.write action: 'leave', room: room, publicKey: CineIOPeer.config.publicKey
 
-  startMicrophone: (callback)->
+  startMicrophone: (callback=noop)->
     CineIOPeer._startMedia(video: false, audio: true, callback)
 
-  startCameraAndMicrophone: (callback)->
+  startCameraAndMicrophone: (callback=noop)->
     CineIOPeer._startMedia(video: true, audio: true, callback)
 
   stopCameraAndMicrophone: (callback=noop)->
@@ -61,7 +61,8 @@ CineIOPeer =
     callback()
 
   _waitForLocalMedia: (callback)->
-    setTimeout callback if CineIOPeer._hasMedia()
+    return setTimeout callback if CineIOPeer._hasMedia()
+    console.log("Waiting for local media")
     CineIOPeer.once 'localMediaRequestSuccess', callback
 
   _hasMedia: ->
