@@ -45,7 +45,9 @@ $(function() {
   }
 
   if (Object.keys(qs).length) {
+
     if (qs.room) {
+      CineIOPeer.startCameraAndMicrophone()
       CineIOPeer.join(qs.room)
     }
 
@@ -54,6 +56,7 @@ $(function() {
     }
 
     if (qs.call){
+      CineIOPeer.startCameraAndMicrophone()
       CineIOPeer.call(qs.call)
     }
 

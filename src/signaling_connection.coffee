@@ -74,11 +74,11 @@ class Connection
   _newMember: (otherClientSparkId, options, callback)=>
     # we must be pending to get ice candidates, do not create a new pc
     if @peerConnections[otherClientSparkId]
-      return @_ensureIce =>
+      return @_ensureReady =>
         callback(null, @peerConnections[otherClientSparkId])
 
     @peerConnections[otherClientSparkId] = PENDING
-    @_ensureIce =>
+    @_ensureReady =>
       console.log("CREATING NEW PEER CONNECTION!!", otherClientSparkId, options)
       peerConnection = @_initializeNewPeerConnection(iceServers: @iceServers)
       @peerConnections[otherClientSparkId] = peerConnection
@@ -141,6 +141,10 @@ class Connection
       return setTimeout ->
         callback null, candidate
     @_newMember(otherClientSparkId, options, callback)
+
+  _ensureReady: (callback)=>
+    CineIOPeer._waitForLocalMedia =>
+      @_ensureIce callback
 
   _ensureIce: (callback)=>
       return setTimeout callback if @fetchedIce
