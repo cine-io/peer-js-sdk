@@ -8,7 +8,7 @@ class ScreenShareError
 
 
 class ScreenSharer
-  constructor: (@_callback)->
+  constructor: (@options, @_callback)->
     return @_callback(new ScreenShareError("Screen sharing requires a browser environment!")) unless window and navigator
     return @_callback(new ScreenShareError("Screen sharing not implemented in this browser / environment.")) unless webrtcSupport.screenSharing
 
@@ -22,6 +22,7 @@ class ScreenSharer
 
   _onStreamEnded: ->
     console.log "Screen share ended."
+    CineIOPeer.stopScreenShare()
     return
 
   _onError: (err)->
@@ -34,3 +35,5 @@ class ScreenSharer
 module.exports =
   ScreenShareError: ScreenShareError
   ScreenSharer: ScreenSharer
+
+CineIOPeer = require('./main')

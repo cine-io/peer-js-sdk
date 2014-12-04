@@ -6,7 +6,7 @@ class FirefoxScreenSharer extends ScreenSharer
   share: ->
     console.log "requesting screen share (moz) ..."
     navigator.mozGetUserMedia({
-        audio:false,
+        audio: @options.audio,
         video: {
           mediaSource: "screen"
         }

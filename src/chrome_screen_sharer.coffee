@@ -3,8 +3,8 @@ ScreenSharer = ssBase.ScreenSharer
 ScreenShareError = ssBase.ScreenShareError
 
 class ChromeScreenSharer extends ScreenSharer
-  constructor: (@_callback)->
-    super(@_callback)
+  constructor: (options, callback)->
+    super(options, callback)
     @_extensionInstalled = false
     @_extensionReplyTries = 0
 
@@ -43,7 +43,7 @@ class ChromeScreenSharer extends ScreenSharer
   _onScreenShareResponse: (id)->
     return @_callback(new ScreenShareError("Screen access rejected.")) unless id
     navigator.webkitGetUserMedia({
-        audio:false,
+        audio: @options.audio,
         video: {
           mandatory: {
             chromeMediaSource: "desktop",

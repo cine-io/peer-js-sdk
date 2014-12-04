@@ -52,6 +52,13 @@ CineIOPeer =
   startCameraAndMicrophone: (callback)->
     CineIOPeer._startMedia(video: true, audio: true, callback)
 
+  stopCameraAndMicrophone: (callback=noop)->
+    if CineIOPeer.stream?
+      CineIOPeer.trigger('mediaRemoved', videoElement: CineIOPeer.config.videoElements[CineIOPeer.stream.id])
+      delete CineIOPeer.config.videoElements[CineIOPeer.stream.id]
+      CineIOPeer.stream = undefined
+    callback()
+
   _waitForLocalMedia: (callback)->
     setTimeout callback if CineIOPeer._hasMedia()
     CineIOPeer.once 'localMediaRequestSuccess', callback
@@ -82,7 +89,7 @@ CineIOPeer =
       CineIOPeer._signalConnection.newLocalStream(response.stream)
       callback()
 
-  screenShare: ->
+  startScreenShare: (options={}, callback=noop)->
     onStreamReceived = (err, screenShareStream)=>
       return CineIOPeer.trigger('error', err) if err
       videoEl = @_createVideoElementFromStream(screenShareStream)
@@ -94,7 +101,15 @@ CineIOPeer =
         type: 'screen'
         local: true
 
-    screenSharer.get(onStreamReceived).share()
+    screenSharer.get(options, onStreamReceived).share()
+    callback()
+
+  stopScreenShare: (callback=noop)->
+    if CineIOPeer.screenShareStream?
+      CineIOPeer.trigger('mediaRemoved', videoElement: CineIOPeer.config.videoElements[CineIOPeer.screenShareStream.id])
+      delete CineIOPeer.config.videoElements[CineIOPeer.screenShareStream.id]
+      CineIOPeer.screenShareStream = undefined
+    callback()
 
   _checkSupport: ->
     if webrtcSupport.support
