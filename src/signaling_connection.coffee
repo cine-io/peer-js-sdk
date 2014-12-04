@@ -20,9 +20,11 @@ class Connection
 
   addLocalStream: (stream)=>
     for otherClientSparkId, peerConnection of @peerConnections
-      console.log "adding local stream #{stream.id}"
+      console.log "adding local stream #{stream.id} to #{otherClientSparkId}"
       peerConnection.addStream(stream)
-
+      # need to reoffer every time there's a new stream
+      # http://stackoverflow.com/questions/16015022/webrtc-how-to-add-stream-after-offer-and-answer
+      @_sendOffer(otherClientSparkId, peerConnection)
   removeLocalStream: (stream)=>
     for otherClientSparkId, peerConnection of @peerConnections
       console.log "removing local stream #{stream.id}"
@@ -75,6 +77,10 @@ class Connection
           pc.handleAnswer(data.answer)
       # else
       #   console.log("UNKNOWN DATA", data)
+  _sendOffer: (otherClientSparkId, peerConnection)=>
+    peerConnection.offer (err, offer)=>
+      console.log('offering', otherClientSparkId)
+      @write action: 'offer', source: "web", offer: offer, sparkId: otherClientSparkId
 
   _newMember: (otherClientSparkId, options, callback)=>
     # we must be pending to get ice candidates, do not create a new pc
@@ -124,11 +130,7 @@ class Connection
         @write action: 'ice', source: "web", candidate: candidate, sparkId: otherClientSparkId
 
       if options.offer
-        # console.log('sending offer')
-        peerConnection.offer (err, offer)=>
-          console.log('offering', otherClientSparkId)
-          @write action: 'offer', source: "web", offer: offer, sparkId: otherClientSparkId
-
+        @_sendOffer(otherClientSparkId, peerConnection)
 
       peerConnection.on 'close', (event)->
         # console.log("remote closed", event)
