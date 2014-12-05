@@ -4,12 +4,22 @@ var
 , dummyEvent = new Event("dummy")
 , qs = {}
 
+function activateButton(event){
+  $(event.currentTarget).removeClass('btn-primary').addClass('btn-success')
+}
+function deactivateButton(event){
+  $(event.currentTarget).addClass('btn-primary').removeClass('btn-success')
+}
+
+
 function toggleCamera(e) {
   e.preventDefault()
   if (CineIOPeer.cameraStarted()) {
     CineIOPeer.stopCameraAndMicrophone()
+    deactivateButton(e)
   } else {
     CineIOPeer.startCameraAndMicrophone()
+    activateButton(e)
   }
 }
 
@@ -27,8 +37,10 @@ function toggleScreenShare(e) {
   e.preventDefault()
   if (CineIOPeer.screenShareStarted()) {
     CineIOPeer.stopScreenShare()
+    deactivateButton(e)
   } else {
     CineIOPeer.startScreenShare()
+    activateButton(e)
   }
 }
 
