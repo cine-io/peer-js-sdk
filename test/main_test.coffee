@@ -67,16 +67,6 @@ describe 'CineIOPeer', ->
       beforeEach ->
         CineIOPeer.identify('Minerva McGonagall')
 
-      it 'fetches media', (done)->
-        CineIOPeer.call "Albus Dumbledore", (err)->
-          expect(err).to.be.undefined
-          expect(CineIOPeer._unsafeGetUserMedia.calledOnce).to.be.true
-          args = CineIOPeer._unsafeGetUserMedia.firstCall.args
-          expect(args).to.have.length(2)
-          expect(args[0]).to.deep.equal(audio: true, video: true)
-          expect(args[1]).to.be.a('function')
-          done()
-
       it 'writes to the signaling connection', (done)->
         CineIOPeer.call "Albus Dumbledore", (err)=>
           expect(err).to.be.undefined
@@ -88,16 +78,6 @@ describe 'CineIOPeer', ->
 
     describe '.join', ->
       stubUserMedia()
-
-      it 'fetches media', (done)->
-        CineIOPeer.join "Gryffindor Common Room", (err)->
-          expect(err).to.be.undefined
-          expect(CineIOPeer._unsafeGetUserMedia.calledOnce).to.be.true
-          args = CineIOPeer._unsafeGetUserMedia.firstCall.args
-          expect(args).to.have.length(2)
-          expect(args[0]).to.deep.equal(audio: true, video: true)
-          expect(args[1]).to.be.a('function')
-          done()
 
       it 'adds the room to the list of rooms', (done)->
         CineIOPeer.join "Gryffindor Common Room", (err)->
@@ -143,12 +123,12 @@ describe 'CineIOPeer', ->
           expect(args[0]).to.deep.equal(action: 'leave', room: 'Gryffindor Common Room', publicKey: 'the-public-key')
           done()
 
-    describe '.fetchMedia', ->
+    describe '.startCameraAndMicrophone', ->
       describe 'success', ->
         stubUserMedia()
 
         it 'fetches media', (done)->
-          CineIOPeer.fetchMedia (err)->
+          CineIOPeer.startCameraAndMicrophone (err)->
             expect(err).to.be.undefined
             expect(CineIOPeer._unsafeGetUserMedia.calledOnce).to.be.true
             args = CineIOPeer._unsafeGetUserMedia.firstCall.args
@@ -158,9 +138,9 @@ describe 'CineIOPeer', ->
             done()
 
         it 'will not fetch twice', (done)->
-          CineIOPeer.fetchMedia (err)->
+          CineIOPeer.startCameraAndMicrophone (err)->
             expect(err).to.be.undefined
-            CineIOPeer.fetchMedia (err)->
+            CineIOPeer.startCameraAndMicrophone (err)->
               expect(err).to.be.undefined
               expect(CineIOPeer._unsafeGetUserMedia.calledOnce).to.be.true
               args = CineIOPeer._unsafeGetUserMedia.firstCall.args
@@ -178,7 +158,7 @@ describe 'CineIOPeer', ->
             CineIOPeer.off 'mediaAdded', mediaResponse
             done()
           CineIOPeer.on 'mediaAdded', mediaResponse
-          CineIOPeer.fetchMedia()
+          CineIOPeer.startCameraAndMicrophone()
 
       describe 'failure', ->
         stubUserMedia(false)
@@ -188,7 +168,7 @@ describe 'CineIOPeer', ->
             CineIOPeer.off 'mediaRejected', mediaResponse
             done()
           CineIOPeer.on 'mediaRejected', mediaResponse
-          CineIOPeer.fetchMedia (err)->
+          CineIOPeer.startCameraAndMicrophone (err)->
             expect(err).to.equal('could not fetch media')
 
         it 'triggers media with the stream and media false', (done)->
@@ -200,4 +180,4 @@ describe 'CineIOPeer', ->
             CineIOPeer.off 'mediaRejected', mediaResponse
             done()
           CineIOPeer.on 'mediaRejected', mediaResponse
-          CineIOPeer.fetchMedia()
+          CineIOPeer.startCameraAndMicrophone()

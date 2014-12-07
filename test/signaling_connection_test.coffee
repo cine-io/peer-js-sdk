@@ -42,7 +42,7 @@ describe 'SignalingConnection', ->
       expect(@connection.primus).to.equal(@primusStub)
 
     it 'passes options', ->
-      expect(@connection.options).to.deep.equal('project-public-key')
+      expect(@connection.options).to.deep.equal(publicKey: 'project-public-key')
 
     it 'triggers auth on the connection', ->
       @connection.primus.trigger 'open'
@@ -280,14 +280,38 @@ describe 'SignalingConnection', ->
       expect(args).to.have.length(1)
       expect(args[0]).to.deep.equal(some: 'data')
 
-  describe '#newLocalStream', ->
-    it 'adds the stream to all the', ->
+  describe '#addLocalStream', ->
+    beforeEach ->
       @connection.peerConnections['a'] = new FakePeerConnection
       @connection.peerConnections['a'].addStream('first stream')
       @connection.peerConnections['b'] = new FakePeerConnection
       @connection.peerConnections['b'].addStream('first stream')
-      @connection.newLocalStream('my new stream')
+
+    it 'adds the stream to all the connections', ->
+      @connection.addLocalStream('my new stream')
       expect(@connection.peerConnections['a'].streams).to.have.length(2)
       expect(@connection.peerConnections['a'].streams).to.deep.equal(['first stream', 'my new stream'])
       expect(@connection.peerConnections['b'].streams).to.have.length(2)
       expect(@connection.peerConnections['b'].streams).to.deep.equal(['first stream', 'my new stream'])
+
+    it 'resends the offer', ->
+      @connection.addLocalStream('my new stream')
+      expect(@connection.peerConnections['a'].offer.calledOnce).to.be.true
+      expect(@connection.peerConnections['b'].offer.calledOnce).to.be.true
+
+  describe '#removeLocalStream', ->
+    beforeEach ->
+      @connection.peerConnections['a'] = new FakePeerConnection
+      @connection.peerConnections['a'].addStream('first stream')
+      @connection.peerConnections['b'] = new FakePeerConnection
+      @connection.peerConnections['b'].addStream('first stream')
+
+    it 'removes the stream from all the connections', ->
+      @connection.removeLocalStream('first stream')
+      expect(@connection.peerConnections['a'].streams).to.have.length(0)
+      expect(@connection.peerConnections['b'].streams).to.have.length(0)
+
+    it 'resends the offer', ->
+      @connection.removeLocalStream('first stream')
+      expect(@connection.peerConnections['a'].offer.calledOnce).to.be.true
+      expect(@connection.peerConnections['b'].offer.calledOnce).to.be.true

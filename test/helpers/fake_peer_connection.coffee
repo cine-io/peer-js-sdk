@@ -9,6 +9,9 @@ module.exports = class FakePeerConnection
   close: ->
   addStream: (stream)->
     @streams.push(stream)
+  removeStream: (stream)->
+    index = @streams.indexOf(stream)
+    @streams.splice(index, 1) if index > -1
   processIce: (@remoteIce)->
   handleOffer: (@remoteOffer, callback)->
     setTimeout ->
