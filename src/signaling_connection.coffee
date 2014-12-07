@@ -8,11 +8,12 @@ connectToCineSignaling = ->
 PENDING = 1
 
 class Connection
-  constructor: ->
+  constructor: (@options)->
     @iceServers = null
     @fetchedIce = false
     @peerConnections = {}
     @primus = connectToCineSignaling()
+    @primus.on 'open', @_sendPublicKey
     @primus.on 'data', @_signalHandler
 
   write: =>
@@ -31,6 +32,9 @@ class Connection
       console.log "removing local stream #{stream.id} from #{otherClientSparkId}"
       peerConnection.removeStream(stream)
       @_sendOffer(otherClientSparkId, peerConnection)
+
+  _sendPublicKey: =>
+    @write action: 'auth', publicKey: @options.publicKey
 
   _signalHandler: (data)=>
     # console.log("got data")
@@ -162,8 +166,8 @@ class Connection
   _initializeNewPeerConnection: (options)->
     new PeerConnection(options)
 
-exports.connect = ->
-  new Connection
+exports.connect = (options)->
+  new Connection(options)
 
 CineIOPeer = require('./main')
 CallObject = require('./call')

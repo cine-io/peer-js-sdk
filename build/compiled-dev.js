@@ -4439,7 +4439,9 @@ CineIOPeer = {
       options = {};
     }
     CineIOPeer.config.publicKey = options.publicKey;
-    CineIOPeer._signalConnection || (CineIOPeer._signalConnection = signalingConnection.connect());
+    CineIOPeer._signalConnection || (CineIOPeer._signalConnection = signalingConnection.connect({
+      publicKey: CineIOPeer.config.publicKey
+    }));
     return setTimeout(CineIOPeer._checkSupport);
   },
   identify: function(identity) {
@@ -4804,13 +4806,15 @@ connectToCineSignaling = function() {
 PENDING = 1;
 
 Connection = (function() {
-  function Connection() {
+  function Connection(options) {
+    this.options = options;
     this._ensureIce = __bind(this._ensureIce, this);
     this._ensureReady = __bind(this._ensureReady, this);
     this._ensurePeerConnection = __bind(this._ensurePeerConnection, this);
     this._newMember = __bind(this._newMember, this);
     this._sendOffer = __bind(this._sendOffer, this);
     this._signalHandler = __bind(this._signalHandler, this);
+    this._sendPublicKey = __bind(this._sendPublicKey, this);
     this.removeLocalStream = __bind(this.removeLocalStream, this);
     this.addLocalStream = __bind(this.addLocalStream, this);
     this.write = __bind(this.write, this);
@@ -4818,6 +4822,7 @@ Connection = (function() {
     this.fetchedIce = false;
     this.peerConnections = {};
     this.primus = connectToCineSignaling();
+    this.primus.on('open', this._sendPublicKey);
     this.primus.on('data', this._signalHandler);
   }
 
@@ -4850,6 +4855,13 @@ Connection = (function() {
       _results.push(this._sendOffer(otherClientSparkId, peerConnection));
     }
     return _results;
+  };
+
+  Connection.prototype._sendPublicKey = function() {
+    return this.write({
+      action: 'auth',
+      publicKey: this.options.publicKey
+    });
   };
 
   Connection.prototype._signalHandler = function(data) {
@@ -5050,8 +5062,8 @@ Connection = (function() {
 
 })();
 
-exports.connect = function() {
-  return new Connection;
+exports.connect = function(options) {
+  return new Connection(options);
 };
 
 CineIOPeer = require('./main');

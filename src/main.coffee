@@ -19,7 +19,7 @@ CineIOPeer =
     CineIOPeer.config = {rooms: [], videoElements: {}}
   init: (options={})->
     CineIOPeer.config.publicKey = options.publicKey
-    CineIOPeer._signalConnection ||= signalingConnection.connect()
+    CineIOPeer._signalConnection ||= signalingConnection.connect(publicKey: CineIOPeer.config.publicKey)
     setTimeout CineIOPeer._checkSupport
 
   identify: (identity)->

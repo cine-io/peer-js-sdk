@@ -12,7 +12,7 @@ describe 'SignalingConnection', ->
   stubPrimus()
 
   beforeEach ->
-    @connection = SignalingConnection.connect()
+    @connection = SignalingConnection.connect(publicKey: 'project-public-key')
 
   beforeEach ->
     sinon.stub @connection, '_initializeNewPeerConnection', (options)=>
@@ -40,6 +40,16 @@ describe 'SignalingConnection', ->
   describe '.connect', ->
     it 'connects', ->
       expect(@connection.primus).to.equal(@primusStub)
+
+    it 'passes options', ->
+      expect(@connection.options).to.deep.equal('project-public-key')
+
+    it 'triggers auth on the connection', ->
+      @connection.primus.trigger 'open'
+      @primusStub.write.calledOnce
+      args = @primusStub.write.firstCall.args
+      expect(args).to.have.length(1)
+      expect(args[0]).to.deep.equal(action: 'auth', publicKey: "project-public-key")
 
   describe 'connection actions', ->
 
