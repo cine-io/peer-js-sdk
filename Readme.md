@@ -1,8 +1,37 @@
 # cine.io peer client
 
-Use with the [signaling server](https://github.com/cine-io/signaling-server).
+The JavaScript SDK for [cine.io](https://www.cine.io) peer-to-peer communication.
 
-needs primus to be loaded http://cine-io-signaling.herokuapp.com/primus/primus.js
+
+## Installation
+
+```html
+<script src="//cdn.cine.io/cineio-peer.js"></script>
+```
+
+## Usage
+
+The `CineIOPeer` object is used to start your webcam, microphone, and desktop screen sharing. It can make and recieve calls within your application and join rooms.
+
+#### Init
+
+Start off by initializing CineIOPeer with your public publicKey.
+
+```javascript
+CineIOPeer.init(CINE_IO_PUBLIC_KEY);
+```
+**CINE_IO_PUBLIC_KEY**
+This is your public key for a [cine.io](https://www.cine.io) project.
+
+#### Camera, microphone, and desktop screen sharing
+
+CineIOPeer has functions for turning on and off your local media.
+
+#### Rooms
+
+
+
+
 
 
 ## How to run the example server under SSL in development
