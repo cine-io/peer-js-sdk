@@ -17,6 +17,7 @@ CineIOPeer =
   version: "0.0.1"
   reset: ->
     CineIOPeer.config = {rooms: [], videoElements: {}}
+
   init: (options={})->
     CineIOPeer.config.publicKey = options.publicKey
     CineIOPeer._signalConnection ||= signalingConnection.connect(publicKey: CineIOPeer.config.publicKey)
@@ -65,28 +66,6 @@ CineIOPeer =
   screenShareStarted: ->
     CineIOPeer.screenShareStream?
 
-  _startMedia: (options, callback=noop)->
-    return setTimeout(callback) if CineIOPeer.cameraStream
-    requestTimeout = setTimeout CineIOPeer._mediaNotReady, 1000
-    CineIOPeer._askForMedia options, (err, response)->
-      clearTimeout requestTimeout
-      if err
-        # did not grant permission
-        CineIOPeer.trigger 'mediaRejected',
-          type: 'camera'
-          local: true
-        # console.log("ERROR", err)
-        return callback(err)
-      response
-      console.log('got media', response)
-      CineIOPeer.trigger 'mediaAdded',
-        videoElement: response.videoElement
-        stream: response.stream
-        type: 'camera'
-        local: true
-      CineIOPeer._signalConnection.addLocalStream(response.stream)
-      callback()
-
   startScreenShare: (options={}, callback=noop)->
     CineIOPeer._screenSharer ||= screenSharer.get()
 
@@ -112,6 +91,28 @@ CineIOPeer =
       delete CineIOPeer.config.videoElements[CineIOPeer.screenShareStream.id]
       CineIOPeer.screenShareStream = undefined
     callback()
+
+  _startMedia: (options, callback=noop)->
+    return setTimeout(callback) if CineIOPeer.cameraStream
+    requestTimeout = setTimeout CineIOPeer._mediaNotReady, 1000
+    CineIOPeer._askForMedia options, (err, response)->
+      clearTimeout requestTimeout
+      if err
+        # did not grant permission
+        CineIOPeer.trigger 'mediaRejected',
+          type: 'camera'
+          local: true
+        # console.log("ERROR", err)
+        return callback(err)
+      response
+      console.log('got media', response)
+      CineIOPeer.trigger 'mediaAdded',
+        videoElement: response.videoElement
+        stream: response.stream
+        type: 'camera'
+        local: true
+      CineIOPeer._signalConnection.addLocalStream(response.stream)
+      callback()
 
   _checkSupport: ->
     if webrtcSupport.support

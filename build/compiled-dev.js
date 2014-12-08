@@ -4527,36 +4527,6 @@ CineIOPeer = {
   screenShareStarted: function() {
     return CineIOPeer.screenShareStream != null;
   },
-  _startMedia: function(options, callback) {
-    var requestTimeout;
-    if (callback == null) {
-      callback = noop;
-    }
-    if (CineIOPeer.cameraStream) {
-      return setTimeout(callback);
-    }
-    requestTimeout = setTimeout(CineIOPeer._mediaNotReady, 1000);
-    return CineIOPeer._askForMedia(options, function(err, response) {
-      clearTimeout(requestTimeout);
-      if (err) {
-        CineIOPeer.trigger('mediaRejected', {
-          type: 'camera',
-          local: true
-        });
-        return callback(err);
-      }
-      response;
-      console.log('got media', response);
-      CineIOPeer.trigger('mediaAdded', {
-        videoElement: response.videoElement,
-        stream: response.stream,
-        type: 'camera',
-        local: true
-      });
-      CineIOPeer._signalConnection.addLocalStream(response.stream);
-      return callback();
-    });
-  },
   startScreenShare: function(options, callback) {
     var onStreamReceived;
     if (options == null) {
