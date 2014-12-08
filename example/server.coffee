@@ -2,7 +2,7 @@ https = require("https")
 http = require("http")
 fs = require("fs")
 express = require("express")
-connect = require("connect")
+express = require("express")
 morgan = require('morgan')
 
 port = process.env.PORT or 9090
@@ -22,14 +22,38 @@ options =
   rejectUnauthorized: false
   agent: false
 
-app = connect()
+# CINE IO API KEYS
+keys = require('./fetch_api_keys_from_environment')()
+publicKey = keys.publicKey
+secretKey = keys.secretKey
+
+app = express()
 app.use morgan("dev")
 httpServer = http.createServer(app)
 httpsServer = https.createServer(options, app)
 
+app.set('views', __dirname + '/views')
+app.set('view engine', 'jade')
+
+app.get '', (req, res)->
+  if (publicKey || secretKey)
+    options =
+      title: 'Functionality Example'
+      publicKey: publicKey
+      room: req.param('room')
+      call: req.param('call')
+      identity: req.param('identity')
+    if options.room || options.identity
+      res.render('index', options)
+    else
+      res.render('use_cases', options)
+
+  else
+    res.render('not_configured', {title: 'Not Configured'})
+
 # serve static files
-app.use "/js", connect.static(__dirname + "/../build")
-app.use connect.static(__dirname)
+app.use "/js", express.static(__dirname + "/../build")
+app.use express.static(__dirname)
 
 httpServer.listen port, ->
   console.log "HTTP server started at http://localhost.cine.io:#{port}"

@@ -1,0 +1,31 @@
+extend layout
+block content
+  #controls.col-md-12
+    .col-md-8
+      button#connect.col-md-2.btn.btn-success
+        i.fa.fa-sign-in
+        | &nbsp;Connect
+      button#disconnect.col-md-2.btn.btn-danger
+        i.fa.fa-sign-out
+        | &nbsp;Disconnect
+      button#camera.col-md-2.col-md-offset-1.btn.btn-primary
+        i.fa.fa-camera
+        | &nbsp;Camera
+      button#microphone.col-md-2.col-md-offset-1.btn.btn-primary
+        i.fa.fa-microphone
+        | &nbsp;Microphone
+      button#screen.col-md-2.col-md-offset-1.btn.btn-primary
+        i.fa.fa-picture-o
+        | &nbsp;Screen
+  #participants
+    // video elements go here
+
+  if room
+    script(type='text/javascript').
+      CineIOPeer.join("#{room}")
+  if identity
+    script(type="text/javascript").
+      CineIOPeer.identify("#{identity.identity}", "#{identity.timestamp}", "#{identity.signature}")
+  if call
+    script(type="text/javascript").
+      CineIOPeer.call("#{call}")

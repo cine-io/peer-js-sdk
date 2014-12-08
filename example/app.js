@@ -49,18 +49,6 @@ function connect(e) {
 
   e.preventDefault()
 
-  if (qs.room) {
-    CineIOPeer.join(qs.room)
-  }
-
-  if (qs.identity) {
-    CineIOPeer.identify(qs.identity)
-  }
-
-  if (qs.call) {
-    CineIOPeer.call(qs.call)
-  }
-
   connected = true
 
   $("#connect").hide()
@@ -83,8 +71,6 @@ function disconnect(e) {
 }
 
 $(function() {
-
-  CineIOPeer.init("18b4c471bdc2bc1d16ad3cb338108a33")
 
   CineIOPeer.on('mediaAdded', function(data) {
     if (data.local || data.remote) {
@@ -147,9 +133,6 @@ $(function() {
 
   if (Object.keys(qs).length) {
     connect(dummyEvent)
-    $("#controls").show()
-  } else {
-    $("#launcher").show()
   }
 
 })

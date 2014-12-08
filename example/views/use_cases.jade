@@ -1,0 +1,16 @@
+extend layout
+block content
+  #launcher
+    form(method='GET', action='/')
+      .form-group
+        input(type='text', name='room', placeholder='room name')
+        button.btn.btn-primary(type='submit') Join Room
+      .col-md-12
+        p
+          | ... or ...
+    form(method='GET', action='/')
+      .form-group
+        input(type='text', name='identity', placeholder='your name')
+        br
+        input(type='text', name='call', placeholder='who are you calling?')
+        button.btn.btn-primary(type='submit') Place Call
