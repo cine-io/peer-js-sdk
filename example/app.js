@@ -91,7 +91,7 @@ $(function() {
     data.videoElement.remove()
   })
 
-  CineIOPeer.on('incomingCall', function(data) {
+  CineIOPeer.on('call', function(data) {
     data.call.answer()
   })
 
@@ -103,20 +103,6 @@ $(function() {
     } else if (err.msg) {
       alert(err.msg)
     }
-  })
-
-  CineIOPeer.on('streamAdded', function(data) {
-    var $vid = $(data.videoElement)
-    $vid.addClass("col-md-4")
-    $("#participants").append($vid)
-  })
-
-  CineIOPeer.on('incomingcall', function(data) {
-    data.call.answer()
-  })
-
-  CineIOPeer.on('streamRemoved', function(data) {
-    data.videoEl.remove()
   })
 
   $("#connect").on("click", connect)
