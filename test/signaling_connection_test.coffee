@@ -29,7 +29,7 @@ describe 'SignalingConnection', ->
   createNewPeer = (sparkId, iceCandidates, done)->
     CineIOPeer.cameraStream = "the stream"
     @connection.primus.trigger 'data', action: 'allservers', data: iceCandidates
-    @connection.primus.trigger 'data', action: 'member', sparkId: sparkId
+    @connection.primus.trigger 'data', action: 'room-join', sparkId: sparkId
     addedStream = false
     testFunction = -> addedStream
     checkFunction = (callback)=>
@@ -71,32 +71,32 @@ describe 'SignalingConnection', ->
         CineIOPeer.on 'gotIceServers', handler
         @connection.primus.trigger 'data', action: 'allservers', data: "some ice servers"
 
-    describe "incomingcall", ->
+    describe "call", ->
       it 'triggers an event', (done)->
         handler = (data)->
           expect(data.call.answer).to.be.a('function')
           expect(data.call.reject).to.be.a('function')
           expect(data.call._data.room).to.equal('some-room')
-          CineIOPeer.off 'incomingCall', handler
+          CineIOPeer.off 'call', handler
           done()
-        CineIOPeer.on 'incomingCall', handler
-        @connection.primus.trigger 'data', action: 'incomingcall', room: 'some-room'
-    describe "leave", ->
+        CineIOPeer.on 'call', handler
+        @connection.primus.trigger 'data', action: 'call', room: 'some-room'
+    describe "room-leave", ->
       it 'closes the connection for that peer', ->
         pc = new FakePeerConnection
         @connection.peerConnections['some-spark-id'] = pc
-        @connection.primus.trigger 'data', action: 'leave', sparkId: 'some-spark-id'
+        @connection.primus.trigger 'data', action: 'room-leave', sparkId: 'some-spark-id'
         expect(pc.close.calledOnce).to.be.true
         expect(@connection.peerConnections).to.deep.equal({})
 
       it 'does nothing when the peer is not available', ->
         pc = new FakePeerConnection
         @connection.peerConnections['some-second-spark-id'] = pc
-        @connection.primus.trigger 'data', action: 'leave', sparkId: 'some-spark-id'
+        @connection.primus.trigger 'data', action: 'room-leave', sparkId: 'some-spark-id'
         expect(pc.close.calledOnce).to.be.false
         expect(@connection.peerConnections).to.deep.equal('some-second-spark-id': pc)
 
-    describe "member", ->
+    describe "room-join", ->
       assertOffer = (sparkId, done)->
         wroteOffer = false
         testFunction = -> wroteOffer
@@ -104,42 +104,42 @@ describe 'SignalingConnection', ->
           if @primusStub.write.calledOnce
             args = @primusStub.write.firstCall.args
             expect(args).to.have.length(1)
-            expect(args[0]).to.deep.equal(action: 'offer', source: "web", offer: 'some-offer-string', sparkId: sparkId)
+            expect(args[0]).to.deep.equal(action: 'rtc-offer', source: "web", offer: 'some-offer-string', sparkId: sparkId)
             wroteOffer = true
           setTimeout(callback, 10)
         async.until testFunction, checkFunction, done
 
       it 'sends an offer', (done)->
         @connection.primus.trigger 'data', action: 'allservers', data: 'the-ice-candidates-1'
-        @connection.primus.trigger 'data', action: 'member', sparkId: 'some-spark-id'
+        @connection.primus.trigger 'data', action: 'room-join', sparkId: 'some-spark-id'
         assertOffer.call(this, "some-spark-id", done)
 
       it 'attaches the cineio stream', (done)->
         CineIOPeer.cameraStream = "the stream"
         @connection.primus.trigger 'data', action: 'allservers', data: 'the-ice-candidates-2'
-        @connection.primus.trigger 'data', action: 'member', sparkId: 'some-spark-id-2'
+        @connection.primus.trigger 'data', action: 'room-join', sparkId: 'some-spark-id-2'
         assertOffer.call this, "some-spark-id-2", (err)=>
           expect(@fakeConnection.streams).to.deep.equal(['the stream'])
           done(err)
 
       it 'waits for ice candidates', (done)->
-        @connection.primus.trigger 'data', action: 'member', sparkId: 'some-spark-id-3'
+        @connection.primus.trigger 'data', action: 'room-join', sparkId: 'some-spark-id-3'
         setTimeout =>
           @connection.primus.trigger 'data', action: 'allservers', data: 'the-ice-candidates-3'
           assertOffer.call(this, "some-spark-id-3", done)
 
-    describe "ice", ->
+    describe "rtc-ice", ->
       beforeEach (done)->
         createNewPeer.call(this, 'some-spark-id-4', 'the-ice-candidates-4', done)
 
       it 'does not error without a spark id', ->
-        @connection.primus.trigger 'data', action: 'ice', candidate: 'the-remote-ice-candidate'
+        @connection.primus.trigger 'data', action: 'rtc-ice', candidate: 'the-remote-ice-candidate'
         expect(@fakeConnection.remoteIce).to.be.undefined
 
       it 'does not send an offer when creating a new peer client'
 
       it 'adds iceCandidate to the peer connection', (done)->
-        @connection.primus.trigger 'data', action: 'ice', candidate: 'the-remote-ice-candidate', sparkId: 'some-spark-id-4'
+        @connection.primus.trigger 'data', action: 'rtc-ice', candidate: 'the-remote-ice-candidate', sparkId: 'some-spark-id-4'
         hasIce = false
         testFunction = -> hasIce
         checkFunction = (callback)=>
@@ -147,7 +147,7 @@ describe 'SignalingConnection', ->
           setTimeout(callback, 10)
         async.until testFunction, checkFunction, done
 
-    describe "offer", ->
+    describe "rtc-offer", ->
       beforeEach (done)->
         createNewPeer.call(this, 'some-spark-id-5', 'the-ice-candidates-5', done)
 
@@ -158,29 +158,29 @@ describe 'SignalingConnection', ->
           if @primusStub.write.calledTwice
             args = @primusStub.write.secondCall.args
             expect(args).to.have.length(1)
-            expect(args[0]).to.deep.equal(action: 'answer', source: "web", answer: 'some-answer-string', sparkId: sparkId)
+            expect(args[0]).to.deep.equal(action: 'rtc-answer', source: "web", answer: 'some-answer-string', sparkId: sparkId)
             wroteOffer = true
           setTimeout(callback, 10)
         async.until testFunction, checkFunction, done
 
       it 'handles the offer', (done)->
-        @connection.primus.trigger 'data', action: 'offer', offer: 'the remote offer', sparkId: 'some-spark-id-5'
+        @connection.primus.trigger 'data', action: 'rtc-offer', offer: 'the remote offer', sparkId: 'some-spark-id-5'
         assertAnswer.call this, 'some-spark-id-5', (err)=>
           expect(@fakeConnection.remoteOffer).to.equal('the remote offer')
           done(err)
 
       it 'returns an answer', (done)->
-        @connection.primus.trigger 'data', action: 'offer', offer: 'the remote offer', sparkId: 'some-spark-id-5'
+        @connection.primus.trigger 'data', action: 'rtc-offer', offer: 'the remote offer', sparkId: 'some-spark-id-5'
         assertAnswer.call this, 'some-spark-id-5', (err)=>
           expect(@fakeConnection.answer.calledOnce).to.be.true
           done(err)
 
-    describe "answer", ->
+    describe "rtc-answer", ->
       beforeEach (done)->
         createNewPeer.call(this, 'some-spark-id-5', 'the-ice-candidates-5', done)
 
       it 'handles the answer', (done)->
-        @connection.primus.trigger 'data', action: 'answer', answer: 'the remote answer', sparkId: 'some-spark-id-5'
+        @connection.primus.trigger 'data', action: 'rtc-answer', answer: 'the remote answer', sparkId: 'some-spark-id-5'
         hasAnswer = false
         testFunction = -> hasAnswer
         checkFunction = (callback)=>
@@ -236,13 +236,14 @@ describe 'SignalingConnection', ->
           done()
         CineIOPeer.on 'mediaRemoved', handler
         @fakeConnection.trigger 'removeStream', stream: new FakeMediaStream
+
     describe 'ice', ->
       it 'writes to primus', ->
         @fakeConnection.trigger 'ice', 'some candidate'
         expect(@primusStub.write.calledTwice).to.be.true
         args = @primusStub.write.secondCall.args
         expect(args).to.have.length(1)
-        expect(args[0]).to.deep.equal(action: 'ice', source: 'web', candidate: "some candidate", sparkId: 'some-spark-id-8')
+        expect(args[0]).to.deep.equal(action: 'rtc-ice', source: 'web', candidate: "some candidate", sparkId: 'some-spark-id-8')
 
     describe 'close', ->
       stubCreateObjectUrl("third-unique-identifier")

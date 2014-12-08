@@ -91,7 +91,7 @@ describe 'CineIOPeer', ->
           expect(@primusStub.write.calledOnce).to.be.true
           args = @primusStub.write.firstCall.args
           expect(args).to.have.length
-          expect(args[0]).to.deep.equal(action: 'join', room: 'Gryffindor Common Room', publicKey: 'the-public-key')
+          expect(args[0]).to.deep.equal(action: 'room-join', room: 'Gryffindor Common Room', publicKey: 'the-public-key')
           done()
 
     describe '.leave', ->
@@ -120,7 +120,7 @@ describe 'CineIOPeer', ->
           expect(@primusStub.write.calledTwice).to.be.true
           args = @primusStub.write.secondCall.args
           expect(args).to.have.length
-          expect(args[0]).to.deep.equal(action: 'leave', room: 'Gryffindor Common Room', publicKey: 'the-public-key')
+          expect(args[0]).to.deep.equal(action: 'room-leave', room: 'Gryffindor Common Room', publicKey: 'the-public-key')
           done()
 
     describe '.startCameraAndMicrophone', ->

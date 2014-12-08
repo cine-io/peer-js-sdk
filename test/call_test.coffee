@@ -29,7 +29,7 @@ describe 'Call', ->
         expect(@primusStub.write.calledOnce).to.be.true
         args = @primusStub.write.firstCall.args
         expect(args).to.have.length
-        expect(args[0]).to.deep.equal(action: 'join', room: 'Hogwarts Express', publicKey: 'the-public-key')
+        expect(args[0]).to.deep.equal(action: 'room-join', room: 'Hogwarts Express', publicKey: 'the-public-key')
         done()
 
   describe '#reject', ->
@@ -38,4 +38,4 @@ describe 'Call', ->
       expect(@primusStub.write.calledOnce).to.be.true
       args = @primusStub.write.firstCall.args
       expect(args).to.have.length
-      expect(args[0]).to.deep.equal(action: 'reject', room: 'Hogwarts Express', publicKey: 'the-public-key')
+      expect(args[0]).to.deep.equal(action: 'call-reject', room: 'Hogwarts Express', publicKey: 'the-public-key')

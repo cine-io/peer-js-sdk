@@ -6,6 +6,6 @@ module.exports = class CallObject
     CineIOPeer.join(@_data.room, callback)
 
   reject: ->
-    CineIOPeer._signalConnection.write action: 'reject', room: @_data.room, publicKey: CineIOPeer.config.publicKey
+    CineIOPeer._signalConnection.write action: 'call-reject', room: @_data.room, publicKey: CineIOPeer.config.publicKey
 
 CineIOPeer = require('./main')

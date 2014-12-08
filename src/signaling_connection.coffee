@@ -45,40 +45,40 @@ class Connection
         @fetchedIce = true
         CineIOPeer.trigger('gotIceServers')
 
-      when 'incomingcall'
+      when 'call'
         # console.log('got incoming call', data)
-        CineIOPeer.trigger('incomingCall', call: new CallObject(data))
+        CineIOPeer.trigger('call', call: new CallObject(data))
 
-      when 'leave'
+      when 'room-leave'
         # console.log('leaving', data)
         return unless @peerConnections[data.sparkId]
         return if @peerConnections[data.sparkId] == PENDING
         @peerConnections[data.sparkId].close()
         delete @peerConnections[data.sparkId]
 
-      when 'member'
+      when 'room-join'
         console.log('got new member', data)
         @_ensurePeerConnection(data.sparkId, offer: true)
 
       # peerConnection standard config
-      when 'ice'
+      when 'rtc-ice'
         #console.log('got remote ice', data)
         return unless data.sparkId
         @_ensurePeerConnection data.sparkId, offer: false, (err, pc)=>
           pc.processIce(data.candidate)
 
       # peerConnection standard config
-      when 'offer'
+      when 'rtc-offer'
         otherClientSparkId = data.sparkId
         # console.log('got offer', data)
         @_ensurePeerConnection otherClientSparkId, offer: false, (err, pc)=>
           pc.handleOffer data.offer, (err)=>
           # console.log('handled offer', err)
             pc.answer (err, answer)=>
-              @write action: 'answer', source: "web", answer: answer, sparkId: otherClientSparkId
+              @write action: 'rtc-answer', source: "web", answer: answer, sparkId: otherClientSparkId
 
       # peerConnection standard config
-      when 'answer'
+      when 'rtc-answer'
         # console.log('got answer', data)
         @_ensurePeerConnection data.sparkId, offer: false, (err, pc)->
           pc.handleAnswer(data.answer)
@@ -87,7 +87,7 @@ class Connection
   _sendOffer: (otherClientSparkId, peerConnection)=>
     peerConnection.offer (err, offer)=>
       console.log('offering', otherClientSparkId)
-      @write action: 'offer', source: "web", offer: offer, sparkId: otherClientSparkId
+      @write action: 'rtc-offer', source: "web", offer: offer, sparkId: otherClientSparkId
 
   _newMember: (otherClientSparkId, options, callback)=>
     # we must be pending to get ice candidates, do not create a new pc
@@ -134,7 +134,7 @@ class Connection
 
       peerConnection.on 'ice', (candidate)=>
         #console.log('got my ice', candidate.candidate.candidate)
-        @write action: 'ice', source: "web", candidate: candidate, sparkId: otherClientSparkId
+        @write action: 'rtc-ice', source: "web", candidate: candidate, sparkId: otherClientSparkId
 
       if options.offer
         @_sendOffer(otherClientSparkId, peerConnection)

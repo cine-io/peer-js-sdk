@@ -42,7 +42,7 @@ CineIOPeer =
     return CineIOPeer.trigger('error', msg: 'not connected to room', room: room) unless index > -1
 
     CineIOPeer.config.rooms.splice(index, 1)
-    CineIOPeer._signalConnection.write action: 'leave', room: room, publicKey: CineIOPeer.config.publicKey
+    CineIOPeer._signalConnection.write action: 'room-leave', room: room, publicKey: CineIOPeer.config.publicKey
 
   startMicrophone: (callback=noop)->
     CineIOPeer._startMedia(video: false, audio: true, callback)
@@ -121,7 +121,7 @@ CineIOPeer =
 
   _unsafeJoin: (room)->
     CineIOPeer.config.rooms.push(room)
-    CineIOPeer._signalConnection.write action: 'join', room: room, publicKey: 'the-public-key'
+    CineIOPeer._signalConnection.write action: 'room-join', room: room, publicKey: 'the-public-key'
 
   _mediaNotReady: ->
     CineIOPeer.trigger('mediaRequest')

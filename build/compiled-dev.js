@@ -4250,7 +4250,7 @@ module.exports = CallObject = (function() {
 
   CallObject.prototype.reject = function() {
     return CineIOPeer._signalConnection.write({
-      action: 'reject',
+      action: 'call-reject',
       room: this._data.room,
       publicKey: CineIOPeer.config.publicKey
     });
@@ -4483,7 +4483,7 @@ CineIOPeer = {
     }
     CineIOPeer.config.rooms.splice(index, 1);
     return CineIOPeer._signalConnection.write({
-      action: 'leave',
+      action: 'room-leave',
       room: room,
       publicKey: CineIOPeer.config.publicKey
     });
@@ -4617,7 +4617,7 @@ CineIOPeer = {
   _unsafeJoin: function(room) {
     CineIOPeer.config.rooms.push(room);
     return CineIOPeer._signalConnection.write({
-      action: 'join',
+      action: 'room-join',
       room: room,
       publicKey: 'the-public-key'
     });
@@ -4872,11 +4872,11 @@ Connection = (function() {
         this.iceServers = data.data;
         this.fetchedIce = true;
         return CineIOPeer.trigger('gotIceServers');
-      case 'incomingcall':
-        return CineIOPeer.trigger('incomingCall', {
+      case 'call':
+        return CineIOPeer.trigger('call', {
           call: new CallObject(data)
         });
-      case 'leave':
+      case 'room-leave':
         if (!this.peerConnections[data.sparkId]) {
           return;
         }
@@ -4885,12 +4885,12 @@ Connection = (function() {
         }
         this.peerConnections[data.sparkId].close();
         return delete this.peerConnections[data.sparkId];
-      case 'member':
+      case 'room-join':
         console.log('got new member', data);
         return this._ensurePeerConnection(data.sparkId, {
           offer: true
         });
-      case 'ice':
+      case 'rtc-ice':
         if (!data.sparkId) {
           return;
         }
@@ -4901,7 +4901,7 @@ Connection = (function() {
             return pc.processIce(data.candidate);
           };
         })(this));
-      case 'offer':
+      case 'rtc-offer':
         otherClientSparkId = data.sparkId;
         return this._ensurePeerConnection(otherClientSparkId, {
           offer: false
@@ -4910,7 +4910,7 @@ Connection = (function() {
             return pc.handleOffer(data.offer, function(err) {
               return pc.answer(function(err, answer) {
                 return _this.write({
-                  action: 'answer',
+                  action: 'rtc-answer',
                   source: "web",
                   answer: answer,
                   sparkId: otherClientSparkId
@@ -4919,7 +4919,7 @@ Connection = (function() {
             });
           };
         })(this));
-      case 'answer':
+      case 'rtc-answer':
         return this._ensurePeerConnection(data.sparkId, {
           offer: false
         }, function(err, pc) {
@@ -4933,7 +4933,7 @@ Connection = (function() {
       return function(err, offer) {
         console.log('offering', otherClientSparkId);
         return _this.write({
-          action: 'offer',
+          action: 'rtc-offer',
           source: "web",
           offer: offer,
           sparkId: otherClientSparkId
@@ -5002,7 +5002,7 @@ Connection = (function() {
         });
         peerConnection.on('ice', function(candidate) {
           return _this.write({
-            action: 'ice',
+            action: 'rtc-ice',
             source: "web",
             candidate: candidate,
             sparkId: otherClientSparkId
