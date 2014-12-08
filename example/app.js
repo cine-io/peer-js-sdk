@@ -84,7 +84,7 @@ function disconnect(e) {
 
 $(function() {
 
-  CineIOPeer.init({ publicKey: "18b4c471bdc2bc1d16ad3cb338108a33" })
+  CineIOPeer.init("18b4c471bdc2bc1d16ad3cb338108a33")
 
   CineIOPeer.on('mediaAdded', function(data) {
     if (data.local || data.remote) {

@@ -15,7 +15,7 @@ describe 'Call', ->
     @dataTrigger = (data)->
       done()
     CineIOPeer.on 'info', @dataTrigger
-    CineIOPeer.init(publicKey: 'the-public-key')
+    CineIOPeer.init('the-public-key')
 
   afterEach ->
     CineIOPeer.off 'info', @dataTrigger

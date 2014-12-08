@@ -29,14 +29,14 @@ describe 'CineIOPeer', ->
     it 'initializes the config', (done)->
       setupDataTrigger.call this, ->
         done()
-      CineIOPeer.init(publicKey: 'my-public-key')
+      CineIOPeer.init('my-public-key')
       expect(CineIOPeer.config).to.deep.equal(publicKey: 'my-public-key', rooms: [], videoElements: {})
 
     it 'checks for support', (done)->
       setupDataTrigger.call this, (data)->
         expect(data).to.deep.equal(support: true)
         done()
-      CineIOPeer.init(publicKey: 'my-public-key')
+      CineIOPeer.init('my-public-key')
 
   describe 'after initialized', ->
 
@@ -44,7 +44,7 @@ describe 'CineIOPeer', ->
       @dataTrigger = (data)->
         done()
       CineIOPeer.on 'info', @dataTrigger
-      CineIOPeer.init(publicKey: 'the-public-key')
+      CineIOPeer.init('the-public-key')
 
     afterEach ->
       CineIOPeer.off 'info', @dataTrigger

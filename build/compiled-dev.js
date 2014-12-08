@@ -4434,11 +4434,8 @@ CineIOPeer = {
       videoElements: {}
     };
   },
-  init: function(options) {
-    if (options == null) {
-      options = {};
-    }
-    CineIOPeer.config.publicKey = options.publicKey;
+  init: function(publicKey) {
+    CineIOPeer.config.publicKey = publicKey;
     CineIOPeer._signalConnection || (CineIOPeer._signalConnection = signalingConnection.connect({
       publicKey: CineIOPeer.config.publicKey
     }));
@@ -4572,6 +4569,36 @@ CineIOPeer = {
       CineIOPeer.screenShareStream = void 0;
     }
     return callback();
+  },
+  _startMedia: function(options, callback) {
+    var requestTimeout;
+    if (callback == null) {
+      callback = noop;
+    }
+    if (CineIOPeer.cameraStream) {
+      return setTimeout(callback);
+    }
+    requestTimeout = setTimeout(CineIOPeer._mediaNotReady, 1000);
+    return CineIOPeer._askForMedia(options, function(err, response) {
+      clearTimeout(requestTimeout);
+      if (err) {
+        CineIOPeer.trigger('mediaRejected', {
+          type: 'camera',
+          local: true
+        });
+        return callback(err);
+      }
+      response;
+      console.log('got media', response);
+      CineIOPeer.trigger('mediaAdded', {
+        videoElement: response.videoElement,
+        stream: response.stream,
+        type: 'camera',
+        local: true
+      });
+      CineIOPeer._signalConnection.addLocalStream(response.stream);
+      return callback();
+    });
   },
   _checkSupport: function() {
     if (webrtcSupport.support) {
