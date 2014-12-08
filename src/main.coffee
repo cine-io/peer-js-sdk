@@ -23,10 +23,10 @@ CineIOPeer =
     CineIOPeer._signalConnection ||= signalingConnection.connect(publicKey: CineIOPeer.config.publicKey)
     setTimeout CineIOPeer._checkSupport
 
-  identify: (identity)->
+  identify: (identity, timestamp, signature)->
     # console.log('identifying as', identity)
     CineIOPeer.config.identity = identity
-    CineIOPeer._signalConnection.write action: 'identify', identity: identity, publicKey: CineIOPeer.config.publicKey, client: 'web'
+    CineIOPeer._signalConnection.write action: 'identify', identity: identity, timestamp: timestamp, signature: signature, publicKey: CineIOPeer.config.publicKey, client: 'web'
 
   call: (identity, callback=noop)->
     # console.log('calling', identity)

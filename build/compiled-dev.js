@@ -4441,11 +4441,13 @@ CineIOPeer = {
     }));
     return setTimeout(CineIOPeer._checkSupport);
   },
-  identify: function(identity) {
+  identify: function(identity, timestamp, signature) {
     CineIOPeer.config.identity = identity;
     return CineIOPeer._signalConnection.write({
       action: 'identify',
       identity: identity,
+      timestamp: timestamp,
+      signature: signature,
       publicKey: CineIOPeer.config.publicKey,
       client: 'web'
     });

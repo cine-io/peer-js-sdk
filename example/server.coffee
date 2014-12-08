@@ -23,6 +23,7 @@ options =
   agent: false
 
 # CINE IO API KEYS
+generateSecureIdentity = require('./generate_secure_identity')
 keys = require('./fetch_api_keys_from_environment')()
 publicKey = keys.publicKey
 secretKey = keys.secretKey
@@ -42,7 +43,8 @@ app.get '', (req, res)->
       publicKey: publicKey
       room: req.param('room')
       call: req.param('call')
-      identity: req.param('identity')
+    if identity = req.param('identity')
+      options.identity = generateSecureIdentity(identity, secretKey)
     if options.room || options.identity
       res.render('index', options)
     else
