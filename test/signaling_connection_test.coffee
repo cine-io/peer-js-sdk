@@ -28,7 +28,7 @@ describe 'SignalingConnection', ->
 
   createNewPeer = (sparkId, iceCandidates, done)->
     CineIOPeer.cameraStream = "the stream"
-    @connection.primus.trigger 'data', action: 'allservers', data: iceCandidates
+    @connection.primus.trigger 'data', action: 'rtc-servers', data: iceCandidates
     @connection.primus.trigger 'data', action: 'room-join', sparkId: sparkId
     addedStream = false
     testFunction = -> addedStream
@@ -53,15 +53,15 @@ describe 'SignalingConnection', ->
 
   describe 'connection actions', ->
 
-    describe "allservers", ->
+    describe "rtc-servers", ->
 
       it 'writes the ice servers', ->
-        @connection.primus.trigger 'data', action: 'allservers', data: "some ice servers"
+        @connection.primus.trigger 'data', action: 'rtc-servers', data: "some ice servers"
         expect(@connection.iceServers).to.equal("some ice servers")
 
       it 'goes from not having fetched ice servers to having fetched them', ->
         expect(@connection.fetchedIce).to.be.false
-        @connection.primus.trigger 'data', action: 'allservers', data: "some ice servers"
+        @connection.primus.trigger 'data', action: 'rtc-servers', data: "some ice servers"
         expect(@connection.fetchedIce).to.be.true
 
       it 'triggers an event', (done)->
@@ -69,7 +69,7 @@ describe 'SignalingConnection', ->
           CineIOPeer.off 'gotIceServers', handler
           done()
         CineIOPeer.on 'gotIceServers', handler
-        @connection.primus.trigger 'data', action: 'allservers', data: "some ice servers"
+        @connection.primus.trigger 'data', action: 'rtc-servers', data: "some ice servers"
 
     describe "call", ->
       it 'triggers an event', (done)->
@@ -110,13 +110,13 @@ describe 'SignalingConnection', ->
         async.until testFunction, checkFunction, done
 
       it 'sends an offer', (done)->
-        @connection.primus.trigger 'data', action: 'allservers', data: 'the-ice-candidates-1'
+        @connection.primus.trigger 'data', action: 'rtc-servers', data: 'the-ice-candidates-1'
         @connection.primus.trigger 'data', action: 'room-join', sparkId: 'some-spark-id'
         assertOffer.call(this, "some-spark-id", done)
 
       it 'attaches the cineio stream', (done)->
         CineIOPeer.cameraStream = "the stream"
-        @connection.primus.trigger 'data', action: 'allservers', data: 'the-ice-candidates-2'
+        @connection.primus.trigger 'data', action: 'rtc-servers', data: 'the-ice-candidates-2'
         @connection.primus.trigger 'data', action: 'room-join', sparkId: 'some-spark-id-2'
         assertOffer.call this, "some-spark-id-2", (err)=>
           expect(@fakeConnection.streams).to.deep.equal(['the stream'])
@@ -125,7 +125,7 @@ describe 'SignalingConnection', ->
       it 'waits for ice candidates', (done)->
         @connection.primus.trigger 'data', action: 'room-join', sparkId: 'some-spark-id-3'
         setTimeout =>
-          @connection.primus.trigger 'data', action: 'allservers', data: 'the-ice-candidates-3'
+          @connection.primus.trigger 'data', action: 'rtc-servers', data: 'the-ice-candidates-3'
           assertOffer.call(this, "some-spark-id-3", done)
 
     describe "rtc-ice", ->

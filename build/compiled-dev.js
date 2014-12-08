@@ -4867,7 +4867,7 @@ Connection = (function() {
   Connection.prototype._signalHandler = function(data) {
     var otherClientSparkId;
     switch (data.action) {
-      case 'allservers':
+      case 'rtc-servers':
         console.log('setting config', data);
         this.iceServers = data.data;
         this.fetchedIce = true;

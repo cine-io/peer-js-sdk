@@ -39,7 +39,7 @@ class Connection
   _signalHandler: (data)=>
     # console.log("got data")
     switch data.action
-      when 'allservers'
+      when 'rtc-servers'
         console.log('setting config', data)
         @iceServers = data.data
         @fetchedIce = true
