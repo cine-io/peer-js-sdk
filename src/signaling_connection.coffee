@@ -57,8 +57,13 @@ class Connection
         delete @peerConnections[data.sparkId]
 
       when 'room-join'
-        console.log('got new member', data)
+        console.log('room-join', data)
         @_ensurePeerConnection(data.sparkId, offer: true)
+        @write action: 'room-announce', source: "web", sparkId: data.sparkId
+
+      when 'room-announce'
+        console.log('room-announce', data)
+        @_ensurePeerConnection(data.sparkId, offer: false)
 
       # peerConnection standard config
       when 'rtc-ice'
@@ -101,16 +106,7 @@ class Connection
       peerConnection = @_initializeNewPeerConnection(iceServers: @iceServers)
       @peerConnections[otherClientSparkId] = peerConnection
       peerConnection.videoEls = []
-      # console.log("CineIOPeer.cameraStream", CineIOPeer.cameraStream)
-      streamAttached = false
-      if CineIOPeer.cameraStream
-        peerConnection.addStream(CineIOPeer.cameraStream)
-        streamAttached = true
-      if CineIOPeer.screenShareStream
-        peerConnection.addStream(CineIOPeer.screenShareStream)
-        streamAttached = true
-
-      console.warn("No stream attached") unless streamAttached
+      peerConnection.addStream(stream) for stream in CineIOPeer.localStreams()
 
       peerConnection.on 'addStream', (event)->
         console.log("got remote stream", event)
@@ -136,7 +132,7 @@ class Connection
         #console.log('got my ice', candidate.candidate.candidate)
         @write action: 'rtc-ice', source: "web", candidate: candidate, sparkId: otherClientSparkId
 
-      if options.offer
+      if options.offer && CineIOPeer.localStreams().length > 0
         @_sendOffer(otherClientSparkId, peerConnection)
 
       peerConnection.on 'close', (event)->
@@ -148,6 +144,7 @@ class Connection
             remote: true
         delete peerConnection.videoEls
       callback(null, peerConnection)
+      CineIOPeer.trigger("peerConnectionMade")
 
   _ensurePeerConnection: (otherClientSparkId, options, callback=noop)=>
     candidate = @peerConnections[otherClientSparkId]
