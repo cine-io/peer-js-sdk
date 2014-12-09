@@ -52,6 +52,14 @@ describe 'SignalingConnection', ->
       expect(args[0]).to.deep.equal(action: 'auth', publicKey: "project-public-key")
 
   describe 'connection actions', ->
+    describe 'error', ->
+      it 'triggers an event', (done)->
+        handler = (data)->
+          CineIOPeer.off 'error', handler
+          expect(data.data).to.equal('some error data')
+          done()
+        CineIOPeer.on 'error', handler
+        @connection.primus.trigger 'data', action: 'error', data: "some error data"
 
     describe "rtc-servers", ->
 

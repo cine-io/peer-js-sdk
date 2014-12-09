@@ -15,6 +15,7 @@ class Connection
     @primus = connectToCineSignaling()
     @primus.on 'open', @_sendPublicKey
     @primus.on 'data', @_signalHandler
+    @primus.on 'end', @_connectionEnded
 
   write: =>
     @primus.write(arguments...)
@@ -36,9 +37,15 @@ class Connection
   _sendPublicKey: =>
     @write action: 'auth', publicKey: @options.publicKey
 
+  _connectionEnded: ->
+    console.log("Connection closed")
+
   _signalHandler: (data)=>
     # console.log("got data")
     switch data.action
+      when 'error'
+        CineIOPeer.trigger('error', data)
+
       when 'rtc-servers'
         console.log('setting config', data)
         @iceServers = data.data

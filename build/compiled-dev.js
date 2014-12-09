@@ -5048,6 +5048,7 @@ Connection = (function() {
     this.primus = connectToCineSignaling();
     this.primus.on('open', this._sendPublicKey);
     this.primus.on('data', this._signalHandler);
+    this.primus.on('end', this._connectionEnded);
   }
 
   Connection.prototype.write = function() {
@@ -5102,9 +5103,15 @@ Connection = (function() {
     });
   };
 
+  Connection.prototype._connectionEnded = function() {
+    return console.log("Connection closed");
+  };
+
   Connection.prototype._signalHandler = function(data) {
     var otherClientSparkId;
     switch (data.action) {
+      case 'error':
+        return CineIOPeer.trigger('error', data);
       case 'rtc-servers':
         console.log('setting config', data);
         this.iceServers = data.data;
