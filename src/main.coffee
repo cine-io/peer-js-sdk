@@ -120,6 +120,9 @@ CineIOPeer =
     CineIOPeer._audioCapableStreams().length > 0 && !CineIOPeer.mutedMicrophone
 
   startScreenShare: (options={}, callback=noop)->
+    if typeof options == 'function'
+      callback = options
+      options = {}
     CineIOPeer._screenSharer ||= screenSharer.get()
 
     onStreamReceived = (err, screenShareStream)=>

@@ -4613,6 +4613,10 @@ CineIOPeer = {
     if (callback == null) {
       callback = noop;
     }
+    if (typeof options === 'function') {
+      callback = options;
+      options = {};
+    }
     CineIOPeer._screenSharer || (CineIOPeer._screenSharer = screenSharer.get());
     onStreamReceived = (function(_this) {
       return function(err, screenShareStream) {
