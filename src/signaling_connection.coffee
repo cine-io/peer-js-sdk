@@ -19,19 +19,19 @@ class Connection
   write: =>
     @primus.write(arguments...)
 
-  addLocalStream: (stream)=>
+  addLocalStream: (stream, options={})=>
     for otherClientSparkId, peerConnection of @peerConnections
       console.log "adding local stream #{stream.id} to #{otherClientSparkId}"
       peerConnection.addStream(stream)
       # need to reoffer every time there's a new stream
       # http://stackoverflow.com/questions/16015022/webrtc-how-to-add-stream-after-offer-and-answer
-      @_sendOffer(otherClientSparkId, peerConnection)
+      @_sendOffer(otherClientSparkId, peerConnection) unless options.silent
 
-  removeLocalStream: (stream)=>
+  removeLocalStream: (stream, options={})=>
     for otherClientSparkId, peerConnection of @peerConnections
       console.log "removing local stream #{stream.id} from #{otherClientSparkId}"
       peerConnection.removeStream(stream)
-      @_sendOffer(otherClientSparkId, peerConnection)
+      @_sendOffer(otherClientSparkId, peerConnection) unless options.silent
 
   _sendPublicKey: =>
     @write action: 'auth', publicKey: @options.publicKey

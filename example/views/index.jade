@@ -1,22 +1,30 @@
 extend layout
 block content
   #controls.col-md-12
-    .col-md-8
-      button#connect.col-md-2.btn.btn-success
-        i.fa.fa-sign-in
-        | &nbsp;Connect
-      button#disconnect.col-md-2.btn.btn-danger
-        i.fa.fa-sign-out
-        | &nbsp;Disconnect
-      button#camera.col-md-2.col-md-offset-1.btn.btn-primary
-        i.fa.fa-camera
-        | &nbsp;Camera
-      button#microphone.col-md-2.col-md-offset-1.btn.btn-primary
-        i.fa.fa-microphone
-        | &nbsp;Microphone
-      button#screen.col-md-2.col-md-offset-1.btn.btn-primary
-        i.fa.fa-picture-o
-        | &nbsp;Screen
+    ul.list-inline
+      li
+        button#connect.btn.btn-success
+          i.fa.fa-sign-in
+          | &nbsp;Connect
+      li
+        button#disconnect.btn.btn-danger
+          i.fa.fa-sign-out
+          | &nbsp;Disconnect
+      li
+        button#camera-and-microphone.btn.btn-primary
+          | &nbsp;Camera and microphone
+      li
+        button#camera.btn.btn-primary
+          i.fa.fa-camera
+          | &nbsp;Camera
+      li
+        button#microphone.btn.btn-primary
+          i.fa.fa-microphone
+          | &nbsp;Microphone
+      li
+        button#screen.btn.btn-primary
+          i.fa.fa-picture-o
+          | &nbsp;Screen
   #participants
     // video elements go here
 

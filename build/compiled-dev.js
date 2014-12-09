@@ -4487,15 +4487,6 @@ CineIOPeer = {
       publicKey: CineIOPeer.config.publicKey
     });
   },
-  startMicrophone: function(callback) {
-    if (callback == null) {
-      callback = noop;
-    }
-    return CineIOPeer._startMedia({
-      video: false,
-      audio: true
-    }, callback);
-  },
   startCameraAndMicrophone: function(callback) {
     if (callback == null) {
       callback = noop;
@@ -4509,22 +4500,110 @@ CineIOPeer = {
     if (callback == null) {
       callback = noop;
     }
-    if (CineIOPeer.cameraStream != null) {
-      CineIOPeer.cameraStream.stop();
-      CineIOPeer._signalConnection.removeLocalStream(CineIOPeer.cameraStream);
-      CineIOPeer.trigger('mediaRemoved', {
-        videoElement: CineIOPeer.config.videoElements[CineIOPeer.cameraStream.id]
-      });
-      delete CineIOPeer.config.videoElements[CineIOPeer.cameraStream.id];
-      CineIOPeer.cameraStream = void 0;
+    if (CineIOPeer.microphoneStream) {
+      CineIOPeer._removeStream(CineIOPeer.microphoneStream);
+      delete CineIOPeer.microphoneStream;
+    }
+    if (CineIOPeer.cameraStream) {
+      CineIOPeer._removeStream(CineIOPeer.cameraStream);
+      delete CineIOPeer.cameraStream;
+    }
+    if (CineIOPeer.cameraAndMicrophoneStream) {
+      CineIOPeer._removeStream(CineIOPeer.cameraAndMicrophoneStream);
+      delete CineIOPeer.cameraAndMicrophoneStream;
     }
     return callback();
   },
-  cameraStarted: function() {
-    return CineIOPeer.cameraStream != null;
+  startMicrophone: function(callback) {
+    if (callback == null) {
+      callback = noop;
+    }
+    if (CineIOPeer._audioCapableStreams().length > 0) {
+      CineIOPeer._unmuteAudio();
+      return callback();
+    }
+    if (CineIOPeer.cameraStream && !CineIOPeer.mutedCamera) {
+      CineIOPeer._removeStream(CineIOPeer.cameraStream, {
+        silent: true
+      });
+      delete CineIOPeer.cameraStream;
+      return CineIOPeer.startCameraAndMicrophone(callback);
+    }
+    return CineIOPeer._startMedia({
+      video: false,
+      audio: true
+    }, callback);
   },
-  screenShareStarted: function() {
+  stopMicrophone: function(callback) {
+    if (callback == null) {
+      callback = noop;
+    }
+    if (CineIOPeer.microphoneStream) {
+      CineIOPeer._removeStream(CineIOPeer.microphoneStream);
+      delete CineIOPeer.microphoneStream;
+    }
+    if (CineIOPeer.cameraAndMicrophoneStream) {
+      if (CineIOPeer.mutedCamera) {
+        CineIOPeer._removeStream(CineIOPeer.cameraAndMicrophoneStream);
+        delete CineIOPeer.cameraAndMicrophoneStream;
+      } else {
+        CineIOPeer._muteAudio();
+      }
+    }
+    return callback();
+  },
+  startCamera: function(callback) {
+    if (callback == null) {
+      callback = noop;
+    }
+    if (CineIOPeer._cameraCapableStreams().length > 0) {
+      CineIOPeer._unmuteCamera();
+      return callback();
+    }
+    if (CineIOPeer.microphoneStream && !CineIOPeer.mutedMicrophone) {
+      CineIOPeer._removeStream(CineIOPeer.microphoneStream, {
+        silent: true
+      });
+      delete CineIOPeer.microphoneStream;
+      return CineIOPeer.startCameraAndMicrophone(callback);
+    }
+    return CineIOPeer._startMedia({
+      video: true,
+      audio: false
+    }, callback);
+  },
+  stopCamera: function(callback) {
+    if (callback == null) {
+      callback = noop;
+    }
+    if (CineIOPeer.cameraStream) {
+      CineIOPeer._removeStream(CineIOPeer.cameraStream);
+      delete CineIOPeer.cameraStream;
+    }
+    if (CineIOPeer.cameraAndMicrophoneStream) {
+      if (CineIOPeer.mutedMicrophone) {
+        CineIOPeer._removeStream(CineIOPeer.cameraAndMicrophoneStream);
+        delete CineIOPeer.cameraAndMicrophoneStream;
+      } else {
+        CineIOPeer._muteCamera();
+      }
+    }
+    return callback();
+  },
+  cameraRunning: function() {
+    if (CineIOPeer.cameraStream) {
+      return true;
+    }
+    return CineIOPeer.cameraAndMicrophoneStream && !CineIOPeer.mutedCamera;
+  },
+  screenShareRunning: function() {
     return CineIOPeer.screenShareStream != null;
+  },
+  microphoneRunning: function() {
+    if (CineIOPeer.microphoneStream != null) {
+      return true;
+    }
+    return CineIOPeer._audioCapableStreams().length > 0 && !CineIOPeer.mutedMicrophone;
   },
   startScreenShare: function(options, callback) {
     var onStreamReceived;
@@ -4539,7 +4618,11 @@ CineIOPeer = {
       return function(err, screenShareStream) {
         var videoEl;
         if (err) {
-          return CineIOPeer.trigger('error', err);
+          CineIOPeer.trigger('mediaRejected', {
+            type: 'screen',
+            local: true
+          });
+          return callback(err);
         }
         videoEl = _this._createVideoElementFromStream(screenShareStream, {
           mirror: false
@@ -4561,23 +4644,158 @@ CineIOPeer = {
     if (callback == null) {
       callback = noop;
     }
-    if (CineIOPeer.screenShareStream != null) {
-      CineIOPeer.screenShareStream.stop();
-      CineIOPeer._signalConnection.removeLocalStream(CineIOPeer.screenShareStream);
-      CineIOPeer.trigger('mediaRemoved', {
-        videoElement: CineIOPeer.config.videoElements[CineIOPeer.screenShareStream.id]
-      });
-      delete CineIOPeer.config.videoElements[CineIOPeer.screenShareStream.id];
-      CineIOPeer.screenShareStream = void 0;
+    if (!CineIOPeer.screenShareRunning()) {
+      return callback();
     }
+    CineIOPeer._removeStream(CineIOPeer.screenShareStream);
+    delete CineIOPeer.screenShareStream;
     return callback();
+  },
+  _muteAudio: function() {
+    var stream, _i, _len, _ref;
+    _ref = CineIOPeer.localStreams();
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      stream = _ref[_i];
+      CineIOPeer._muteStreamAudio(stream);
+    }
+    return CineIOPeer.mutedMicrophone = true;
+  },
+  _muteCamera: function() {
+    var stream, _i, _len, _ref;
+    _ref = CineIOPeer._cameraCapableStreams();
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      stream = _ref[_i];
+      CineIOPeer._muteStreamVideo(stream);
+    }
+    return CineIOPeer.mutedCamera = true;
+  },
+  _unmuteAudio: function() {
+    var unmuteStream;
+    unmuteStream = CineIOPeer._audioCapableStreams()[0];
+    if (unmuteStream) {
+      CineIOPeer._unmuteStreamAudio(unmuteStream);
+    } else {
+      CineIOPeer.startMicrophone();
+    }
+    return delete CineIOPeer.mutedMicrophone;
+  },
+  _unmuteCamera: function() {
+    var unmuteStream;
+    unmuteStream = CineIOPeer._cameraCapableStreams()[0];
+    if (unmuteStream) {
+      CineIOPeer._unmuteStreamVideo(unmuteStream);
+    } else {
+      CineIOPeer.startCamera();
+    }
+    return delete CineIOPeer.mutedCamera;
+  },
+  _removeStream: function(stream, options) {
+    if (options == null) {
+      options = {};
+    }
+    stream.stop();
+    CineIOPeer._signalConnection.removeLocalStream(stream, options);
+    CineIOPeer.trigger('mediaRemoved', {
+      videoElement: CineIOPeer.config.videoElements[stream.id]
+    });
+    return delete CineIOPeer.config.videoElements[stream.id];
+  },
+  _muteStreamAudio: function(stream) {
+    if (!stream) {
+      return;
+    }
+    return CineIOPeer._disableTracks(stream.getAudioTracks());
+  },
+  _unmuteStreamAudio: function(stream) {
+    if (!stream) {
+      return;
+    }
+    return CineIOPeer._enableTracks(stream.getAudioTracks());
+  },
+  _muteStreamVideo: function(stream) {
+    if (!stream) {
+      return;
+    }
+    return CineIOPeer._disableTracks(stream.getVideoTracks());
+  },
+  _unmuteStreamVideo: function(stream) {
+    if (!stream) {
+      return;
+    }
+    return CineIOPeer._enableTracks(stream.getVideoTracks());
+  },
+  _enableTracks: function(tracks) {
+    var track, _i, _len, _results;
+    _results = [];
+    for (_i = 0, _len = tracks.length; _i < _len; _i++) {
+      track = tracks[_i];
+      _results.push(track.enabled = true);
+    }
+    return _results;
+  },
+  _disableTracks: function(tracks) {
+    var track, _i, _len, _results;
+    _results = [];
+    for (_i = 0, _len = tracks.length; _i < _len; _i++) {
+      track = tracks[_i];
+      _results.push(track.enabled = false);
+    }
+    return _results;
+  },
+  localStreams: function() {
+    var streams;
+    streams = [];
+    if (CineIOPeer.cameraAndMicrophoneStream) {
+      streams.push(CineIOPeer.cameraAndMicrophoneStream);
+    }
+    if (CineIOPeer.cameraStream) {
+      streams.push(CineIOPeer.cameraStream);
+    }
+    if (CineIOPeer.microphoneStream) {
+      streams.push(CineIOPeer.microphoneStream);
+    }
+    if (CineIOPeer.screenShareStream) {
+      streams.push(CineIOPeer.screenShareStream);
+    }
+    return streams;
+  },
+  _cameraCapableStreams: function() {
+    var streams;
+    streams = [];
+    if (CineIOPeer.cameraAndMicrophoneStream) {
+      streams.push(CineIOPeer.cameraAndMicrophoneStream);
+    }
+    if (CineIOPeer.cameraStream) {
+      streams.push(CineIOPeer.cameraStream);
+    }
+    return streams;
+  },
+  _audioCapableStreams: function() {
+    var streams;
+    streams = [];
+    if (CineIOPeer.cameraAndMicrophoneStream) {
+      streams.push(CineIOPeer.cameraAndMicrophoneStream);
+    }
+    if (CineIOPeer.microphoneStream) {
+      streams.push(CineIOPeer.microphoneStream);
+    }
+    if (CineIOPeer.screenShareStream) {
+      streams.push(CineIOPeer.screenShareStream);
+    }
+    return streams;
   },
   _startMedia: function(options, callback) {
     var requestTimeout;
     if (callback == null) {
       callback = noop;
     }
-    if (CineIOPeer.cameraStream) {
+    if (CineIOPeer.cameraAndMicrophoneStream && options.video && options.audio) {
+      return setTimeout(callback);
+    }
+    if (CineIOPeer.cameraStream && options.video) {
+      return setTimeout(callback);
+    }
+    if (CineIOPeer.microphoneStream && options.audio) {
       return setTimeout(callback);
     }
     requestTimeout = setTimeout(CineIOPeer._mediaNotReady, 1000);
@@ -4590,12 +4808,19 @@ CineIOPeer = {
         });
         return callback(err);
       }
-      response;
-      console.log('got media', response);
+      if (options.video && options.audio) {
+        CineIOPeer.cameraAndMicrophoneStream = response.stream;
+      } else if (options.video) {
+        CineIOPeer.cameraStream = response.stream;
+      } else if (options.audio) {
+        CineIOPeer.microphoneStream = response.stream;
+      }
       CineIOPeer.trigger('mediaAdded', {
         videoElement: response.videoElement,
         stream: response.stream,
         type: 'camera',
+        video: options.video,
+        audio: options.audio,
         local: true
       });
       CineIOPeer._signalConnection.addLocalStream(response.stream);
@@ -4644,7 +4869,6 @@ CineIOPeer = {
           return callback(err);
         }
         videoEl = _this._createVideoElementFromStream(stream, options);
-        CineIOPeer.cameraStream = stream;
         return callback(null, {
           videoElement: videoEl,
           stream: stream
@@ -4830,28 +5054,42 @@ Connection = (function() {
     return (_ref = this.primus).write.apply(_ref, arguments);
   };
 
-  Connection.prototype.addLocalStream = function(stream) {
+  Connection.prototype.addLocalStream = function(stream, options) {
     var otherClientSparkId, peerConnection, _ref, _results;
+    if (options == null) {
+      options = {};
+    }
     _ref = this.peerConnections;
     _results = [];
     for (otherClientSparkId in _ref) {
       peerConnection = _ref[otherClientSparkId];
       console.log("adding local stream " + stream.id + " to " + otherClientSparkId);
       peerConnection.addStream(stream);
-      _results.push(this._sendOffer(otherClientSparkId, peerConnection));
+      if (!options.silent) {
+        _results.push(this._sendOffer(otherClientSparkId, peerConnection));
+      } else {
+        _results.push(void 0);
+      }
     }
     return _results;
   };
 
-  Connection.prototype.removeLocalStream = function(stream) {
+  Connection.prototype.removeLocalStream = function(stream, options) {
     var otherClientSparkId, peerConnection, _ref, _results;
+    if (options == null) {
+      options = {};
+    }
     _ref = this.peerConnections;
     _results = [];
     for (otherClientSparkId in _ref) {
       peerConnection = _ref[otherClientSparkId];
       console.log("removing local stream " + stream.id + " from " + otherClientSparkId);
       peerConnection.removeStream(stream);
-      _results.push(this._sendOffer(otherClientSparkId, peerConnection));
+      if (!options.silent) {
+        _results.push(this._sendOffer(otherClientSparkId, peerConnection));
+      } else {
+        _results.push(void 0);
+      }
     }
     return _results;
   };
@@ -4885,9 +5123,19 @@ Connection = (function() {
         this.peerConnections[data.sparkId].close();
         return delete this.peerConnections[data.sparkId];
       case 'room-join':
-        console.log('got new member', data);
-        return this._ensurePeerConnection(data.sparkId, {
+        console.log('room-join', data);
+        this._ensurePeerConnection(data.sparkId, {
           offer: true
+        });
+        return this.write({
+          action: 'room-announce',
+          source: "web",
+          sparkId: data.sparkId
+        });
+      case 'room-announce':
+        console.log('room-announce', data);
+        return this._ensurePeerConnection(data.sparkId, {
+          offer: false
         });
       case 'rtc-ice':
         if (!data.sparkId) {
@@ -4952,24 +5200,17 @@ Connection = (function() {
     this.peerConnections[otherClientSparkId] = PENDING;
     return this._ensureReady((function(_this) {
       return function() {
-        var peerConnection, streamAttached;
+        var peerConnection, stream, _i, _len, _ref;
         console.log("CREATING NEW PEER CONNECTION!!", otherClientSparkId, options);
         peerConnection = _this._initializeNewPeerConnection({
           iceServers: _this.iceServers
         });
         _this.peerConnections[otherClientSparkId] = peerConnection;
         peerConnection.videoEls = [];
-        streamAttached = false;
-        if (CineIOPeer.cameraStream) {
-          peerConnection.addStream(CineIOPeer.cameraStream);
-          streamAttached = true;
-        }
-        if (CineIOPeer.screenShareStream) {
-          peerConnection.addStream(CineIOPeer.screenShareStream);
-          streamAttached = true;
-        }
-        if (!streamAttached) {
-          console.warn("No stream attached");
+        _ref = CineIOPeer.localStreams();
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          stream = _ref[_i];
+          peerConnection.addStream(stream);
         }
         peerConnection.on('addStream', function(event) {
           var videoEl;
@@ -5007,14 +5248,14 @@ Connection = (function() {
             sparkId: otherClientSparkId
           });
         });
-        if (options.offer) {
+        if (options.offer && CineIOPeer.localStreams().length > 0) {
           _this._sendOffer(otherClientSparkId, peerConnection);
         }
         peerConnection.on('close', function(event) {
-          var videoEl, _i, _len, _ref;
-          _ref = peerConnection.videoEls;
-          for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-            videoEl = _ref[_i];
+          var videoEl, _j, _len1, _ref1;
+          _ref1 = peerConnection.videoEls;
+          for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
+            videoEl = _ref1[_j];
             CineIOPeer.trigger('mediaRemoved', {
               peerConnection: peerConnection,
               videoElement: videoEl,
@@ -5023,7 +5264,8 @@ Connection = (function() {
           }
           return delete peerConnection.videoEls;
         });
-        return callback(null, peerConnection);
+        callback(null, peerConnection);
+        return CineIOPeer.trigger("peerConnectionMade");
       };
     })(this));
   };

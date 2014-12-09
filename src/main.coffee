@@ -45,32 +45,89 @@ CineIOPeer =
     CineIOPeer.config.rooms.splice(index, 1)
     CineIOPeer._signalConnection.write action: 'room-leave', room: room, publicKey: CineIOPeer.config.publicKey
 
-  startMicrophone: (callback=noop)->
-    CineIOPeer._startMedia(video: false, audio: true, callback)
-
   startCameraAndMicrophone: (callback=noop)->
     CineIOPeer._startMedia(video: true, audio: true, callback)
 
   stopCameraAndMicrophone: (callback=noop)->
-    if CineIOPeer.cameraStream?
-      CineIOPeer.cameraStream.stop()
-      CineIOPeer._signalConnection.removeLocalStream(CineIOPeer.cameraStream)
-      CineIOPeer.trigger('mediaRemoved', videoElement: CineIOPeer.config.videoElements[CineIOPeer.cameraStream.id])
-      delete CineIOPeer.config.videoElements[CineIOPeer.cameraStream.id]
-      CineIOPeer.cameraStream = undefined
+    if CineIOPeer.microphoneStream
+      CineIOPeer._removeStream(CineIOPeer.microphoneStream)
+      delete CineIOPeer.microphoneStream
+    if CineIOPeer.cameraStream
+      CineIOPeer._removeStream(CineIOPeer.cameraStream)
+      delete CineIOPeer.cameraStream
+    if CineIOPeer.cameraAndMicrophoneStream
+      CineIOPeer._removeStream(CineIOPeer.cameraAndMicrophoneStream)
+      delete CineIOPeer.cameraAndMicrophoneStream
     callback()
 
-  cameraStarted: ->
-    CineIOPeer.cameraStream?
+  startMicrophone: (callback=noop)->
+    if CineIOPeer._audioCapableStreams().length > 0
+      CineIOPeer._unmuteAudio()
+      return callback()
+    if CineIOPeer.cameraStream && !CineIOPeer.mutedCamera
+      CineIOPeer._removeStream(CineIOPeer.cameraStream, silent: true)
+      delete CineIOPeer.cameraStream
+      return CineIOPeer.startCameraAndMicrophone(callback)
+    CineIOPeer._startMedia(video: false, audio: true, callback)
 
-  screenShareStarted: ->
+  stopMicrophone: (callback=noop)->
+    if CineIOPeer.microphoneStream
+      CineIOPeer._removeStream(CineIOPeer.microphoneStream)
+      delete CineIOPeer.microphoneStream
+    if CineIOPeer.cameraAndMicrophoneStream
+      # if the camera is muted, remove the stream all together
+      if CineIOPeer.mutedCamera
+        CineIOPeer._removeStream(CineIOPeer.cameraAndMicrophoneStream)
+        delete CineIOPeer.cameraAndMicrophoneStream
+      # the camera is still on, keep the stream around and just remove the video
+      else
+        CineIOPeer._muteAudio()
+    callback()
+
+  startCamera: (callback=noop)->
+    if CineIOPeer._cameraCapableStreams().length > 0
+      CineIOPeer._unmuteCamera()
+      return callback()
+    if CineIOPeer.microphoneStream && !CineIOPeer.mutedMicrophone
+      CineIOPeer._removeStream(CineIOPeer.microphoneStream, silent: true)
+      delete CineIOPeer.microphoneStream
+      return CineIOPeer.startCameraAndMicrophone(callback)
+    CineIOPeer._startMedia(video: true, audio: false, callback)
+
+  stopCamera: (callback=noop)->
+    if CineIOPeer.cameraStream
+      CineIOPeer._removeStream(CineIOPeer.cameraStream)
+      delete CineIOPeer.cameraStream
+    if CineIOPeer.cameraAndMicrophoneStream
+      # if the microphone is muted, remove the stream all together
+      if CineIOPeer.mutedMicrophone
+        CineIOPeer._removeStream(CineIOPeer.cameraAndMicrophoneStream)
+        delete CineIOPeer.cameraAndMicrophoneStream
+      # the microphone is still on, keep the stream around and just remove the video
+      else
+        CineIOPeer._muteCamera()
+    callback()
+
+  cameraRunning: ->
+    return true if CineIOPeer.cameraStream
+    CineIOPeer.cameraAndMicrophoneStream && !CineIOPeer.mutedCamera
+
+  screenShareRunning: ->
     CineIOPeer.screenShareStream?
+
+  microphoneRunning: ->
+    return true if CineIOPeer.microphoneStream?
+    CineIOPeer._audioCapableStreams().length > 0 && !CineIOPeer.mutedMicrophone
 
   startScreenShare: (options={}, callback=noop)->
     CineIOPeer._screenSharer ||= screenSharer.get()
 
     onStreamReceived = (err, screenShareStream)=>
-      return CineIOPeer.trigger('error', err) if err
+      if err
+        CineIOPeer.trigger 'mediaRejected',
+          type: 'screen'
+          local: true
+        return callback(err)
       videoEl = @_createVideoElementFromStream(screenShareStream, mirror: false)
       CineIOPeer.screenShareStream = screenShareStream
       CineIOPeer._signalConnection.addLocalStream(screenShareStream)
@@ -84,16 +141,90 @@ CineIOPeer =
     CineIOPeer._screenSharer.share(options, onStreamReceived)
 
   stopScreenShare: (callback=noop)->
-    if CineIOPeer.screenShareStream?
-      CineIOPeer.screenShareStream.stop()
-      CineIOPeer._signalConnection.removeLocalStream(CineIOPeer.screenShareStream)
-      CineIOPeer.trigger('mediaRemoved', videoElement: CineIOPeer.config.videoElements[CineIOPeer.screenShareStream.id])
-      delete CineIOPeer.config.videoElements[CineIOPeer.screenShareStream.id]
-      CineIOPeer.screenShareStream = undefined
+    return callback() unless CineIOPeer.screenShareRunning()
+    CineIOPeer._removeStream(CineIOPeer.screenShareStream)
+    delete CineIOPeer.screenShareStream
     callback()
 
+  _muteAudio: ->
+    CineIOPeer._muteStreamAudio(stream) for stream in CineIOPeer.localStreams()
+    CineIOPeer.mutedMicrophone = true
+
+  _muteCamera: ->
+    CineIOPeer._muteStreamVideo(stream) for stream in CineIOPeer._cameraCapableStreams()
+    CineIOPeer.mutedCamera = true
+
+  _unmuteAudio: ->
+    unmuteStream = CineIOPeer._audioCapableStreams()[0]
+    if unmuteStream
+      CineIOPeer._unmuteStreamAudio(unmuteStream)
+    else
+      CineIOPeer.startMicrophone()
+    delete CineIOPeer.mutedMicrophone
+
+  _unmuteCamera: ->
+    unmuteStream = CineIOPeer._cameraCapableStreams()[0]
+    if unmuteStream
+      CineIOPeer._unmuteStreamVideo(unmuteStream)
+    else
+      CineIOPeer.startCamera()
+    delete CineIOPeer.mutedCamera
+
+  _removeStream: (stream, options={})->
+    stream.stop()
+    CineIOPeer._signalConnection.removeLocalStream(stream, options)
+    CineIOPeer.trigger('mediaRemoved', videoElement: CineIOPeer.config.videoElements[stream.id])
+    delete CineIOPeer.config.videoElements[stream.id]
+
+  _muteStreamAudio: (stream)->
+    return unless stream
+    CineIOPeer._disableTracks(stream.getAudioTracks())
+
+  _unmuteStreamAudio: (stream)->
+    return unless stream
+    CineIOPeer._enableTracks(stream.getAudioTracks())
+
+  _muteStreamVideo: (stream)->
+    return unless stream
+    CineIOPeer._disableTracks(stream.getVideoTracks())
+
+  _unmuteStreamVideo: (stream)->
+    return unless stream
+    CineIOPeer._enableTracks(stream.getVideoTracks())
+
+  _enableTracks: (tracks)->
+    track.enabled = true for track in tracks
+  _disableTracks: (tracks)->
+    track.enabled = false for track in tracks
+
+  localStreams: ->
+    streams = []
+    streams.push CineIOPeer.cameraAndMicrophoneStream if CineIOPeer.cameraAndMicrophoneStream
+    streams.push CineIOPeer.cameraStream if CineIOPeer.cameraStream
+    streams.push CineIOPeer.microphoneStream if CineIOPeer.microphoneStream
+    streams.push CineIOPeer.screenShareStream if CineIOPeer.screenShareStream
+    streams
+
+  _cameraCapableStreams: ->
+    streams = []
+    streams.push CineIOPeer.cameraAndMicrophoneStream if CineIOPeer.cameraAndMicrophoneStream
+    streams.push CineIOPeer.cameraStream if CineIOPeer.cameraStream
+    streams
+
+  _audioCapableStreams: ->
+    streams = []
+    streams.push CineIOPeer.cameraAndMicrophoneStream if CineIOPeer.cameraAndMicrophoneStream
+    streams.push CineIOPeer.microphoneStream if CineIOPeer.microphoneStream
+    streams.push CineIOPeer.screenShareStream if CineIOPeer.screenShareStream
+    streams
+
   _startMedia: (options, callback=noop)->
-    return setTimeout(callback) if CineIOPeer.cameraStream
+    if CineIOPeer.cameraAndMicrophoneStream && options.video && options.audio
+      return setTimeout(callback)
+    if CineIOPeer.cameraStream && options.video
+      return setTimeout(callback)
+    if CineIOPeer.microphoneStream && options.audio
+      return setTimeout(callback)
     requestTimeout = setTimeout CineIOPeer._mediaNotReady, 1000
     CineIOPeer._askForMedia options, (err, response)->
       clearTimeout requestTimeout
@@ -104,12 +235,19 @@ CineIOPeer =
           local: true
         # console.log("ERROR", err)
         return callback(err)
-      response
-      console.log('got media', response)
+      if options.video && options.audio
+        CineIOPeer.cameraAndMicrophoneStream = response.stream
+      else if options.video
+        CineIOPeer.cameraStream = response.stream
+      else if options.audio
+        CineIOPeer.microphoneStream = response.stream
+
       CineIOPeer.trigger 'mediaAdded',
         videoElement: response.videoElement
         stream: response.stream
         type: 'camera'
+        video: options.video
+        audio: options.audio
         local: true
       CineIOPeer._signalConnection.addLocalStream(response.stream)
       callback()
@@ -139,7 +277,6 @@ CineIOPeer =
     CineIOPeer._unsafeGetUserMedia streamDoptions, (err, stream)=>
       return callback(err) if err
       videoEl = @_createVideoElementFromStream(stream, options)
-      CineIOPeer.cameraStream = stream
       callback(null, videoElement: videoEl, stream: stream)
 
   _unsafeGetUserMedia: (options, callback)->

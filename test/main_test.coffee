@@ -51,15 +51,15 @@ describe 'CineIOPeer', ->
 
     describe '.identify', ->
       it 'sets an identity', ->
-        CineIOPeer.identify('Minerva McGonagall')
+        CineIOPeer.identify('Minerva McGonagall', 'timely-timestamp', 'secure-signature')
         expect(CineIOPeer.config.identity).to.equal('Minerva McGonagall')
 
       it 'writes to the signaling connection', ->
-        CineIOPeer.identify('Minerva McGonagall')
+        CineIOPeer.identify('Minerva McGonagall', 'timely-timestamp', 'secure-signature')
         expect(@primusStub.write.calledOnce).to.be.true
         args = @primusStub.write.firstCall.args
         expect(args).to.have.length(1)
-        expect(args[0]).to.deep.equal(action: 'identify', identity: 'Minerva McGonagall', publicKey: 'the-public-key', client: 'web')
+        expect(args[0]).to.deep.equal(action: 'identify', identity: 'Minerva McGonagall', timestamp: 'timely-timestamp', signature: 'secure-signature', publicKey: 'the-public-key', client: 'web')
 
     describe '.call', ->
       stubUserMedia()

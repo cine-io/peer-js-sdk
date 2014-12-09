@@ -318,6 +318,11 @@ describe 'SignalingConnection', ->
       expect(@connection.peerConnections['a'].offer.calledOnce).to.be.true
       expect(@connection.peerConnections['b'].offer.calledOnce).to.be.true
 
+    it "won't resend the offer when silent the offer", ->
+      @connection.addLocalStream('my new stream', silent: true)
+      expect(@connection.peerConnections['a'].offer.called).to.be.false
+      expect(@connection.peerConnections['b'].offer.called).to.be.false
+
   describe '#removeLocalStream', ->
     beforeEach ->
       @connection.peerConnections['a'] = new FakePeerConnection
@@ -334,3 +339,8 @@ describe 'SignalingConnection', ->
       @connection.removeLocalStream('first stream')
       expect(@connection.peerConnections['a'].offer.calledOnce).to.be.true
       expect(@connection.peerConnections['b'].offer.calledOnce).to.be.true
+
+    it "won't resend the offer when silent the offer", ->
+      @connection.removeLocalStream('first stream', silent: true)
+      expect(@connection.peerConnections['a'].offer.called).to.be.false
+      expect(@connection.peerConnections['b'].offer.called).to.be.false

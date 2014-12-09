@@ -1,46 +1,76 @@
 var
   connected = false
-, microphoneIsOn = false
 , dummyEvent = new Event("dummy")
 , qs = {}
 
-function activateButton(event){
-  $(event.currentTarget).removeClass('btn-primary').addClass('btn-success')
+function activateButton(id){
+  $("#"+id).removeClass('btn-primary').addClass('btn-success')
 }
-function deactivateButton(event){
-  $(event.currentTarget).addClass('btn-primary').removeClass('btn-success')
+
+function deactivateButton(id){
+  $("#"+id).addClass('btn-primary').removeClass('btn-success')
+}
+
+function recalculateLayout(err){
+  if (err){
+    console.error("GOT error", err)
+  }
+  if (CineIOPeer.cameraRunning()){
+    activateButton("camera")
+  }else{
+    deactivateButton("camera")
+  }
+  if (CineIOPeer.microphoneRunning()){
+    activateButton("microphone")
+  }else{
+    deactivateButton("microphone")
+  }
+  if (CineIOPeer.cameraRunning() && CineIOPeer.microphoneRunning()){
+    activateButton("camera-and-microphone")
+  }else{
+    deactivateButton("camera-and-microphone")
+  }
+  if (CineIOPeer.screenShareRunning()){
+    activateButton("screen")
+  }else{
+    deactivateButton("screen")
+  }
+
 }
 
 
 function toggleCamera(e) {
   e.preventDefault()
-  if (CineIOPeer.cameraStarted()) {
-    CineIOPeer.stopCameraAndMicrophone()
-    deactivateButton(e)
+  if (CineIOPeer.cameraRunning()) {
+    CineIOPeer.stopCamera(recalculateLayout)
   } else {
-    CineIOPeer.startCameraAndMicrophone()
-    activateButton(e)
+    CineIOPeer.startCamera(recalculateLayout)
+  }
+}
+function toggleCameraAndMicrophone(e) {
+  e.preventDefault()
+  if (CineIOPeer.cameraRunning()) {
+    CineIOPeer.stopCameraAndMicrophone(recalculateLayout)
+  } else {
+    CineIOPeer.startCameraAndMicrophone(recalculateLayout)
   }
 }
 
 function toggleMicrophone(e) {
   e.preventDefault()
-  if (microphoneIsOn) {
-    CineIOPeer.muteMicrophone()
+  if (CineIOPeer.microphoneRunning()) {
+    CineIOPeer.stopMicrophone(recalculateLayout)
   } else {
-    CineIOPeer.unmuteMicrophone()
+    CineIOPeer.startMicrophone(recalculateLayout)
   }
-  microphoneIsOn = !microphoneIsOn
 }
 
 function toggleScreenShare(e) {
   e.preventDefault()
-  if (CineIOPeer.screenShareStarted()) {
-    CineIOPeer.stopScreenShare()
-    deactivateButton(e)
+  if (CineIOPeer.screenShareRunning()) {
+    CineIOPeer.stopScreenShare(recalculateLayout)
   } else {
-    CineIOPeer.startScreenShare()
-    activateButton(e)
+    CineIOPeer.startScreenShare(recalculateLayout)
   }
 }
 
@@ -108,6 +138,7 @@ $(function() {
   $("#connect").on("click", connect)
   $("#disconnect").on("click", disconnect)
   $("#camera").on("click", toggleCamera)
+  $("#camera-and-microphone").on("click", toggleCameraAndMicrophone)
   $("#microphone").on("click", toggleMicrophone)
   $("#screen").on("click", toggleScreenShare)
 
