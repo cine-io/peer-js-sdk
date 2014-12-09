@@ -218,7 +218,6 @@ CineIOPeer =
     streams = []
     streams.push CineIOPeer.cameraAndMicrophoneStream if CineIOPeer.cameraAndMicrophoneStream
     streams.push CineIOPeer.microphoneStream if CineIOPeer.microphoneStream
-    streams.push CineIOPeer.screenShareStream if CineIOPeer.screenShareStream
     streams
 
   _startMedia: (options, callback=noop)->

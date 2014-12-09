@@ -4783,9 +4783,6 @@ CineIOPeer = {
     if (CineIOPeer.microphoneStream) {
       streams.push(CineIOPeer.microphoneStream);
     }
-    if (CineIOPeer.screenShareStream) {
-      streams.push(CineIOPeer.screenShareStream);
-    }
     return streams;
   },
   _startMedia: function(options, callback) {
