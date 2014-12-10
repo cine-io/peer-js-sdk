@@ -5176,6 +5176,7 @@ Connection = (function() {
           call: this._callFromRoom(false, data)
         });
       case 'room-leave':
+        console.log('room-leave', data);
         if (!this.peerConnections[data.sparkId]) {
           return;
         }
@@ -5205,6 +5206,7 @@ Connection = (function() {
           offer: false
         });
       case 'room-goodbye':
+        console.log("room-goodbye", data);
         if (!this.peerConnections[data.sparkId]) {
           return;
         }

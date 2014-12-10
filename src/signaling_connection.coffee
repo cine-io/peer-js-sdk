@@ -40,9 +40,11 @@ class Connection
 
   _connectionEnded: ->
     console.log("Connection closed")
+
   _callFromRoom: (initiated, data)->
     @calls[data.room] ||= new CallObject(initiated, data)
     @calls[data.room]
+
   _signalHandler: (data)=>
     # console.log("got data")
     switch data.action
@@ -69,7 +71,7 @@ class Connection
         CineIOPeer.trigger('call-reject', call: @_callFromRoom(false, data))
 
       when 'room-leave'
-        # console.log('leaving', data)
+        console.log('room-leave', data)
         return unless @peerConnections[data.sparkId]
         return if @peerConnections[data.sparkId] == PENDING
         @peerConnections[data.sparkId].close()
@@ -86,6 +88,7 @@ class Connection
         @_ensurePeerConnection(data.sparkId, offer: false)
 
       when 'room-goodbye'
+        console.log("room-goodbye", data)
         return unless @peerConnections[data.sparkId]
         return if @peerConnections[data.sparkId] == PENDING
         peerConnection = @peerConnections[data.sparkId]
