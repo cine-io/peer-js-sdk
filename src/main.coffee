@@ -248,10 +248,14 @@ CineIOPeer =
         return callback(err)
       if options.video && options.audio
         CineIOPeer.cameraAndMicrophoneStream = response.stream
+        delete CineIOPeer.mutedMicrophone
+        delete CineIOPeer.mutedCamera
       else if options.video
         CineIOPeer.cameraStream = response.stream
+        delete CineIOPeer.mutedCamera
       else if options.audio
         CineIOPeer.microphoneStream = response.stream
+        delete CineIOPeer.mutedMicrophone
 
       CineIOPeer.trigger 'mediaAdded',
         videoElement: response.videoElement
