@@ -62,6 +62,7 @@ class Connection
         return if @peerConnections[data.sparkId] == PENDING
         @peerConnections[data.sparkId].close()
         delete @peerConnections[data.sparkId]
+        @write action: 'room-goodbye', source: "web", sparkId: data.sparkId
 
       when 'room-join'
         console.log('room-join', data)
@@ -71,6 +72,12 @@ class Connection
       when 'room-announce'
         console.log('room-announce', data)
         @_ensurePeerConnection(data.sparkId, offer: false)
+
+      when 'room-goodbye'
+        return unless @peerConnections[data.sparkId]
+        return if @peerConnections[data.sparkId] == PENDING
+        @peerConnections[data.sparkId].close()
+        delete @peerConnections[data.sparkId]
 
       # peerConnection standard config
       when 'rtc-ice'

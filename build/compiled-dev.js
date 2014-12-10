@@ -5130,7 +5130,12 @@ Connection = (function() {
           return;
         }
         this.peerConnections[data.sparkId].close();
-        return delete this.peerConnections[data.sparkId];
+        delete this.peerConnections[data.sparkId];
+        return this.write({
+          action: 'room-goodbye',
+          source: "web",
+          sparkId: data.sparkId
+        });
       case 'room-join':
         console.log('room-join', data);
         this._ensurePeerConnection(data.sparkId, {
@@ -5146,6 +5151,15 @@ Connection = (function() {
         return this._ensurePeerConnection(data.sparkId, {
           offer: false
         });
+      case 'room-goodbye':
+        if (!this.peerConnections[data.sparkId]) {
+          return;
+        }
+        if (this.peerConnections[data.sparkId] === PENDING) {
+          return;
+        }
+        this.peerConnections[data.sparkId].close();
+        return delete this.peerConnections[data.sparkId];
       case 'rtc-ice':
         if (!data.sparkId) {
           return;
