@@ -1,7 +1,10 @@
 noop = ->
 module.exports = class CallObject
   constructor: (@initiated, @_data)->
-    @ongoing = false
+    if @initiated
+      @ongoing = true
+    else
+      @ongoing = false
 
   answer: (callback=noop)=>
     @ongoing = true

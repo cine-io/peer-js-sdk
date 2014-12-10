@@ -4240,7 +4240,11 @@ module.exports = CallObject = (function() {
     this.initiated = initiated;
     this._data = _data;
     this.answer = __bind(this.answer, this);
-    this.ongoing = false;
+    if (this.initiated) {
+      this.ongoing = true;
+    } else {
+      this.ongoing = false;
+    }
   }
 
   CallObject.prototype.answer = function(callback) {
@@ -5076,6 +5080,7 @@ Connection = (function() {
     this.iceServers = null;
     this.fetchedIce = false;
     this.peerConnections = {};
+    this.calls = {};
     this.primus = connectToCineSignaling();
     this.primus.on('open', this._sendPublicKey);
     this.primus.on('data', this._signalHandler);
@@ -5138,6 +5143,12 @@ Connection = (function() {
     return console.log("Connection closed");
   };
 
+  Connection.prototype._callFromRoom = function(initiated, data) {
+    var _base, _name;
+    (_base = this.calls)[_name = data.room] || (_base[_name] = new CallObject(initiated, data));
+    return this.calls[data.room];
+  };
+
   Connection.prototype._signalHandler = function(data) {
     var otherClientSparkId;
     switch (data.action) {
@@ -5151,13 +5162,17 @@ Connection = (function() {
       case 'ack':
         if (source === 'call') {
           return CineIOPeer.trigger('call-placed', {
-            call: new CallObject(true, data)
+            call: this._callFromRoom(true, data)
           });
         }
         break;
       case 'call':
         return CineIOPeer.trigger('call', {
-          call: new CallObject(false, data)
+          call: this._callFromRoom(false, data)
+        });
+      case 'call-reject':
+        return CineIOPeer.trigger('call-reject', {
+          call: this._callFromRoom(false, data)
         });
       case 'room-leave':
         if (!this.peerConnections[data.sparkId]) {

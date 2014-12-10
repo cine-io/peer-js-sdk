@@ -12,6 +12,7 @@ class Connection
     @iceServers = null
     @fetchedIce = false
     @peerConnections = {}
+    @calls = {}
     @primus = connectToCineSignaling()
     @primus.on 'open', @_sendPublicKey
     @primus.on 'data', @_signalHandler
@@ -39,7 +40,9 @@ class Connection
 
   _connectionEnded: ->
     console.log("Connection closed")
-
+  _callFromRoom: (initiated, data)->
+    @calls[data.room] ||= new CallObject(initiated, data)
+    @calls[data.room]
   _signalHandler: (data)=>
     # console.log("got data")
     switch data.action
@@ -54,11 +57,15 @@ class Connection
 
       when 'ack'
         if source == 'call'
-          CineIOPeer.trigger('call-placed', call: new CallObject(true, data))
+          CineIOPeer.trigger('call-placed', call: @_callFromRoom(true, data))
 
       when 'call'
         # console.log('got incoming call', data)
-        CineIOPeer.trigger('call', call: new CallObject(false, data))
+        CineIOPeer.trigger('call', call: @_callFromRoom(false, data))
+
+      when 'call-reject'
+        # console.log('got incoming call', data)
+        CineIOPeer.trigger('call-reject', call: @_callFromRoom(false, data))
 
       when 'room-leave'
         # console.log('leaving', data)
