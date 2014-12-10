@@ -4248,12 +4248,22 @@ module.exports = CallObject = (function() {
     return CineIOPeer.join(this._data.room, callback);
   };
 
-  CallObject.prototype.reject = function() {
+  CallObject.prototype.reject = function(callback) {
+    if (callback == null) {
+      callback = noop;
+    }
     return CineIOPeer._signalConnection.write({
       action: 'call-reject',
       room: this._data.room,
       publicKey: CineIOPeer.config.publicKey
     });
+  };
+
+  CallObject.prototype.hangup = function(callback) {
+    if (callback == null) {
+      callback = noop;
+    }
+    return CineIOPeer.leave(this._data.room, callback);
   };
 
   return CallObject;
