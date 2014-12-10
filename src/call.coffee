@@ -1,6 +1,6 @@
 noop = ->
 module.exports = class CallObject
-  constructor: (@_data)->
+  constructor: (@initiated, @_data)->
     @ongoing = false
 
   answer: (callback=noop)=>
@@ -10,6 +10,15 @@ module.exports = class CallObject
   reject: (callback=noop)->
     @ongoing = false
     CineIOPeer._signalConnection.write action: 'call-reject', room: @_data.room, publicKey: CineIOPeer.config.publicKey
+    callback()
+
+  include: (identity, callback=noop)->
+    CineIOPeer._signalConnection.write
+      action: 'call'
+      otheridentity: identity
+      publicKey: CineIOPeer.config.publicKey
+      identity: CineIOPeer.config.identity
+      room: @_data.room
     callback()
 
   hangup: (callback=noop)->

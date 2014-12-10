@@ -52,9 +52,13 @@ class Connection
         @fetchedIce = true
         CineIOPeer.trigger('gotIceServers')
 
+      when 'ack'
+        if source == 'call'
+          CineIOPeer.trigger('call-placed', call: new CallObject(true, data))
+
       when 'call'
         # console.log('got incoming call', data)
-        CineIOPeer.trigger('call', call: new CallObject(data))
+        CineIOPeer.trigger('call', call: new CallObject(false, data))
 
       when 'room-leave'
         # console.log('leaving', data)

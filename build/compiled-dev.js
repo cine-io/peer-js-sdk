@@ -4236,7 +4236,8 @@ var CallObject, CineIOPeer, noop,
 noop = function() {};
 
 module.exports = CallObject = (function() {
-  function CallObject(_data) {
+  function CallObject(initiated, _data) {
+    this.initiated = initiated;
     this._data = _data;
     this.answer = __bind(this.answer, this);
     this.ongoing = false;
@@ -4259,6 +4260,20 @@ module.exports = CallObject = (function() {
       action: 'call-reject',
       room: this._data.room,
       publicKey: CineIOPeer.config.publicKey
+    });
+    return callback();
+  };
+
+  CallObject.prototype.include = function(identity, callback) {
+    if (callback == null) {
+      callback = noop;
+    }
+    CineIOPeer._signalConnection.write({
+      action: 'call',
+      otheridentity: identity,
+      publicKey: CineIOPeer.config.publicKey,
+      identity: CineIOPeer.config.identity,
+      room: this._data.room
     });
     return callback();
   };
@@ -5133,9 +5148,16 @@ Connection = (function() {
         this.iceServers = data.data;
         this.fetchedIce = true;
         return CineIOPeer.trigger('gotIceServers');
+      case 'ack':
+        if (source === 'call') {
+          return CineIOPeer.trigger('call-placed', {
+            call: new CallObject(true, data)
+          });
+        }
+        break;
       case 'call':
         return CineIOPeer.trigger('call', {
-          call: new CallObject(data)
+          call: new CallObject(false, data)
         });
       case 'room-leave':
         if (!this.peerConnections[data.sparkId]) {
