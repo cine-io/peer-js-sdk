@@ -5160,7 +5160,7 @@ Connection = (function() {
         this.fetchedIce = true;
         return CineIOPeer.trigger('gotIceServers');
       case 'ack':
-        if (source === 'call') {
+        if (data.source === 'call') {
           return CineIOPeer.trigger('call-placed', {
             call: this._callFromRoom(true, data)
           });

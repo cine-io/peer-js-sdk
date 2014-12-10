@@ -56,7 +56,7 @@ class Connection
         CineIOPeer.trigger('gotIceServers')
 
       when 'ack'
-        if source == 'call'
+        if data.source == 'call'
           CineIOPeer.trigger('call-placed', call: @_callFromRoom(true, data))
 
       when 'call'
