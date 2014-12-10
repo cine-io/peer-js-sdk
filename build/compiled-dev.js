@@ -5161,7 +5161,7 @@ Connection = (function() {
         return CineIOPeer.trigger('gotIceServers');
       case 'ack':
         if (data.source === 'call') {
-          CineIOPeer.config.rooms.push(room);
+          CineIOPeer.config.rooms.push(data.room);
           return CineIOPeer.trigger('call-placed', {
             call: this._callFromRoom(true, data)
           });
