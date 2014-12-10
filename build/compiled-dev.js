@@ -5214,7 +5214,6 @@ Connection = (function() {
           return;
         }
         peerConnection = this.peerConnections[data.sparkId];
-        this._onCloseOfPeerConnection(peerConnection);
         peerConnection.close();
         return delete this.peerConnections[data.sparkId];
       case 'rtc-ice':
