@@ -4700,6 +4700,7 @@ CineIOPeer = {
     stream.stop();
     CineIOPeer._signalConnection.removeLocalStream(stream, options);
     CineIOPeer.trigger('mediaRemoved', {
+      local: true,
       videoElement: CineIOPeer.config.videoElements[stream.id]
     });
     return delete CineIOPeer.config.videoElements[stream.id];

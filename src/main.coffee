@@ -176,7 +176,7 @@ CineIOPeer =
   _removeStream: (stream, options={})->
     stream.stop()
     CineIOPeer._signalConnection.removeLocalStream(stream, options)
-    CineIOPeer.trigger('mediaRemoved', videoElement: CineIOPeer.config.videoElements[stream.id])
+    CineIOPeer.trigger('mediaRemoved', local: true, videoElement: CineIOPeer.config.videoElements[stream.id])
     delete CineIOPeer.config.videoElements[stream.id]
 
   _muteStreamAudio: (stream)->
