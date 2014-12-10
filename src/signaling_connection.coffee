@@ -57,6 +57,7 @@ class Connection
 
       when 'ack'
         if data.source == 'call'
+          CineIOPeer.config.rooms.push(room)
           CineIOPeer.trigger('call-placed', call: @_callFromRoom(true, data))
 
       when 'call'
