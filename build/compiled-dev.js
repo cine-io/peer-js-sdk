@@ -4540,15 +4540,15 @@ CineIOPeer = {
       callback = noop;
     }
     if (CineIOPeer.microphoneStream) {
-      CineIOPeer._removeStream(CineIOPeer.microphoneStream);
+      CineIOPeer._removeStream(CineIOPeer.microphoneStream, 'camera');
       delete CineIOPeer.microphoneStream;
     }
     if (CineIOPeer.cameraStream) {
-      CineIOPeer._removeStream(CineIOPeer.cameraStream);
+      CineIOPeer._removeStream(CineIOPeer.cameraStream, 'camera');
       delete CineIOPeer.cameraStream;
     }
     if (CineIOPeer.cameraAndMicrophoneStream) {
-      CineIOPeer._removeStream(CineIOPeer.cameraAndMicrophoneStream);
+      CineIOPeer._removeStream(CineIOPeer.cameraAndMicrophoneStream, 'camera');
       delete CineIOPeer.cameraAndMicrophoneStream;
     }
     return callback();
@@ -4562,7 +4562,7 @@ CineIOPeer = {
       return callback();
     }
     if (CineIOPeer.cameraStream && !CineIOPeer.mutedCamera) {
-      CineIOPeer._removeStream(CineIOPeer.cameraStream, {
+      CineIOPeer._removeStream(CineIOPeer.cameraStream, 'camera', {
         silent: true
       });
       delete CineIOPeer.cameraStream;
@@ -4578,12 +4578,12 @@ CineIOPeer = {
       callback = noop;
     }
     if (CineIOPeer.microphoneStream) {
-      CineIOPeer._removeStream(CineIOPeer.microphoneStream);
+      CineIOPeer._removeStream(CineIOPeer.microphoneStream, 'camera');
       delete CineIOPeer.microphoneStream;
     }
     if (CineIOPeer.cameraAndMicrophoneStream) {
       if (CineIOPeer.mutedCamera) {
-        CineIOPeer._removeStream(CineIOPeer.cameraAndMicrophoneStream);
+        CineIOPeer._removeStream(CineIOPeer.cameraAndMicrophoneStream, 'camera');
         delete CineIOPeer.cameraAndMicrophoneStream;
       } else {
         CineIOPeer._muteAudio();
@@ -4600,7 +4600,7 @@ CineIOPeer = {
       return callback();
     }
     if (CineIOPeer.microphoneStream && !CineIOPeer.mutedMicrophone) {
-      CineIOPeer._removeStream(CineIOPeer.microphoneStream, {
+      CineIOPeer._removeStream(CineIOPeer.microphoneStream, 'camera', {
         silent: true
       });
       delete CineIOPeer.microphoneStream;
@@ -4616,12 +4616,12 @@ CineIOPeer = {
       callback = noop;
     }
     if (CineIOPeer.cameraStream) {
-      CineIOPeer._removeStream(CineIOPeer.cameraStream);
+      CineIOPeer._removeStream(CineIOPeer.cameraStream, 'camera');
       delete CineIOPeer.cameraStream;
     }
     if (CineIOPeer.cameraAndMicrophoneStream) {
       if (CineIOPeer.mutedMicrophone) {
-        CineIOPeer._removeStream(CineIOPeer.cameraAndMicrophoneStream);
+        CineIOPeer._removeStream(CineIOPeer.cameraAndMicrophoneStream, 'camera');
         delete CineIOPeer.cameraAndMicrophoneStream;
       } else {
         CineIOPeer._muteCamera();
@@ -4690,7 +4690,7 @@ CineIOPeer = {
     if (!CineIOPeer.screenShareRunning()) {
       return callback();
     }
-    CineIOPeer._removeStream(CineIOPeer.screenShareStream);
+    CineIOPeer._removeStream(CineIOPeer.screenShareStream, 'screen');
     delete CineIOPeer.screenShareStream;
     return callback();
   },
@@ -4732,7 +4732,7 @@ CineIOPeer = {
     }
     return delete CineIOPeer.mutedCamera;
   },
-  _removeStream: function(stream, options) {
+  _removeStream: function(stream, type, options) {
     if (options == null) {
       options = {};
     }
@@ -4740,6 +4740,7 @@ CineIOPeer = {
     CineIOPeer._signalConnection.removeLocalStream(stream, options);
     CineIOPeer.trigger('mediaRemoved', {
       local: true,
+      type: type,
       videoElement: CineIOPeer.config.videoElements[stream.id]
     });
     return delete CineIOPeer.config.videoElements[stream.id];

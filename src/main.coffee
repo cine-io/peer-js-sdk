@@ -59,13 +59,13 @@ CineIOPeer =
 
   stopCameraAndMicrophone: (callback=noop)->
     if CineIOPeer.microphoneStream
-      CineIOPeer._removeStream(CineIOPeer.microphoneStream)
+      CineIOPeer._removeStream(CineIOPeer.microphoneStream, 'camera')
       delete CineIOPeer.microphoneStream
     if CineIOPeer.cameraStream
-      CineIOPeer._removeStream(CineIOPeer.cameraStream)
+      CineIOPeer._removeStream(CineIOPeer.cameraStream, 'camera')
       delete CineIOPeer.cameraStream
     if CineIOPeer.cameraAndMicrophoneStream
-      CineIOPeer._removeStream(CineIOPeer.cameraAndMicrophoneStream)
+      CineIOPeer._removeStream(CineIOPeer.cameraAndMicrophoneStream, 'camera')
       delete CineIOPeer.cameraAndMicrophoneStream
     callback()
 
@@ -74,19 +74,19 @@ CineIOPeer =
       CineIOPeer._unmuteAudio()
       return callback()
     if CineIOPeer.cameraStream && !CineIOPeer.mutedCamera
-      CineIOPeer._removeStream(CineIOPeer.cameraStream, silent: true)
+      CineIOPeer._removeStream(CineIOPeer.cameraStream, 'camera', silent: true)
       delete CineIOPeer.cameraStream
       return CineIOPeer.startCameraAndMicrophone(callback)
     CineIOPeer._startMedia(video: false, audio: true, callback)
 
   stopMicrophone: (callback=noop)->
     if CineIOPeer.microphoneStream
-      CineIOPeer._removeStream(CineIOPeer.microphoneStream)
+      CineIOPeer._removeStream(CineIOPeer.microphoneStream, 'camera')
       delete CineIOPeer.microphoneStream
     if CineIOPeer.cameraAndMicrophoneStream
       # if the camera is muted, remove the stream all together
       if CineIOPeer.mutedCamera
-        CineIOPeer._removeStream(CineIOPeer.cameraAndMicrophoneStream)
+        CineIOPeer._removeStream(CineIOPeer.cameraAndMicrophoneStream, 'camera')
         delete CineIOPeer.cameraAndMicrophoneStream
       # the camera is still on, keep the stream around and just remove the video
       else
@@ -98,19 +98,19 @@ CineIOPeer =
       CineIOPeer._unmuteCamera()
       return callback()
     if CineIOPeer.microphoneStream && !CineIOPeer.mutedMicrophone
-      CineIOPeer._removeStream(CineIOPeer.microphoneStream, silent: true)
+      CineIOPeer._removeStream(CineIOPeer.microphoneStream, 'camera', silent: true)
       delete CineIOPeer.microphoneStream
       return CineIOPeer.startCameraAndMicrophone(callback)
     CineIOPeer._startMedia(video: true, audio: false, callback)
 
   stopCamera: (callback=noop)->
     if CineIOPeer.cameraStream
-      CineIOPeer._removeStream(CineIOPeer.cameraStream)
+      CineIOPeer._removeStream(CineIOPeer.cameraStream, 'camera')
       delete CineIOPeer.cameraStream
     if CineIOPeer.cameraAndMicrophoneStream
       # if the microphone is muted, remove the stream all together
       if CineIOPeer.mutedMicrophone
-        CineIOPeer._removeStream(CineIOPeer.cameraAndMicrophoneStream)
+        CineIOPeer._removeStream(CineIOPeer.cameraAndMicrophoneStream, 'camera')
         delete CineIOPeer.cameraAndMicrophoneStream
       # the microphone is still on, keep the stream around and just remove the video
       else
@@ -154,7 +154,7 @@ CineIOPeer =
 
   stopScreenShare: (callback=noop)->
     return callback() unless CineIOPeer.screenShareRunning()
-    CineIOPeer._removeStream(CineIOPeer.screenShareStream)
+    CineIOPeer._removeStream(CineIOPeer.screenShareStream, 'screen')
     delete CineIOPeer.screenShareStream
     callback()
 
@@ -182,10 +182,10 @@ CineIOPeer =
       CineIOPeer.startCamera()
     delete CineIOPeer.mutedCamera
 
-  _removeStream: (stream, options={})->
+  _removeStream: (stream, type, options={})->
     stream.stop()
     CineIOPeer._signalConnection.removeLocalStream(stream, options)
-    CineIOPeer.trigger('mediaRemoved', local: true, videoElement: CineIOPeer.config.videoElements[stream.id])
+    CineIOPeer.trigger('mediaRemoved', local: true, type: type, videoElement: CineIOPeer.config.videoElements[stream.id])
     delete CineIOPeer.config.videoElements[stream.id]
 
   _muteStreamAudio: (stream)->
