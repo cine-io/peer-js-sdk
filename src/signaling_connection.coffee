@@ -92,7 +92,6 @@ class Connection
         return unless @peerConnections[data.sparkId]
         return if @peerConnections[data.sparkId] == PENDING
         peerConnection = @peerConnections[data.sparkId]
-        # @_onCloseOfPeerConnection(peerConnection)
         peerConnection.close()
         delete @peerConnections[data.sparkId]
 

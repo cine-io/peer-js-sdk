@@ -28,9 +28,18 @@ CineIOPeer =
     CineIOPeer.config.identity = identity
     CineIOPeer._signalConnection.write action: 'identify', identity: identity, timestamp: timestamp, signature: signature, publicKey: CineIOPeer.config.publicKey, client: 'web'
 
-  call: (identity, callback=noop)->
+  call: (identity, room=null, callback=noop)->
+    if typeof room == 'function'
+      callback = room
+      room = null
+    options =
+      action: 'call'
+      otheridentity: identity
+      publicKey: CineIOPeer.config.publicKey
+      identity: CineIOPeer.config.identity
+    options.room = room if room
     # console.log('calling', identity)
-    CineIOPeer._signalConnection.write action: 'call', otheridentity: identity, publicKey: CineIOPeer.config.publicKey, identity: CineIOPeer.config.identity
+    CineIOPeer._signalConnection.write options
     callback()
 
   join: (room, callback=noop)->

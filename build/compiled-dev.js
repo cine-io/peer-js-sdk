@@ -4272,14 +4272,7 @@ module.exports = CallObject = (function() {
     if (callback == null) {
       callback = noop;
     }
-    CineIOPeer._signalConnection.write({
-      action: 'call',
-      otheridentity: identity,
-      publicKey: CineIOPeer.config.publicKey,
-      identity: CineIOPeer.config.identity,
-      room: this._data.room
-    });
-    return callback();
+    return CineIOPeer.call(identity, this._data.room, callback);
   };
 
   CallObject.prototype.hangup = function(callback) {
@@ -4486,16 +4479,28 @@ CineIOPeer = {
       client: 'web'
     });
   },
-  call: function(identity, callback) {
+  call: function(identity, room, callback) {
+    var options;
+    if (room == null) {
+      room = null;
+    }
     if (callback == null) {
       callback = noop;
     }
-    CineIOPeer._signalConnection.write({
+    if (typeof room === 'function') {
+      callback = room;
+      room = null;
+    }
+    options = {
       action: 'call',
       otheridentity: identity,
       publicKey: CineIOPeer.config.publicKey,
       identity: CineIOPeer.config.identity
-    });
+    };
+    if (room) {
+      options.room = room;
+    }
+    CineIOPeer._signalConnection.write(options);
     return callback();
   },
   join: function(room, callback) {

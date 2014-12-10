@@ -16,13 +16,7 @@ module.exports = class CallObject
     callback()
 
   include: (identity, callback=noop)->
-    CineIOPeer._signalConnection.write
-      action: 'call'
-      otheridentity: identity
-      publicKey: CineIOPeer.config.publicKey
-      identity: CineIOPeer.config.identity
-      room: @_data.room
-    callback()
+    CineIOPeer.call identity, @_data.room, callback
 
   hangup: (callback=noop)->
     @ongoing = false
