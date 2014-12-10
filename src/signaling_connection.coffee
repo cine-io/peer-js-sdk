@@ -88,7 +88,9 @@ class Connection
       when 'room-goodbye'
         return unless @peerConnections[data.sparkId]
         return if @peerConnections[data.sparkId] == PENDING
-        @peerConnections[data.sparkId].close()
+        peerConnection = @peerConnections[data.sparkId]
+        @_onCloseOfPeerConnection(peerConnection)
+        peerConnection.close()
         delete @peerConnections[data.sparkId]
 
       # peerConnection standard config
@@ -119,6 +121,16 @@ class Connection
     peerConnection.offer (err, offer)=>
       console.log('offering', otherClientSparkId)
       @write action: 'rtc-offer', source: "web", offer: offer, sparkId: otherClientSparkId
+
+  _onCloseOfPeerConnection: (peerConnection)->
+      # console.log("remote closed", event)
+      return unless peerConnection.videoEls
+      for videoEl in peerConnection.videoEls
+        CineIOPeer.trigger 'mediaRemoved',
+          peerConnection: peerConnection
+          videoElement: videoEl
+          remote: true
+      delete peerConnection.videoEls
 
   _newMember: (otherClientSparkId, options, callback)=>
     # we must be pending to get ice candidates, do not create a new pc
@@ -161,14 +173,9 @@ class Connection
       if options.offer && CineIOPeer.localStreams().length > 0
         @_sendOffer(otherClientSparkId, peerConnection)
 
-      peerConnection.on 'close', (event)->
-        # console.log("remote closed", event)
-        for videoEl in peerConnection.videoEls
-          CineIOPeer.trigger 'mediaRemoved',
-            peerConnection: peerConnection
-            videoElement: videoEl
-            remote: true
-        delete peerConnection.videoEls
+      peerConnection.on 'close', (event)=>
+        @_onCloseOfPeerConnection(peerConnection)
+
       callback(null, peerConnection)
       CineIOPeer.trigger("peerConnectionMade")
 

@@ -5150,7 +5150,7 @@ Connection = (function() {
   };
 
   Connection.prototype._signalHandler = function(data) {
-    var otherClientSparkId;
+    var otherClientSparkId, peerConnection;
     switch (data.action) {
       case 'error':
         return CineIOPeer.trigger('error', data);
@@ -5211,7 +5211,9 @@ Connection = (function() {
         if (this.peerConnections[data.sparkId] === PENDING) {
           return;
         }
-        this.peerConnections[data.sparkId].close();
+        peerConnection = this.peerConnections[data.sparkId];
+        this._onCloseOfPeerConnection(peerConnection);
+        peerConnection.close();
         return delete this.peerConnections[data.sparkId];
       case 'rtc-ice':
         if (!data.sparkId) {
@@ -5263,6 +5265,23 @@ Connection = (function() {
         });
       };
     })(this));
+  };
+
+  Connection.prototype._onCloseOfPeerConnection = function(peerConnection) {
+    var videoEl, _i, _len, _ref;
+    if (!peerConnection.videoEls) {
+      return;
+    }
+    _ref = peerConnection.videoEls;
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      videoEl = _ref[_i];
+      CineIOPeer.trigger('mediaRemoved', {
+        peerConnection: peerConnection,
+        videoElement: videoEl,
+        remote: true
+      });
+    }
+    return delete peerConnection.videoEls;
   };
 
   Connection.prototype._newMember = function(otherClientSparkId, options, callback) {
@@ -5328,17 +5347,7 @@ Connection = (function() {
           _this._sendOffer(otherClientSparkId, peerConnection);
         }
         peerConnection.on('close', function(event) {
-          var videoEl, _j, _len1, _ref1;
-          _ref1 = peerConnection.videoEls;
-          for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
-            videoEl = _ref1[_j];
-            CineIOPeer.trigger('mediaRemoved', {
-              peerConnection: peerConnection,
-              videoElement: videoEl,
-              remote: true
-            });
-          }
-          return delete peerConnection.videoEls;
+          return _this._onCloseOfPeerConnection(peerConnection);
         });
         callback(null, peerConnection);
         return CineIOPeer.trigger("peerConnectionMade");
