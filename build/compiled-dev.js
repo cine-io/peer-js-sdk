@@ -4239,12 +4239,14 @@ module.exports = CallObject = (function() {
   function CallObject(_data) {
     this._data = _data;
     this.answer = __bind(this.answer, this);
+    this.ongoing = false;
   }
 
   CallObject.prototype.answer = function(callback) {
     if (callback == null) {
       callback = noop;
     }
+    this.ongoing = true;
     return CineIOPeer.join(this._data.room, callback);
   };
 
@@ -4252,17 +4254,20 @@ module.exports = CallObject = (function() {
     if (callback == null) {
       callback = noop;
     }
-    return CineIOPeer._signalConnection.write({
+    this.ongoing = false;
+    CineIOPeer._signalConnection.write({
       action: 'call-reject',
       room: this._data.room,
       publicKey: CineIOPeer.config.publicKey
     });
+    return callback();
   };
 
   CallObject.prototype.hangup = function(callback) {
     if (callback == null) {
       callback = noop;
     }
+    this.ongoing = false;
     return CineIOPeer.leave(this._data.room, callback);
   };
 
