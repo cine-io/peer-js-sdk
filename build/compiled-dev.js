@@ -4268,7 +4268,7 @@ module.exports = CallObject = (function() {
     return callback();
   };
 
-  CallObject.prototype.include = function(identity, callback) {
+  CallObject.prototype.invite = function(identity, callback) {
     if (callback == null) {
       callback = noop;
     }

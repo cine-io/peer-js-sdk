@@ -15,7 +15,7 @@ module.exports = class CallObject
     CineIOPeer._signalConnection.write action: 'call-reject', room: @_data.room, publicKey: CineIOPeer.config.publicKey
     callback()
 
-  include: (identity, callback=noop)->
+  invite: (identity, callback=noop)->
     CineIOPeer.call identity, @_data.room, callback
 
   hangup: (callback=noop)->
