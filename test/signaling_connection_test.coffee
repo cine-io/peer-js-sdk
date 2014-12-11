@@ -233,12 +233,12 @@ describe 'SignalingConnection', ->
 
       it 'triggers streamAdded', (done)->
         handler = (data)=>
-          CineIOPeer.off 'mediaAdded', handler
+          CineIOPeer.off 'media-added', handler
           expect(data.peerConnection).to.equal(@fakeConnection)
           expect(data.videoElement).to.equal(@fakeConnection.videoEls[0])
           expect(data.remote).to.be.true
           done()
-        CineIOPeer.on 'mediaAdded', handler
+        CineIOPeer.on 'media-added', handler
         @fakeConnection.trigger 'addStream', stream: new FakeMediaStream
 
     describe 'removeStream', ->
@@ -255,12 +255,12 @@ describe 'SignalingConnection', ->
       it 'triggers streamRemoved', (done)->
         videoElement = @fakeConnection.videoEls[0]
         handler = (data)=>
-          CineIOPeer.off 'mediaRemoved', handler
+          CineIOPeer.off 'media-removed', handler
           expect(data.peerConnection).to.equal(@fakeConnection)
           expect(data.videoElement).to.equal(videoElement)
           expect(data.remote).to.be.true
           done()
-        CineIOPeer.on 'mediaRemoved', handler
+        CineIOPeer.on 'media-removed', handler
         @fakeConnection.trigger 'removeStream', stream: new FakeMediaStream
 
     describe 'ice', ->
@@ -280,7 +280,7 @@ describe 'SignalingConnection', ->
         @fakeConnection.trigger 'addStream', stream: @mediaStream2
         expect(@fakeConnection.videoEls).to.have.length(2)
 
-      it 'triggers mediaRemoved for all videos', (done)->
+      it 'triggers media-removed for all videos', (done)->
         callCount = 0
         firstVideoIndex = null
         videos = @fakeConnection.videoEls
@@ -292,10 +292,10 @@ describe 'SignalingConnection', ->
           expect(index).to.be.gte(0)
           return firstVideoIndex = index if callCount == 1
           expect(firstVideoIndex).not.to.equal(index)
-          CineIOPeer.off 'mediaRemoved', handler
+          CineIOPeer.off 'media-removed', handler
           done()
 
-        CineIOPeer.on 'mediaRemoved', handler
+        CineIOPeer.on 'media-removed', handler
         @fakeConnection.trigger 'close'
 
 

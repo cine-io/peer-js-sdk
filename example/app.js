@@ -102,7 +102,7 @@ function disconnect(e) {
 
 $(function() {
 
-  CineIOPeer.on('mediaAdded', function(data) {
+  CineIOPeer.on('media-added', function(data) {
     if (data.local || data.remote) {
       var $vid = $(data.videoElement)
       $vid.addClass("col-md-4")
@@ -113,18 +113,19 @@ $(function() {
     }
   })
 
-  CineIOPeer.on('mediaRejected', function(data) {
+  CineIOPeer.on('media-rejected', function(data) {
     alert('Permission denied.')
   })
 
-  CineIOPeer.on('mediaRemoved', function(data) {
+  CineIOPeer.on('media-removed', function(data) {
     data.videoElement.remove()
   })
 
   CineIOPeer.on('call', function(data) {
     data.call.answer()
   })
-  CineIOPeer.on('mediaRequest', function(data) { /* noop */ })
+
+  CineIOPeer.on('media-request', function(data) { /* noop */ })
 
   CineIOPeer.on('peer-data', function(data) {
     console.log("GOT DATA", data)

@@ -155,9 +155,9 @@ describe 'CineIOPeer', ->
             expect(data.videoElement.tagName).to.equal('VIDEO')
             expect(data.videoElement.src).to.equal("blob:http%3A//#{window.location.host}/identifier")
             expect(data.stream.id).to.equal('stream-id')
-            CineIOPeer.off 'mediaAdded', mediaResponse
+            CineIOPeer.off 'media-added', mediaResponse
             done()
-          CineIOPeer.on 'mediaAdded', mediaResponse
+          CineIOPeer.on 'media-added', mediaResponse
           CineIOPeer.startCameraAndMicrophone()
 
       describe 'failure', ->
@@ -165,9 +165,9 @@ describe 'CineIOPeer', ->
 
         it 'returns with the error', (done)->
           mediaResponse = (data)->
-            CineIOPeer.off 'mediaRejected', mediaResponse
+            CineIOPeer.off 'media-rejected', mediaResponse
             done()
-          CineIOPeer.on 'mediaRejected', mediaResponse
+          CineIOPeer.on 'media-rejected', mediaResponse
           CineIOPeer.startCameraAndMicrophone (err)->
             expect(err).to.equal('could not fetch media')
 
@@ -177,7 +177,7 @@ describe 'CineIOPeer', ->
             expect(data.videoElement).to.be.undefined
             expect(data.stream).to.be.undefined
 
-            CineIOPeer.off 'mediaRejected', mediaResponse
+            CineIOPeer.off 'media-rejected', mediaResponse
             done()
-          CineIOPeer.on 'mediaRejected', mediaResponse
+          CineIOPeer.on 'media-rejected', mediaResponse
           CineIOPeer.startCameraAndMicrophone()

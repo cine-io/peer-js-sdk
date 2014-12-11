@@ -185,7 +185,7 @@ class Connection
       # console.log("remote closed", event)
       return unless peerConnection.videoEls
       for videoEl in peerConnection.videoEls
-        CineIOPeer.trigger 'mediaRemoved',
+        CineIOPeer.trigger 'media-removed',
           peerConnection: peerConnection
           videoElement: videoEl
           remote: true
@@ -209,7 +209,7 @@ class Connection
         console.log("got remote stream", event)
         videoEl = CineIOPeer._createVideoElementFromStream(event.stream, muted: false, mirror: false)
         peerConnection.videoEls.push videoEl
-        CineIOPeer.trigger 'mediaAdded',
+        CineIOPeer.trigger 'media-added',
           peerConnection: peerConnection
           videoElement: videoEl
           remote: true
@@ -220,7 +220,7 @@ class Connection
         index = peerConnection.videoEls.indexOf(videoEl)
         peerConnection.videoEls.splice(index, 1) if index > -1
 
-        CineIOPeer.trigger 'mediaRemoved',
+        CineIOPeer.trigger 'media-removed',
           peerConnection: peerConnection
           videoElement: videoEl
           remote: true

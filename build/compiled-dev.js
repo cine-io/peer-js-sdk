@@ -4664,7 +4664,7 @@ CineIOPeer = {
       return function(err, screenShareStream) {
         var videoEl;
         if (err) {
-          CineIOPeer.trigger('mediaRejected', {
+          CineIOPeer.trigger('media-rejected', {
             type: 'screen',
             local: true
           });
@@ -4675,7 +4675,7 @@ CineIOPeer = {
         });
         CineIOPeer.screenShareStream = screenShareStream;
         CineIOPeer._signalConnection.addLocalStream(screenShareStream);
-        CineIOPeer.trigger('mediaAdded', {
+        CineIOPeer.trigger('media-added', {
           videoElement: videoEl,
           stream: screenShareStream,
           type: 'screen',
@@ -4741,7 +4741,7 @@ CineIOPeer = {
     }
     stream.stop();
     CineIOPeer._signalConnection.removeLocalStream(stream, options);
-    CineIOPeer.trigger('mediaRemoved', {
+    CineIOPeer.trigger('media-removed', {
       local: true,
       type: type,
       videoElement: CineIOPeer.config.videoElements[stream.id]
@@ -4847,7 +4847,7 @@ CineIOPeer = {
     return CineIOPeer._askForMedia(options, function(err, response) {
       clearTimeout(requestTimeout);
       if (err) {
-        CineIOPeer.trigger('mediaRejected', {
+        CineIOPeer.trigger('media-rejected', {
           type: 'camera',
           local: true
         });
@@ -4864,7 +4864,7 @@ CineIOPeer = {
         CineIOPeer.microphoneStream = response.stream;
         delete CineIOPeer.mutedMicrophone;
       }
-      CineIOPeer.trigger('mediaAdded', {
+      CineIOPeer.trigger('media-added', {
         videoElement: response.videoElement,
         stream: response.stream,
         type: 'camera',
@@ -4896,7 +4896,7 @@ CineIOPeer = {
     });
   },
   _mediaNotReady: function() {
-    return CineIOPeer.trigger('mediaRequest');
+    return CineIOPeer.trigger('media-request');
   },
   _askForMedia: function(options, callback) {
     var streamDoptions;
@@ -5384,7 +5384,7 @@ Connection = (function() {
     _ref = peerConnection.videoEls;
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       videoEl = _ref[_i];
-      CineIOPeer.trigger('mediaRemoved', {
+      CineIOPeer.trigger('media-removed', {
         peerConnection: peerConnection,
         videoElement: videoEl,
         remote: true
@@ -5424,7 +5424,7 @@ Connection = (function() {
             mirror: false
           });
           peerConnection.videoEls.push(videoEl);
-          return CineIOPeer.trigger('mediaAdded', {
+          return CineIOPeer.trigger('media-added', {
             peerConnection: peerConnection,
             videoElement: videoEl,
             remote: true
@@ -5438,7 +5438,7 @@ Connection = (function() {
           if (index > -1) {
             peerConnection.videoEls.splice(index, 1);
           }
-          return CineIOPeer.trigger('mediaRemoved', {
+          return CineIOPeer.trigger('media-removed', {
             peerConnection: peerConnection,
             videoElement: videoEl,
             remote: true

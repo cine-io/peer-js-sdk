@@ -139,14 +139,14 @@ CineIOPeer =
 
     onStreamReceived = (err, screenShareStream)=>
       if err
-        CineIOPeer.trigger 'mediaRejected',
+        CineIOPeer.trigger 'media-rejected',
           type: 'screen'
           local: true
         return callback(err)
       videoEl = @_createVideoElementFromStream(screenShareStream, mirror: false)
       CineIOPeer.screenShareStream = screenShareStream
       CineIOPeer._signalConnection.addLocalStream(screenShareStream)
-      CineIOPeer.trigger 'mediaAdded',
+      CineIOPeer.trigger 'media-added',
         videoElement: videoEl
         stream: screenShareStream
         type: 'screen'
@@ -188,7 +188,7 @@ CineIOPeer =
   _removeStream: (stream, type, options={})->
     stream.stop()
     CineIOPeer._signalConnection.removeLocalStream(stream, options)
-    CineIOPeer.trigger('mediaRemoved', local: true, type: type, videoElement: CineIOPeer.config.videoElements[stream.id])
+    CineIOPeer.trigger('media-removed', local: true, type: type, videoElement: CineIOPeer.config.videoElements[stream.id])
     delete CineIOPeer.config.videoElements[stream.id]
 
   _muteStreamAudio: (stream)->
@@ -244,7 +244,7 @@ CineIOPeer =
       clearTimeout requestTimeout
       if err
         # did not grant permission
-        CineIOPeer.trigger 'mediaRejected',
+        CineIOPeer.trigger 'media-rejected',
           type: 'camera'
           local: true
         # console.log("ERROR", err)
@@ -260,7 +260,7 @@ CineIOPeer =
         CineIOPeer.microphoneStream = response.stream
         delete CineIOPeer.mutedMicrophone
 
-      CineIOPeer.trigger 'mediaAdded',
+      CineIOPeer.trigger 'media-added',
         videoElement: response.videoElement
         stream: response.stream
         type: 'camera'
@@ -281,7 +281,7 @@ CineIOPeer =
     CineIOPeer._signalConnection.write action: 'room-join', room: room, publicKey: 'the-public-key'
 
   _mediaNotReady: ->
-    CineIOPeer.trigger('mediaRequest')
+    CineIOPeer.trigger('media-request')
 
   _askForMedia: (options={}, callback)->
     if typeof options == 'function'
