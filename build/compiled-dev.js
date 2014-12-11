@@ -5343,7 +5343,7 @@ Connection = (function() {
   };
 
   Connection.prototype._sendOffer = function(otherClientSparkId, peerConnection) {
-    var av, constraints, response;
+    var constraints, response;
     response = (function(_this) {
       return function(err, offer) {
         if (err || !offer) {
@@ -5363,11 +5363,10 @@ Connection = (function() {
         });
       };
     })(this);
-    av = CineIOPeer.localStreams().length === 0;
     constraints = {
       mandatory: {
-        OfferToReceiveAudio: av,
-        OfferToReceiveVideo: av
+        OfferToReceiveAudio: true,
+        OfferToReceiveVideo: true
       },
       optional: [
         {
@@ -5458,7 +5457,7 @@ Connection = (function() {
             sparkId: otherClientSparkId
           });
         });
-        if (options.offer) {
+        if (options.offer && CineIOPeer.localStreams().length > 0 || peerConnection.mainDataChannel) {
           _this._sendOffer(otherClientSparkId, peerConnection);
         }
         peerConnection.on('close', function(event) {

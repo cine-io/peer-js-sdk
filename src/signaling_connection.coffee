@@ -171,11 +171,11 @@ class Connection
         return CineIOPeer.trigger("error", kind: 'offer', fatal: true, err: err)
       console.log('offering', err, otherClientSparkId, offer)
       @write action: 'rtc-offer', source: "web", offer: offer, sparkId: otherClientSparkId
-    av = CineIOPeer.localStreams().length == 0
+    # av = CineIOPeer.localStreams().length == 0
     constraints =
       mandatory:
-        OfferToReceiveAudio: av
-        OfferToReceiveVideo: av
+        OfferToReceiveAudio: true
+        OfferToReceiveVideo: true
       optional: [{
         RtpDataChannels: peerConnection.mainDataChannel?
       }]
@@ -233,7 +233,8 @@ class Connection
         #console.log('got my ice', candidate.candidate.candidate)
         @write action: 'rtc-ice', source: "web", candidate: candidate, sparkId: otherClientSparkId
 
-      if options.offer
+      # unlikely there will be a mainDataChannel but good to check as we would want to offer
+      if options.offer && CineIOPeer.localStreams().length > 0 || peerConnection.mainDataChannel
         @_sendOffer(otherClientSparkId, peerConnection)
 
       peerConnection.on 'close', (event)=>
