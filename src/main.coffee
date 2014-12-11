@@ -28,6 +28,9 @@ CineIOPeer =
     CineIOPeer.config.identity = identity
     CineIOPeer._signalConnection.write action: 'identify', identity: identity, timestamp: timestamp, signature: signature, publicKey: CineIOPeer.config.publicKey, client: 'web'
 
+  sendDataToAll: (data)->
+    CineIOPeer._signalConnection.sendDataToAllPeers(data)
+
   call: (identity, room=null, callback=noop)->
     if typeof room == 'function'
       callback = room

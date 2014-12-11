@@ -4479,6 +4479,9 @@ CineIOPeer = {
       client: 'web'
     });
   },
+  sendDataToAll: function(data) {
+    return CineIOPeer._signalConnection.sendDataToAllPeers(data);
+  },
   call: function(identity, room, callback) {
     var options;
     if (room == null) {
@@ -5057,7 +5060,7 @@ module.exports = ScreenSharer;
 
 
 },{"./chrome_screen_sharer":19,"./firefox_screen_sharer":21,"./screen_share_base":23}],25:[function(require,module,exports){
-var CallObject, CineIOPeer, Config, Connection, PENDING, PeerConnection, Primus, connectToCineSignaling, noop,
+var CallObject, CineIOPeer, Config, Connection, PENDING, PeerConnection, Primus, connectToCineSignaling, noop, sendToDataChannel,
   __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
 PeerConnection = require('rtcpeerconnection');
@@ -5073,6 +5076,13 @@ connectToCineSignaling = function() {
 };
 
 PENDING = 1;
+
+sendToDataChannel = function(dataChannel, data) {
+  if (dataChannel.readyState === 'open') {
+    return dataChannel.send(JSON.stringify(data));
+  }
+  return dataChannel.dataToSend.push(data);
+};
 
 Connection = (function() {
   function Connection(options) {
@@ -5140,6 +5150,67 @@ Connection = (function() {
       }
     }
     return _results;
+  };
+
+  Connection.prototype.sendDataToAllPeers = function(data) {
+    var otherClientSparkId, peerConnection, _ref, _results;
+    _ref = this.peerConnections;
+    _results = [];
+    for (otherClientSparkId in _ref) {
+      peerConnection = _ref[otherClientSparkId];
+      console.log("sending data " + data + " to " + otherClientSparkId);
+      _results.push(this._sendDataToPeer(peerConnection, otherClientSparkId, data));
+    }
+    return _results;
+  };
+
+  Connection.prototype._sendDataToPeer = function(peerConnection, otherClientSparkId, data) {
+    if (!peerConnection.mainDataChannel) {
+      peerConnection.mainDataChannel = this._newDataChannel(peerConnection, otherClientSparkId);
+      this._sendOffer(otherClientSparkId, peerConnection);
+    }
+    this.dataChannel = peerConnection.mainDataChannel;
+    return sendToDataChannel(peerConnection.mainDataChannel, {
+      action: 'userData',
+      data: data
+    });
+  };
+
+  Connection.prototype._newDataChannel = function(peerConnection, otherClientSparkId) {
+    var dataChannel;
+    dataChannel = peerConnection.createDataChannel('CINE', {
+      ordered: false,
+      maxRetransmitTime: 3000
+    });
+    this._prepareDataChannel(peerConnection, dataChannel);
+    return dataChannel;
+  };
+
+  Connection.prototype._prepareDataChannel = function(peerConnection, dataChannel) {
+    dataChannel.dataToSend = [];
+    dataChannel.onopen = function(event) {
+      var data, _i, _len, _ref;
+      console.log("ON OPEN", event);
+      if (dataChannel.readyState === "open") {
+        _ref = dataChannel.dataToSend;
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          data = _ref[_i];
+          console.log("Actually sending data", data);
+          sendToDataChannel(dataChannel, data);
+        }
+        return delete dataChannel.dataToSend;
+      }
+    };
+    dataChannel.onmessage = function(event) {
+      var data;
+      if (event && event.data) {
+        data = JSON.parse(event.data);
+        if (data.action === 'userData') {
+          return CineIOPeer.trigger('peer-data', data.data);
+        }
+      }
+    };
+    return dataChannel;
   };
 
   Connection.prototype._sendPublicKey = function() {
@@ -5239,19 +5310,26 @@ Connection = (function() {
         })(this));
       case 'rtc-offer':
         otherClientSparkId = data.sparkId;
+        console.log('got offer', data);
         return this._ensurePeerConnection(otherClientSparkId, {
           offer: false
         }, (function(_this) {
           return function(err, pc) {
             return pc.handleOffer(data.offer, function(err) {
-              return pc.answer(function(err, answer) {
+              var answerResponse;
+              answerResponse = function(err, answer) {
                 return _this.write({
                   action: 'rtc-answer',
                   source: "web",
                   answer: answer,
                   sparkId: otherClientSparkId
                 });
-              });
+              };
+              if (CineIOPeer.localStreams().length === 0) {
+                return pc.answer(answerResponse);
+              } else {
+                return pc.answer(answerResponse);
+              }
             });
           };
         })(this));
@@ -5265,9 +5343,18 @@ Connection = (function() {
   };
 
   Connection.prototype._sendOffer = function(otherClientSparkId, peerConnection) {
-    return peerConnection.offer((function(_this) {
+    var av, constraints, response;
+    response = (function(_this) {
       return function(err, offer) {
-        console.log('offering', otherClientSparkId);
+        if (err || !offer) {
+          console.log("FATAL ERROR in offer", err, offer);
+          return CineIOPeer.trigger("error", {
+            kind: 'offer',
+            fatal: true,
+            err: err
+          });
+        }
+        console.log('offering', err, otherClientSparkId, offer);
         return _this.write({
           action: 'rtc-offer',
           source: "web",
@@ -5275,7 +5362,20 @@ Connection = (function() {
           sparkId: otherClientSparkId
         });
       };
-    })(this));
+    })(this);
+    av = CineIOPeer.localStreams().length === 0;
+    constraints = {
+      mandatory: {
+        OfferToReceiveAudio: av,
+        OfferToReceiveVideo: av
+      },
+      optional: [
+        {
+          RtpDataChannels: peerConnection.mainDataChannel != null
+        }
+      ]
+    };
+    return peerConnection.offer(constraints, response);
   };
 
   Connection.prototype._onCloseOfPeerConnection = function(peerConnection) {
@@ -5346,6 +5446,10 @@ Connection = (function() {
             remote: true
           });
         });
+        peerConnection.on('addChannel', function(dataChannel) {
+          console.log("GOT A NEW DATA CHANNEL", dataChannel);
+          return peerConnection.mainDataChannel = _this._prepareDataChannel(peerConnection, dataChannel);
+        });
         peerConnection.on('ice', function(candidate) {
           return _this.write({
             action: 'rtc-ice',
@@ -5354,7 +5458,7 @@ Connection = (function() {
             sparkId: otherClientSparkId
           });
         });
-        if (options.offer && CineIOPeer.localStreams().length > 0) {
+        if (options.offer) {
           _this._sendOffer(otherClientSparkId, peerConnection);
         }
         peerConnection.on('close', function(event) {

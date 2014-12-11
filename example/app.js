@@ -124,8 +124,16 @@ $(function() {
   CineIOPeer.on('call', function(data) {
     data.call.answer()
   })
-
   CineIOPeer.on('mediaRequest', function(data) { /* noop */ })
+
+  CineIOPeer.on('peer-data', function(data) {
+    console.log("GOT DATA", data)
+    addDataToEl(data.message);
+  });
+  dataEl = $('#data')
+  function addDataToEl(message){
+    $('<li>', {text: JSON.stringify(message)}).appendTo(dataEl)
+  }
 
   CineIOPeer.on('error', function(err) {
     if (typeof(err.support) != "undefined" && !err.support) {
@@ -133,8 +141,19 @@ $(function() {
     } else if (err.msg) {
       alert(err.msg)
     }
-  })
+  });
 
+  function sendData(event){
+    event.preventDefault();
+    var
+      text = $('#text'),
+      val = text.val();
+    CineIOPeer.sendDataToAll({message: val});
+    addDataToEl(val);
+    text.val('');
+  }
+
+  $("#send").on("submit", sendData)
   $("#connect").on("click", connect)
   $("#disconnect").on("click", disconnect)
   $("#camera").on("click", toggleCamera)

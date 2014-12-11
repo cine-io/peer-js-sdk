@@ -7,6 +7,10 @@ connectToCineSignaling = ->
 
 PENDING = 1
 
+sendToDataChannel = (dataChannel, data)->
+  return dataChannel.send(JSON.stringify(data)) if dataChannel.readyState == 'open'
+  dataChannel.dataToSend.push data
+
 class Connection
   constructor: (@options)->
     @iceServers = null
@@ -34,6 +38,42 @@ class Connection
       console.log "removing local stream #{stream.id} from #{otherClientSparkId}"
       peerConnection.removeStream(stream)
       @_sendOffer(otherClientSparkId, peerConnection) unless options.silent
+
+  sendDataToAllPeers: (data)->
+    for otherClientSparkId, peerConnection of @peerConnections
+      console.log "sending data #{data} to #{otherClientSparkId}"
+      @_sendDataToPeer(peerConnection, otherClientSparkId, data)
+
+  _sendDataToPeer: (peerConnection, otherClientSparkId, data)->
+    unless peerConnection.mainDataChannel
+      peerConnection.mainDataChannel = @_newDataChannel(peerConnection, otherClientSparkId)
+      @_sendOffer(otherClientSparkId, peerConnection)
+    @dataChannel = peerConnection.mainDataChannel
+    sendToDataChannel peerConnection.mainDataChannel, action: 'userData', data: data
+
+  _newDataChannel: (peerConnection, otherClientSparkId)->
+    dataChannel = peerConnection.createDataChannel 'CINE',
+      ordered: false # do not guarantee order
+      maxRetransmitTime: 3000 # in milliseconds
+    @_prepareDataChannel(peerConnection, dataChannel)
+    dataChannel
+
+  _prepareDataChannel: (peerConnection, dataChannel)->
+    dataChannel.dataToSend = []
+    dataChannel.onopen = (event)->
+      console.log("ON OPEN", event)
+      if dataChannel.readyState == "open"
+        for data in dataChannel.dataToSend
+          console.log("Actually sending data", data)
+          sendToDataChannel(dataChannel, data)
+        delete dataChannel.dataToSend
+
+    dataChannel.onmessage = (event)->
+      if event && event.data
+        data = JSON.parse(event.data)
+        CineIOPeer.trigger('peer-data', data.data) if data.action == 'userData'
+
+    dataChannel
 
   _sendPublicKey: =>
     @write action: 'auth', publicKey: @options.publicKey
@@ -105,12 +145,17 @@ class Connection
       # peerConnection standard config
       when 'rtc-offer'
         otherClientSparkId = data.sparkId
-        # console.log('got offer', data)
+        console.log('got offer', data)
         @_ensurePeerConnection otherClientSparkId, offer: false, (err, pc)=>
           pc.handleOffer data.offer, (err)=>
-          # console.log('handled offer', err)
-            pc.answer (err, answer)=>
+            # console.log('handled offer', err)
+            answerResponse = (err, answer)=>
               @write action: 'rtc-answer', source: "web", answer: answer, sparkId: otherClientSparkId
+            if CineIOPeer.localStreams().length == 0
+              # pc.answerBroadcastOnly answerResponse
+              pc.answer answerResponse
+            else
+              pc.answer answerResponse
 
       # peerConnection standard config
       when 'rtc-answer'
@@ -120,9 +165,21 @@ class Connection
       # else
       #   console.log("UNKNOWN DATA", data)
   _sendOffer: (otherClientSparkId, peerConnection)=>
-    peerConnection.offer (err, offer)=>
-      console.log('offering', otherClientSparkId)
+    response = (err, offer)=>
+      if err || !offer
+        console.log("FATAL ERROR in offer", err, offer)
+        return CineIOPeer.trigger("error", kind: 'offer', fatal: true, err: err)
+      console.log('offering', err, otherClientSparkId, offer)
       @write action: 'rtc-offer', source: "web", offer: offer, sparkId: otherClientSparkId
+    av = CineIOPeer.localStreams().length == 0
+    constraints =
+      mandatory:
+        OfferToReceiveAudio: av
+        OfferToReceiveVideo: av
+      optional: [{
+        RtpDataChannels: peerConnection.mainDataChannel?
+      }]
+    peerConnection.offer constraints, response
 
   _onCloseOfPeerConnection: (peerConnection)->
       # console.log("remote closed", event)
@@ -168,11 +225,15 @@ class Connection
           videoElement: videoEl
           remote: true
 
+      peerConnection.on 'addChannel', (dataChannel)=>
+        console.log("GOT A NEW DATA CHANNEL", dataChannel)
+        peerConnection.mainDataChannel = @_prepareDataChannel(peerConnection, dataChannel)
+
       peerConnection.on 'ice', (candidate)=>
         #console.log('got my ice', candidate.candidate.candidate)
         @write action: 'rtc-ice', source: "web", candidate: candidate, sparkId: otherClientSparkId
 
-      if options.offer && CineIOPeer.localStreams().length > 0
+      if options.offer
         @_sendOffer(otherClientSparkId, peerConnection)
 
       peerConnection.on 'close', (event)=>
