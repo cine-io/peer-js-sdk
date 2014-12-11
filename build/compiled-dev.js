@@ -4653,7 +4653,7 @@ CineIOPeer = {
     return CineIOPeer._audioCapableStreams().length > 0 && !CineIOPeer.mutedMicrophone;
   },
   startScreenShare: function(options, callback) {
-    var onStreamReceived;
+    var onStreamReceived, requestTimeout;
     if (options == null) {
       options = {};
     }
@@ -4665,9 +4665,11 @@ CineIOPeer = {
       options = {};
     }
     CineIOPeer._screenSharer || (CineIOPeer._screenSharer = screenSharer.get());
+    requestTimeout = setTimeout(CineIOPeer._mediaNotReady('screen'), 1000);
     onStreamReceived = (function(_this) {
       return function(err, screenShareStream) {
         var videoEl;
+        clearTimeout(requestTimeout);
         if (err) {
           CineIOPeer.trigger('media-rejected', {
             type: 'screen',
@@ -4848,7 +4850,7 @@ CineIOPeer = {
     if (CineIOPeer.microphoneStream && options.audio) {
       return setTimeout(callback);
     }
-    requestTimeout = setTimeout(CineIOPeer._mediaNotReady, 1000);
+    requestTimeout = setTimeout(CineIOPeer._mediaNotReady('camera'), 1000);
     return CineIOPeer._askForMedia(options, function(err, response) {
       clearTimeout(requestTimeout);
       if (err) {
@@ -4900,11 +4902,13 @@ CineIOPeer = {
       publicKey: 'the-public-key'
     });
   },
-  _mediaNotReady: function() {
-    return CineIOPeer.trigger('media-request', {
-      local: true,
-      type: 'camera'
-    });
+  _mediaNotReady: function(type) {
+    return function() {
+      return CineIOPeer.trigger('media-request', {
+        local: true,
+        type: type
+      });
+    };
   },
   _askForMedia: function(options, callback) {
     var streamDoptions;

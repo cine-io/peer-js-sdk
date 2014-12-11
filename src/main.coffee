@@ -140,7 +140,10 @@ CineIOPeer =
       options = {}
     CineIOPeer._screenSharer ||= screenSharer.get()
 
+    requestTimeout = setTimeout CineIOPeer._mediaNotReady('screen'), 1000
+
     onStreamReceived = (err, screenShareStream)=>
+      clearTimeout requestTimeout
       if err
         CineIOPeer.trigger 'media-rejected',
           type: 'screen'
@@ -242,7 +245,7 @@ CineIOPeer =
       return setTimeout(callback)
     if CineIOPeer.microphoneStream && options.audio
       return setTimeout(callback)
-    requestTimeout = setTimeout CineIOPeer._mediaNotReady, 1000
+    requestTimeout = setTimeout CineIOPeer._mediaNotReady('camera'), 1000
     CineIOPeer._askForMedia options, (err, response)->
       clearTimeout requestTimeout
       if err
@@ -283,8 +286,9 @@ CineIOPeer =
     CineIOPeer.config.rooms.push(room)
     CineIOPeer._signalConnection.write action: 'room-join', room: room, publicKey: 'the-public-key'
 
-  _mediaNotReady: ->
-    CineIOPeer.trigger('media-request', local: true, type: 'camera')
+  _mediaNotReady: (type)->
+    ->
+      CineIOPeer.trigger('media-request', local: true, type: type)
 
   _askForMedia: (options={}, callback)->
     if typeof options == 'function'
