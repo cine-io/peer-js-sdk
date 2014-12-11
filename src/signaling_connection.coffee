@@ -112,11 +112,11 @@ class Connection
 
       when 'room-leave'
         console.log('room-leave', data)
+        @write action: 'room-goodbye', source: "web", sparkId: data.sparkId
         return unless @peerConnections[data.sparkId]
         return if @peerConnections[data.sparkId] == PENDING
         @peerConnections[data.sparkId].close()
         delete @peerConnections[data.sparkId]
-        @write action: 'room-goodbye', source: "web", sparkId: data.sparkId
 
       when 'room-join'
         console.log('room-join', data)
@@ -238,6 +238,7 @@ class Connection
 
       peerConnection.on 'close', (event)=>
         @_onCloseOfPeerConnection(peerConnection)
+        delete @peerConnections[otherClientSparkId]
 
       callback(null, peerConnection)
       CineIOPeer.trigger("peerConnectionMade")

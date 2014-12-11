@@ -5258,6 +5258,11 @@ Connection = (function() {
         });
       case 'room-leave':
         console.log('room-leave', data);
+        this.write({
+          action: 'room-goodbye',
+          source: "web",
+          sparkId: data.sparkId
+        });
         if (!this.peerConnections[data.sparkId]) {
           return;
         }
@@ -5265,12 +5270,7 @@ Connection = (function() {
           return;
         }
         this.peerConnections[data.sparkId].close();
-        delete this.peerConnections[data.sparkId];
-        return this.write({
-          action: 'room-goodbye',
-          source: "web",
-          sparkId: data.sparkId
-        });
+        return delete this.peerConnections[data.sparkId];
       case 'room-join':
         console.log('room-join', data);
         this._ensurePeerConnection(data.sparkId, {
@@ -5462,7 +5462,8 @@ Connection = (function() {
           _this._sendOffer(otherClientSparkId, peerConnection);
         }
         peerConnection.on('close', function(event) {
-          return _this._onCloseOfPeerConnection(peerConnection);
+          _this._onCloseOfPeerConnection(peerConnection);
+          return delete _this.peerConnections[otherClientSparkId];
         });
         callback(null, peerConnection);
         return CineIOPeer.trigger("peerConnectionMade");
