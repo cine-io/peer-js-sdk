@@ -11,7 +11,7 @@ The JavaScript SDK for [cine.io](https://www.cine.io) peer-to-peer communication
 
 ## Usage
 
-The `CineIOPeer` object is used to start your webcam, microphone, and desktop screen sharing. It can make and recieve calls within your application and join rooms. It can also send data between connected peers.
+The `CineIOPeer` object is used to start your [webcam and microphone](#camera-and-microphone). Share your [desktop screen](#Screen Sharing). It can [make and recieve calls](#Calling) within your application and [join rooms](#Rooms). It can also [send data](#sending-data-to-peers) between connected peers.
 
 ### Initialize
 
@@ -161,7 +161,7 @@ callObject.invite(identity) // invite another user to join this call
 callObject.hangup() // hangup on the call. This will keep the remaining users in the call
 ```
 
-#### Sending raw data to peers
+#### Sending data to peers
 
 `CineIOPeer` allows users to send arbitrary json data between the peers.
 
