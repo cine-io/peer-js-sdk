@@ -4504,30 +4504,35 @@ CineIOPeer = {
       options.room = room;
     }
     CineIOPeer._signalConnection.write(options);
-    return callback();
+    return setTimeout(callback);
   },
   join: function(room, callback) {
     if (callback == null) {
       callback = noop;
     }
     CineIOPeer._unsafeJoin(room);
-    return callback();
+    return setTimeout(callback);
   },
-  leave: function(room) {
+  leave: function(room, callback) {
     var index;
+    if (callback == null) {
+      callback = noop;
+    }
     index = CineIOPeer.config.rooms.indexOf(room);
-    if (!(index > -1)) {
-      return CineIOPeer.trigger('error', {
+    if (index < 0) {
+      CineIOPeer.trigger('error', {
         msg: 'not connected to room',
         room: room
       });
+      return setTimeout(callback);
     }
     CineIOPeer.config.rooms.splice(index, 1);
-    return CineIOPeer._signalConnection.write({
+    CineIOPeer._signalConnection.write({
       action: 'room-leave',
       room: room,
       publicKey: CineIOPeer.config.publicKey
     });
+    return setTimeout(callback);
   },
   startCameraAndMicrophone: function(callback) {
     if (callback == null) {

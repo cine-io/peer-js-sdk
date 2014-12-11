@@ -43,20 +43,22 @@ CineIOPeer =
     options.room = room if room
     # console.log('calling', identity)
     CineIOPeer._signalConnection.write options
-    callback()
+    setTimeout callback
 
   join: (room, callback=noop)->
     # console.log('Joining', room)
     CineIOPeer._unsafeJoin(room)
-    callback()
+    setTimeout callback
 
-  leave: (room)->
+  leave: (room, callback=noop)->
     index = CineIOPeer.config.rooms.indexOf(room)
-    return CineIOPeer.trigger('error', msg: 'not connected to room', room: room) unless index > -1
+    if index < 0
+      CineIOPeer.trigger('error', msg: 'not connected to room', room: room)
+      return setTimeout callback
 
     CineIOPeer.config.rooms.splice(index, 1)
     CineIOPeer._signalConnection.write action: 'room-leave', room: room, publicKey: CineIOPeer.config.publicKey
-
+    setTimeout callback
   startCameraAndMicrophone: (callback=noop)->
     CineIOPeer._startMedia(video: true, audio: true, callback)
 
