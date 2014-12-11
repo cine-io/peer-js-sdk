@@ -48,7 +48,7 @@ class Connection
     unless peerConnection.mainDataChannel
       peerConnection.mainDataChannel = @_newDataChannel(peerConnection, otherClientSparkId)
       @_sendOffer(otherClientSparkId, peerConnection)
-    @dataChannel = peerConnection.mainDataChannel
+
     sendToDataChannel peerConnection.mainDataChannel, action: 'userData', data: data
 
   _newDataChannel: (peerConnection, otherClientSparkId)->

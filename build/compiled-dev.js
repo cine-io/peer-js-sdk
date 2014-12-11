@@ -5169,7 +5169,6 @@ Connection = (function() {
       peerConnection.mainDataChannel = this._newDataChannel(peerConnection, otherClientSparkId);
       this._sendOffer(otherClientSparkId, peerConnection);
     }
-    this.dataChannel = peerConnection.mainDataChannel;
     return sendToDataChannel(peerConnection.mainDataChannel, {
       action: 'userData',
       data: data
