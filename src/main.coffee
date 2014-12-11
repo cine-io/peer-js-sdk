@@ -59,6 +59,7 @@ CineIOPeer =
     CineIOPeer.config.rooms.splice(index, 1)
     CineIOPeer._signalConnection.write action: 'room-leave', room: room, publicKey: CineIOPeer.config.publicKey
     setTimeout callback
+
   startCameraAndMicrophone: (callback=noop)->
     CineIOPeer._startMedia(video: true, audio: true, callback)
 
@@ -283,7 +284,7 @@ CineIOPeer =
     CineIOPeer._signalConnection.write action: 'room-join', room: room, publicKey: 'the-public-key'
 
   _mediaNotReady: ->
-    CineIOPeer.trigger('media-request')
+    CineIOPeer.trigger('media-request', local: true, type: 'camera')
 
   _askForMedia: (options={}, callback)->
     if typeof options == 'function'

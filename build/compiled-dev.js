@@ -4901,7 +4901,10 @@ CineIOPeer = {
     });
   },
   _mediaNotReady: function() {
-    return CineIOPeer.trigger('media-request');
+    return CineIOPeer.trigger('media-request', {
+      local: true,
+      type: 'camera'
+    });
   },
   _askForMedia: function(options, callback) {
     var streamDoptions;

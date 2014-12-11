@@ -103,14 +103,9 @@ function disconnect(e) {
 $(function() {
 
   CineIOPeer.on('media-added', function(data) {
-    if (data.local || data.remote) {
-      var $vid = $(data.videoElement)
-      $vid.addClass("col-md-4")
-      $("#participants").append($vid)
-    } else {
-      console.log(data)
-      alert('Permission denied.')
-    }
+    var $vid = $(data.videoElement)
+    $vid.addClass("col-md-4")
+    $("#participants").append($vid)
   })
 
   CineIOPeer.on('media-rejected', function(data) {
@@ -118,7 +113,7 @@ $(function() {
   })
 
   CineIOPeer.on('media-removed', function(data) {
-    data.videoElement.remove()
+    data.videoElement.remove();
   })
 
   CineIOPeer.on('call', function(data) {
@@ -138,7 +133,7 @@ $(function() {
 
   CineIOPeer.on('error', function(err) {
     if (typeof(err.support) != "undefined" && !err.support) {
-      alert("This browser does not support WebRTC.</h1>")
+      alert("This browser does not support WebRTC.")
     } else if (err.msg) {
       alert(err.msg)
     }
