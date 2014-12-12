@@ -11,7 +11,7 @@ The JavaScript SDK for [cine.io](https://www.cine.io) peer-to-peer communication
 
 ## Usage
 
-The `CineIOPeer` object is used to start your [webcam and microphone](#camera-and-microphone). Share your [desktop screen](#screen-sharing). It can [make and recieve calls](#calling) within your application and [join rooms](#rooms). It can also [send data](#sending-data-to-peers) between connected peers.
+The `CineIOPeer` object is used for real-time communication between two "peers". It supports video-chat using a [webcam and microphone](#camera-and-microphone) and also allows for sharing a [desktop screen](#screen-sharing). It's possible to [make and recieve calls](#calling) within an application or to [join chat rooms](#rooms). It can also supports [sending data](#sending-data-to-peers) between connected peers.
 
 ### Initialize
 
@@ -40,8 +40,7 @@ CineIOPeer.stopMicrophone(optionalCallback);
 
 A common workflow is to start by calling `CineIOPeer.startCameraAndMicrophone` and using `CineIOPeer.stopMicrophone` for muting audio. The same can be done with `CineIOPeer.stopCamera`.
 
->
-Accessing the camera and microphone may result in a native browser popup asking the user for permission to the camera and microphone. Because of this it is best to use the most appropriate camera and microphone initialization request.
+Accessing the camera and microphone may result in a native browser popup asking the user for permission to the camera and microphone. As such, to avoid duplicate permission-asks, it is best to use the most appropriate camera and microphone initialization request.
 
 #### Camera and microphone status
 
@@ -62,6 +61,8 @@ CineIOPeer has functions for turning on and off your desktop screen share.
 CineIOPeer.startScreenShare(optionalCallback);
 CineIOPeer.stopScreenShare(optionalCallback);
 ```
+
+It's worth noting, that screen-sharing is only supported in Chrome via an [external browser extension](https://chrome.google.com/webstore/detail/cineio-screen-sharing/ancoeogeclfnhienkmfmeeomadmofhmi). On Firefox, screen-sharing works without an extension.
 
 #### Screen Share Status
 
@@ -91,7 +92,6 @@ var room = 'the-best-room-ever';
 CineIOPeer.leave(room, optionalCallback);
 ```
 
->
 There is no built-in room authorization. All rooms are public. Room names are unique per project.
 
 #### Calling
@@ -137,7 +137,6 @@ This response can now be used in `CineIOPeer`. Identifying a user:
 CineIOPeer.identify(identity, timestamp, signature);
 ```
 
->
 Identities are unique per project. Common identity names are user ids.
 
 ##### Calling another user
