@@ -4469,12 +4469,19 @@ CineIOPeer = {
     return setTimeout(CineIOPeer._checkSupport);
   },
   identify: function(identity, timestamp, signature) {
-    CineIOPeer.config.identity = identity;
-    return CineIOPeer._signalConnection.write({
-      action: 'identify',
+    CineIOPeer.config.identity = {
       identity: identity,
       timestamp: timestamp,
-      signature: signature,
+      signature: signature
+    };
+    return CineIOPeer._sendIdentity();
+  },
+  _sendIdentity: function() {
+    return CineIOPeer._signalConnection.write({
+      action: 'identify',
+      identity: CineIOPeer.config.identity.identity,
+      timestamp: CineIOPeer.config.identity.timestamp,
+      signature: CineIOPeer.config.identity.signature,
       publicKey: CineIOPeer.config.publicKey,
       client: 'web'
     });
@@ -4496,10 +4503,11 @@ CineIOPeer = {
     }
     options = {
       action: 'call',
-      otheridentity: identity,
-      publicKey: CineIOPeer.config.publicKey,
-      identity: CineIOPeer.config.identity
+      otheridentity: identity
     };
+    if (CineIOPeer.config.identity) {
+      options.identity = CineIOPeer.config.identity.identity;
+    }
     if (room) {
       options.room = room;
     }
@@ -4510,7 +4518,8 @@ CineIOPeer = {
     if (callback == null) {
       callback = noop;
     }
-    CineIOPeer._unsafeJoin(room);
+    CineIOPeer.config.rooms.push(room);
+    CineIOPeer._sendJoinRoom(room);
     return setTimeout(callback);
   },
   leave: function(room, callback) {
@@ -4529,8 +4538,7 @@ CineIOPeer = {
     CineIOPeer.config.rooms.splice(index, 1);
     CineIOPeer._signalConnection.write({
       action: 'room-leave',
-      room: room,
-      publicKey: CineIOPeer.config.publicKey
+      room: room
     });
     return setTimeout(callback);
   },
@@ -4894,12 +4902,10 @@ CineIOPeer = {
       });
     }
   },
-  _unsafeJoin: function(room) {
-    CineIOPeer.config.rooms.push(room);
+  _sendJoinRoom: function(room) {
     return CineIOPeer._signalConnection.write({
       action: 'room-join',
-      room: room,
-      publicKey: 'the-public-key'
+      room: room
     });
   },
   _mediaNotReady: function(type) {
@@ -5072,10 +5078,12 @@ module.exports = ScreenSharer;
 
 
 },{"./chrome_screen_sharer":19,"./firefox_screen_sharer":21,"./screen_share_base":23}],25:[function(require,module,exports){
-var CallObject, CineIOPeer, Config, Connection, PENDING, PeerConnection, Primus, connectToCineSignaling, noop, sendToDataChannel,
+var CallObject, CineIOPeer, Config, Connection, PENDING, PeerConnection, Primus, connectToCineSignaling, noop, sendToDataChannel, setSparkIdOnPeerConnection, uuid,
   __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
 PeerConnection = require('rtcpeerconnection');
+
+uuid = require('./vendor/uuid');
 
 Primus = require('./vendor/primus');
 
@@ -5096,6 +5104,10 @@ sendToDataChannel = function(dataChannel, data) {
   return dataChannel.dataToSend.push(data);
 };
 
+setSparkIdOnPeerConnection = function(peerConnection, otherClientSparkId) {
+  return peerConnection.otherClientSparkId = otherClientSparkId;
+};
+
 Connection = (function() {
   function Connection(options) {
     this.options = options;
@@ -5104,39 +5116,48 @@ Connection = (function() {
     this._ensurePeerConnection = __bind(this._ensurePeerConnection, this);
     this._newMember = __bind(this._newMember, this);
     this._sendOffer = __bind(this._sendOffer, this);
+    this._closePeerConnection = __bind(this._closePeerConnection, this);
     this._signalHandler = __bind(this._signalHandler, this);
-    this._sendPublicKey = __bind(this._sendPublicKey, this);
+    this._onConnectionOpen = __bind(this._onConnectionOpen, this);
     this.removeLocalStream = __bind(this.removeLocalStream, this);
     this.addLocalStream = __bind(this.addLocalStream, this);
     this.write = __bind(this.write, this);
+    this.myUUID = uuid();
     this.iceServers = null;
     this.fetchedIce = false;
     this.peerConnections = {};
     this.calls = {};
     this.primus = connectToCineSignaling();
-    this.primus.on('open', this._sendPublicKey);
+    this.primus.on('open', this._onConnectionOpen);
     this.primus.on('data', this._signalHandler);
     this.primus.on('end', this._connectionEnded);
   }
 
-  Connection.prototype.write = function() {
+  Connection.prototype.write = function(data) {
     var _ref;
+    data.source = 'web';
+    data.publicKey = CineIOPeer.config.publicKey;
+    data.uuid = this.myUUID;
+    if (CineIOPeer.config.identity) {
+      data.identity = CineIOPeer.config.identity.identity;
+    }
+    console.log("Writing", data);
     return (_ref = this.primus).write.apply(_ref, arguments);
   };
 
   Connection.prototype.addLocalStream = function(stream, options) {
-    var otherClientSparkId, peerConnection, _ref, _results;
+    var otherClientUUID, peerConnection, _ref, _results;
     if (options == null) {
       options = {};
     }
     _ref = this.peerConnections;
     _results = [];
-    for (otherClientSparkId in _ref) {
-      peerConnection = _ref[otherClientSparkId];
-      console.log("adding local stream " + stream.id + " to " + otherClientSparkId);
+    for (otherClientUUID in _ref) {
+      peerConnection = _ref[otherClientUUID];
+      console.log("adding local stream " + stream.id + " to " + otherClientUUID);
       peerConnection.addStream(stream);
       if (!options.silent) {
-        _results.push(this._sendOffer(otherClientSparkId, peerConnection));
+        _results.push(this._sendOffer(peerConnection));
       } else {
         _results.push(void 0);
       }
@@ -5145,18 +5166,18 @@ Connection = (function() {
   };
 
   Connection.prototype.removeLocalStream = function(stream, options) {
-    var otherClientSparkId, peerConnection, _ref, _results;
+    var otherClientUUID, peerConnection, _ref, _results;
     if (options == null) {
       options = {};
     }
     _ref = this.peerConnections;
     _results = [];
-    for (otherClientSparkId in _ref) {
-      peerConnection = _ref[otherClientSparkId];
-      console.log("removing local stream " + stream.id + " from " + otherClientSparkId);
+    for (otherClientUUID in _ref) {
+      peerConnection = _ref[otherClientUUID];
+      console.log("removing local stream " + stream.id + " from " + otherClientUUID);
       peerConnection.removeStream(stream);
       if (!options.silent) {
-        _results.push(this._sendOffer(otherClientSparkId, peerConnection));
+        _results.push(this._sendOffer(peerConnection));
       } else {
         _results.push(void 0);
       }
@@ -5165,21 +5186,21 @@ Connection = (function() {
   };
 
   Connection.prototype.sendDataToAllPeers = function(data) {
-    var otherClientSparkId, peerConnection, _ref, _results;
+    var otherClientUUID, peerConnection, _ref, _results;
     _ref = this.peerConnections;
     _results = [];
-    for (otherClientSparkId in _ref) {
-      peerConnection = _ref[otherClientSparkId];
-      console.log("sending data " + data + " to " + otherClientSparkId);
-      _results.push(this._sendDataToPeer(peerConnection, otherClientSparkId, data));
+    for (otherClientUUID in _ref) {
+      peerConnection = _ref[otherClientUUID];
+      console.log("sending data " + data + " to " + otherClientUUID);
+      _results.push(this._sendDataToPeer(peerConnection, data));
     }
     return _results;
   };
 
-  Connection.prototype._sendDataToPeer = function(peerConnection, otherClientSparkId, data) {
+  Connection.prototype._sendDataToPeer = function(peerConnection, data) {
     if (!peerConnection.mainDataChannel) {
-      peerConnection.mainDataChannel = this._newDataChannel(peerConnection, otherClientSparkId);
-      this._sendOffer(otherClientSparkId, peerConnection);
+      peerConnection.mainDataChannel = this._newDataChannel(peerConnection);
+      this._sendOffer(peerConnection);
     }
     return sendToDataChannel(peerConnection.mainDataChannel, {
       action: 'userData',
@@ -5187,7 +5208,7 @@ Connection = (function() {
     });
   };
 
-  Connection.prototype._newDataChannel = function(peerConnection, otherClientSparkId) {
+  Connection.prototype._newDataChannel = function(peerConnection) {
     var dataChannel;
     dataChannel = peerConnection.createDataChannel('CINE', {
       ordered: false,
@@ -5224,11 +5245,21 @@ Connection = (function() {
     return dataChannel;
   };
 
-  Connection.prototype._sendPublicKey = function() {
-    return this.write({
-      action: 'auth',
-      publicKey: this.options.publicKey
+  Connection.prototype._onConnectionOpen = function() {
+    var room, _i, _len, _ref, _results;
+    this.write({
+      action: 'auth'
     });
+    if (CineIOPeer.config.identity) {
+      CineIOPeer._sendIdentity();
+    }
+    _ref = CineIOPeer.config.rooms;
+    _results = [];
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      room = _ref[_i];
+      _results.push(CineIOPeer._sendJoinRoom(room));
+    }
+    return _results;
   };
 
   Connection.prototype._connectionEnded = function() {
@@ -5242,7 +5273,6 @@ Connection = (function() {
   };
 
   Connection.prototype._signalHandler = function(data) {
-    var otherClientSparkId, peerConnection;
     switch (data.action) {
       case 'error':
         return CineIOPeer.trigger('error', data);
@@ -5271,48 +5301,33 @@ Connection = (function() {
         console.log('room-leave', data);
         this.write({
           action: 'room-goodbye',
-          source: "web",
           sparkId: data.sparkId
-        });
-        if (!this.peerConnections[data.sparkId]) {
-          return;
-        }
-        if (this.peerConnections[data.sparkId] === PENDING) {
-          return;
-        }
-        this.peerConnections[data.sparkId].close();
-        return delete this.peerConnections[data.sparkId];
+        }, data.room);
+        return this._closePeerConnection(data);
       case 'room-join':
         console.log('room-join', data);
-        this._ensurePeerConnection(data.sparkId, {
+        this._ensurePeerConnection(data, {
           offer: true
         });
         return this.write({
           action: 'room-announce',
           source: "web",
-          sparkId: data.sparkId
+          sparkId: data.sparkId,
+          room: data.room
         });
       case 'room-announce':
         console.log('room-announce', data);
-        return this._ensurePeerConnection(data.sparkId, {
+        return this._ensurePeerConnection(data, {
           offer: false
         });
       case 'room-goodbye':
         console.log("room-goodbye", data);
-        if (!this.peerConnections[data.sparkId]) {
-          return;
-        }
-        if (this.peerConnections[data.sparkId] === PENDING) {
-          return;
-        }
-        peerConnection = this.peerConnections[data.sparkId];
-        peerConnection.close();
-        return delete this.peerConnections[data.sparkId];
+        return this._closePeerConnection(data);
       case 'rtc-ice':
         if (!data.sparkId) {
           return;
         }
-        return this._ensurePeerConnection(data.sparkId, {
+        return this._ensurePeerConnection(data, {
           offer: false
         }, (function(_this) {
           return function(err, pc) {
@@ -5320,9 +5335,8 @@ Connection = (function() {
           };
         })(this));
       case 'rtc-offer':
-        otherClientSparkId = data.sparkId;
         console.log('got offer', data);
-        return this._ensurePeerConnection(otherClientSparkId, {
+        return this._ensurePeerConnection(data, {
           offer: false
         }, (function(_this) {
           return function(err, pc) {
@@ -5331,9 +5345,8 @@ Connection = (function() {
               answerResponse = function(err, answer) {
                 return _this.write({
                   action: 'rtc-answer',
-                  source: "web",
                   answer: answer,
-                  sparkId: otherClientSparkId
+                  sparkId: data.sparkId
                 });
               };
               if (CineIOPeer.localStreams().length === 0) {
@@ -5345,7 +5358,7 @@ Connection = (function() {
           };
         })(this));
       case 'rtc-answer':
-        return this._ensurePeerConnection(data.sparkId, {
+        return this._ensurePeerConnection(data, {
           offer: false
         }, function(err, pc) {
           return pc.handleAnswer(data.answer);
@@ -5353,10 +5366,25 @@ Connection = (function() {
     }
   };
 
-  Connection.prototype._sendOffer = function(otherClientSparkId, peerConnection) {
+  Connection.prototype._closePeerConnection = function(data) {
+    var otherClientUUID;
+    otherClientUUID = data.sparkUUID;
+    if (!this.peerConnections[otherClientUUID]) {
+      return;
+    }
+    if (this.peerConnections[otherClientUUID] === PENDING) {
+      return;
+    }
+    this.peerConnections[otherClientUUID].close();
+    return delete this.peerConnections[otherClientUUID];
+  };
+
+  Connection.prototype._sendOffer = function(peerConnection) {
     var constraints, response;
     response = (function(_this) {
       return function(err, offer) {
+        var otherClientSparkId;
+        otherClientSparkId = peerConnection.otherClientSparkId;
         if (err || !offer) {
           console.log("FATAL ERROR in offer", err, offer);
           return CineIOPeer.trigger("error", {
@@ -5368,7 +5396,6 @@ Connection = (function() {
         console.log('offering', err, otherClientSparkId, offer);
         return _this.write({
           action: 'rtc-offer',
-          source: "web",
           offer: offer,
           sparkId: otherClientSparkId
         });
@@ -5378,13 +5405,15 @@ Connection = (function() {
       mandatory: {
         OfferToReceiveAudio: true,
         OfferToReceiveVideo: true
-      },
-      optional: [
-        {
-          RtpDataChannels: peerConnection.mainDataChannel != null
-        }
-      ]
+      }
     };
+    if (peerConnection.mainDataChannel) {
+      constraints.optional = [
+        {
+          RtpDataChannels: true
+        }
+      ];
+    }
     return peerConnection.offer(constraints, response);
   };
 
@@ -5405,24 +5434,25 @@ Connection = (function() {
     return delete peerConnection.videoEls;
   };
 
-  Connection.prototype._newMember = function(otherClientSparkId, options, callback) {
-    if (this.peerConnections[otherClientSparkId]) {
+  Connection.prototype._newMember = function(otherClientUUID, otherClientSparkId, options, callback) {
+    if (this.peerConnections[otherClientUUID]) {
       return this._ensureReady((function(_this) {
         return function() {
-          return callback(null, _this.peerConnections[otherClientSparkId]);
+          return callback(null, _this.peerConnections[otherClientUUID]);
         };
       })(this));
     }
-    this.peerConnections[otherClientSparkId] = PENDING;
+    this.peerConnections[otherClientUUID] = PENDING;
     return this._ensureReady((function(_this) {
       return function() {
         var peerConnection, stream, _i, _len, _ref;
-        console.log("CREATING NEW PEER CONNECTION!!", otherClientSparkId, options);
+        console.log("CREATING NEW PEER CONNECTION!!", otherClientUUID, options);
         peerConnection = _this._initializeNewPeerConnection({
           iceServers: _this.iceServers
         });
-        _this.peerConnections[otherClientSparkId] = peerConnection;
+        _this.peerConnections[otherClientUUID] = peerConnection;
         peerConnection.videoEls = [];
+        setSparkIdOnPeerConnection(peerConnection, otherClientSparkId);
         _ref = CineIOPeer.localStreams();
         for (_i = 0, _len = _ref.length; _i < _len; _i++) {
           stream = _ref[_i];
@@ -5463,17 +5493,16 @@ Connection = (function() {
         peerConnection.on('ice', function(candidate) {
           return _this.write({
             action: 'rtc-ice',
-            source: "web",
             candidate: candidate,
-            sparkId: otherClientSparkId
+            sparkId: peerConnection.otherClientSparkId
           });
         });
         if (options.offer && CineIOPeer.localStreams().length > 0 || peerConnection.mainDataChannel) {
-          _this._sendOffer(otherClientSparkId, peerConnection);
+          _this._sendOffer(peerConnection);
         }
         peerConnection.on('close', function(event) {
           _this._onCloseOfPeerConnection(peerConnection);
-          return delete _this.peerConnections[otherClientSparkId];
+          return delete _this.peerConnections[otherClientUUID];
         });
         callback(null, peerConnection);
         return CineIOPeer.trigger("peerConnectionMade");
@@ -5481,18 +5510,21 @@ Connection = (function() {
     })(this));
   };
 
-  Connection.prototype._ensurePeerConnection = function(otherClientSparkId, options, callback) {
-    var candidate;
+  Connection.prototype._ensurePeerConnection = function(data, options, callback) {
+    var candidate, otherClientSparkId, otherClientUUID;
     if (callback == null) {
       callback = noop;
     }
-    candidate = this.peerConnections[otherClientSparkId];
+    otherClientSparkId = data.sparkId;
+    otherClientUUID = data.sparkUUID;
+    candidate = this.peerConnections[otherClientUUID];
     if (candidate && candidate !== PENDING) {
+      setSparkIdOnPeerConnection(candidate, otherClientSparkId);
       return setTimeout(function() {
         return callback(null, candidate);
       });
     }
-    return this._newMember(otherClientSparkId, options, callback);
+    return this._newMember(otherClientUUID, otherClientSparkId, options, callback);
   };
 
   Connection.prototype._ensureReady = function(callback) {
@@ -5524,7 +5556,7 @@ CallObject = require('./call');
 
 
 
-},{"./call":18,"./config":20,"./main":22,"./vendor/primus":26,"rtcpeerconnection":16}],26:[function(require,module,exports){
+},{"./call":18,"./config":20,"./main":22,"./vendor/primus":26,"./vendor/uuid":27,"rtcpeerconnection":16}],26:[function(require,module,exports){
 (function (name, context, definition) {  context[name] = definition.call(context);  if (typeof module !== "undefined" && module.exports) {    module.exports = context[name];  } else if (typeof define == "function" && define.amd) {    define(function reference() { return context[name]; });  }})("Primus", this, function Primus() {/*globals require, define */
 'use strict';
 
@@ -9627,5 +9659,31 @@ if (typeof define === 'function' && define.amd) {
 //     [*] End of lib/index.js
 
 // [*] End of lib/all.js
+
+},{}],27:[function(require,module,exports){
+// https://gist.github.com/jed/982883
+function b(
+  a                  // placeholder
+){
+  return a           // if the placeholder was passed, return
+    ? (              // a random number from 0 to 15
+      a ^            // unless b is 8,
+      Math.random()  // in which case
+      * 16           // a random number from
+      >> a/4         // 8 to 11
+      ).toString(16) // in hexadecimal
+    : (              // or otherwise a concatenated string:
+      [1e7] +        // 10000000 +
+      -1e3 +         // -1000 +
+      -4e3 +         // -4000 +
+      -8e3 +         // -80000000 +
+      -1e11          // -100000000000,
+      ).replace(     // replacing
+        /[018]/g,    // zeroes, ones, and eights with
+        b            // random hex digits
+      )
+}
+
+module.exports = b;
 
 },{}]},{},[22]);

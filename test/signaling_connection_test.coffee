@@ -44,6 +44,9 @@ describe 'SignalingConnection', ->
     it 'passes options', ->
       expect(@connection.options).to.deep.equal(publicKey: 'project-public-key')
 
+    it 'has a uuid', ->
+      expect(@connection.myUUID).to.have.length(36)
+
     it 'triggers auth on the connection', ->
       @connection.primus.trigger 'open'
       @primusStub.write.calledOnce

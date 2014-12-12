@@ -52,7 +52,7 @@ describe 'CineIOPeer', ->
     describe '.identify', ->
       it 'sets an identity', ->
         CineIOPeer.identify('Minerva McGonagall', 'timely-timestamp', 'secure-signature')
-        expect(CineIOPeer.config.identity).to.equal('Minerva McGonagall')
+        expect(CineIOPeer.config.identity.identity).to.equal('Minerva McGonagall')
 
       it 'writes to the signaling connection', ->
         CineIOPeer.identify('Minerva McGonagall', 'timely-timestamp', 'secure-signature')

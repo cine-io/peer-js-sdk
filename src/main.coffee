@@ -25,8 +25,14 @@ CineIOPeer =
 
   identify: (identity, timestamp, signature)->
     # console.log('identifying as', identity)
-    CineIOPeer.config.identity = identity
-    CineIOPeer._signalConnection.write action: 'identify', identity: identity, timestamp: timestamp, signature: signature, publicKey: CineIOPeer.config.publicKey, client: 'web'
+    CineIOPeer.config.identity =
+      identity: identity
+      timestamp: timestamp
+      signature: signature
+    CineIOPeer._sendIdentity()
+
+  _sendIdentity: ->
+    CineIOPeer._signalConnection.write action: 'identify', identity: CineIOPeer.config.identity.identity, timestamp: CineIOPeer.config.identity.timestamp, signature: CineIOPeer.config.identity.signature, publicKey: CineIOPeer.config.publicKey, client: 'web'
 
   sendDataToAll: (data)->
     CineIOPeer._signalConnection.sendDataToAllPeers(data)
@@ -38,8 +44,7 @@ CineIOPeer =
     options =
       action: 'call'
       otheridentity: identity
-      publicKey: CineIOPeer.config.publicKey
-      identity: CineIOPeer.config.identity
+    options.identity = CineIOPeer.config.identity.identity if CineIOPeer.config.identity
     options.room = room if room
     # console.log('calling', identity)
     CineIOPeer._signalConnection.write options
@@ -47,7 +52,8 @@ CineIOPeer =
 
   join: (room, callback=noop)->
     # console.log('Joining', room)
-    CineIOPeer._unsafeJoin(room)
+    CineIOPeer.config.rooms.push(room)
+    CineIOPeer._sendJoinRoom(room)
     setTimeout callback
 
   leave: (room, callback=noop)->
@@ -57,7 +63,7 @@ CineIOPeer =
       return setTimeout callback
 
     CineIOPeer.config.rooms.splice(index, 1)
-    CineIOPeer._signalConnection.write action: 'room-leave', room: room, publicKey: CineIOPeer.config.publicKey
+    CineIOPeer._signalConnection.write action: 'room-leave', room: room
     setTimeout callback
 
   startCameraAndMicrophone: (callback=noop)->
@@ -282,9 +288,8 @@ CineIOPeer =
     else
       CineIOPeer.trigger 'error', support: false
 
-  _unsafeJoin: (room)->
-    CineIOPeer.config.rooms.push(room)
-    CineIOPeer._signalConnection.write action: 'room-join', room: room, publicKey: 'the-public-key'
+  _sendJoinRoom: (room)->
+    CineIOPeer._signalConnection.write action: 'room-join', room: room
 
   _mediaNotReady: (type)->
     ->
