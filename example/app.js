@@ -1,7 +1,4 @@
-var
-  connected = false
-, dummyEvent = new Event("dummy")
-, qs = {}
+var qs = {}
 
 function activateButton(id){
   $("#"+id).removeClass('btn-primary').addClass('btn-success')
@@ -75,26 +72,18 @@ function toggleScreenShare(e) {
 }
 
 function connect(e) {
-  if (connected) return;
 
   e.preventDefault()
-
-  connected = true
-
-  $("#connect").hide()
-  $("#disconnect").show()
+  window.location.reload();
 }
 
 function disconnect(e) {
-  if (!connected) return;
 
   e.preventDefault()
 
   if (qs.room) {
     CineIOPeer.leave(qs.room)
   }
-
-  connected = false
 
   $("#disconnect").hide()
   $("#connect").show()
@@ -164,7 +153,8 @@ $(function() {
   }
 
   if (Object.keys(qs).length) {
-    connect(dummyEvent)
+    $("#connect").hide()
+    $("#disconnect").show()
   }
 
 })
