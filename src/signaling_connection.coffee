@@ -30,7 +30,7 @@ class Connection
     @primus.on 'end', @_connectionEnded
 
   write: (data)=>
-    data.source = 'web'
+    data.client = "cineio-peer-js version-#{CineIOPeer.version}"
     data.publicKey = CineIOPeer.config.publicKey
     data.uuid = @myUUID
     data.identity = CineIOPeer.config.identity.identity if CineIOPeer.config.identity

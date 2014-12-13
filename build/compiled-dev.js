@@ -5135,7 +5135,7 @@ Connection = (function() {
 
   Connection.prototype.write = function(data) {
     var _ref;
-    data.source = 'web';
+    data.client = "cineio-peer-js version-" + CineIOPeer.version;
     data.publicKey = CineIOPeer.config.publicKey;
     data.uuid = this.myUUID;
     if (CineIOPeer.config.identity) {
