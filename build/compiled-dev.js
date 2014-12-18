@@ -4281,6 +4281,10 @@ Participant = (function() {
     return this.state = ENDED;
   };
 
+  Participant.prototype.joined = function() {
+    return this.state = IN_CALL;
+  };
+
   return Participant;
 
 })();
@@ -4335,16 +4339,23 @@ module.exports = CallObject = (function() {
       callback = noop;
     }
     this.state = ENDED;
-    return CineIOPeer.leave(this.room, callback);
+    CineIOPeer.leave(this.room, callback);
+    return this._cancelOutgoingCalls();
   };
 
-  CallObject.prototype.left = function(identity) {
+  CallObject.prototype.left = function(otherIdentity) {
     var participant;
-    participant = this.participants[identity];
+    participant = this.participants[otherIdentity];
     if (!participant) {
       return;
     }
     return participant.left();
+  };
+
+  CallObject.prototype.joined = function(otherIdentity) {
+    var participant;
+    participant = this._createParticipant(otherIdentity);
+    return participant.joined();
   };
 
   CallObject.prototype.invite = function(otherIdentity, callback) {
@@ -4370,7 +4381,23 @@ module.exports = CallObject = (function() {
     return callback();
   };
 
+  CallObject.prototype._cancelOutgoingCalls = function() {
+    var otherIdentity, participant, _ref, _results;
+    _ref = this.participants;
+    _results = [];
+    for (otherIdentity in _ref) {
+      participant = _ref[otherIdentity];
+      _results.push(participant.cancel());
+    }
+    return _results;
+  };
+
   CallObject.prototype._createParticipant = function(otherIdentity) {
+    var existingParticipant;
+    existingParticipant = this.participants[otherIdentity];
+    if (existingParticipant) {
+      return existingParticipant;
+    }
     return this.participants[otherIdentity] = new Participant(otherIdentity, this.room);
   };
 
@@ -5421,6 +5448,9 @@ Connection = (function() {
         return this._closePeerConnection(data);
       case 'room-join':
         console.log('room-join', data);
+        if (data.identity) {
+          this._callFromRoom(data.room).joined(data.identity);
+        }
         this._ensurePeerConnection(data, {
           offer: true
         });

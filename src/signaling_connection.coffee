@@ -144,6 +144,7 @@ class Connection
 
       when 'room-join'
         console.log('room-join', data)
+        @_callFromRoom(data.room).joined(data.identity) if data.identity
         @_ensurePeerConnection data, offer: true
         @write action: 'room-announce', source: "web", sparkId: data.sparkId, room: data.room
 

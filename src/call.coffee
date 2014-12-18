@@ -9,6 +9,7 @@ class Participant
   constructor: (@otherIdentity, @room)->
     @state = INITIATED
   # initiator methods
+
   call: ->
     @state = IN_CALL
     options =
@@ -35,6 +36,9 @@ class Participant
   left: ->
     @state = ENDED
 
+  joined: ->
+    @state = IN_CALL
+
 module.exports = class CallObject
   constructor: (@room, @options={})->
     @state = if @options.initiated then IN_CALL else INITIATED
@@ -49,8 +53,10 @@ module.exports = class CallObject
 
   isInCall: ->
     @state == IN_CALL
+
   isEnded: ->
     @state == ENDED
+
   reject: (callback=noop)->
     @state = ENDED
     options =
@@ -67,11 +73,16 @@ module.exports = class CallObject
   hangup: (callback=noop)->
     @state = ENDED
     CineIOPeer.leave @room, callback
+    @_cancelOutgoingCalls()
 
-  left: (identity)->
-    participant = @participants[identity]
+  left: (otherIdentity)->
+    participant = @participants[otherIdentity]
     return unless participant
     participant.left()
+
+  joined: (otherIdentity)->
+    participant = @_createParticipant(otherIdentity)
+    participant.joined()
   # end global call functions
 
   # individual connection actions
@@ -86,10 +97,14 @@ module.exports = class CallObject
     participant.cancel()
     callback()
 
+  _cancelOutgoingCalls: ->
+    participant.cancel() for otherIdentity, participant of @participants
   # maybe kick...
   # end individual connection actions
 
   _createParticipant: (otherIdentity)->
+    existingParticipant = @participants[otherIdentity]
+    return existingParticipant if existingParticipant
     @participants[otherIdentity] = new Participant(otherIdentity, @room)
 
 BackboneEvents.mixin CallObject::
