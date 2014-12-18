@@ -4230,68 +4230,133 @@ module.exports = {
 };
 
 },{}],18:[function(require,module,exports){
-var CallObject, CineIOPeer, noop,
-  __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
+var BackboneEvents, CallObject, CineIOPeer, ENDED, INITIATED, IN_CALL, Participant, noop;
+
+BackboneEvents = require("backbone-events-standalone");
 
 noop = function() {};
 
+INITIATED = 0;
+
+IN_CALL = 1;
+
+ENDED = 2;
+
+Participant = (function() {
+  function Participant(otherIdentity, room) {
+    this.otherIdentity = otherIdentity;
+    this.room = room;
+    this.state = INITIATED;
+  }
+
+  Participant.prototype.call = function() {
+    var options;
+    this.state = IN_CALL;
+    options = {
+      action: 'call',
+      room: this.room,
+      otheridentity: this.otherIdentity
+    };
+    if (CineIOPeer.config.identity) {
+      options.identity = CineIOPeer.config.identity.identity;
+    }
+    return CineIOPeer._signalConnection.write(options);
+  };
+
+  Participant.prototype.cancel = function() {
+    var options;
+    options = {
+      action: 'call-cancel',
+      room: this.room,
+      otheridentity: this.otherIdentity
+    };
+    if (CineIOPeer.config.identity) {
+      options.identity = CineIOPeer.config.identity.identity;
+    }
+    CineIOPeer._signalConnection.write(options);
+    return this.state = ENDED;
+  };
+
+  return Participant;
+
+})();
+
 module.exports = CallObject = (function() {
-  function CallObject(initiated, _data) {
-    this.initiated = initiated;
-    this._data = _data;
-    this.answer = __bind(this.answer, this);
-    if (this.initiated) {
-      this.ongoing = true;
-    } else {
-      this.ongoing = false;
+  function CallObject(room, options) {
+    this.room = room;
+    this.options = options != null ? options : {};
+    this.state = this.options.initiated ? IN_CALL : INITIATED;
+    this.participants = {};
+    if (options.called) {
+      this._createParticipant(options.called);
     }
   }
 
-  CallObject.prototype.answer = function(callback) {
-    if (callback == null) {
-      callback = noop;
-    }
-    this.ongoing = true;
+  CallObject.prototype.answer = function() {
+    this.state = IN_CALL;
     return CineIOPeer.join(this._data.room, callback);
   };
 
-  CallObject.prototype.reject = function(callback) {
-    if (callback == null) {
-      callback = noop;
-    }
-    this.ongoing = false;
-    CineIOPeer._signalConnection.write({
+  CallObject.prototype.reject = function() {
+    var options;
+    this.state = ENDED;
+    options = {
       action: 'call-reject',
-      room: this._data.room,
-      publicKey: CineIOPeer.config.publicKey
-    });
-    return callback();
-  };
-
-  CallObject.prototype.invite = function(identity, callback) {
-    if (callback == null) {
-      callback = noop;
+      room: this.room,
+      otheridentity: this.otherIdentity
+    };
+    if (CineIOPeer.config.identity) {
+      options.identity = CineIOPeer.config.identity.identity;
     }
-    return CineIOPeer.call(identity, this._data.room, callback);
+    return CineIOPeer._signalConnection.write(options);
   };
 
   CallObject.prototype.hangup = function(callback) {
     if (callback == null) {
       callback = noop;
     }
-    this.ongoing = false;
-    return CineIOPeer.leave(this._data.room, callback);
+    this.state = ENDED;
+    return CineIOPeer.leave(this.room, callback);
+  };
+
+  CallObject.prototype.invite = function(otherIdentity, callback) {
+    var participant;
+    if (callback == null) {
+      callback = noop;
+    }
+    participant = this._createParticipant(otherIdentity);
+    participant.call();
+    return callback();
+  };
+
+  CallObject.prototype.cancel = function(otherIdentity, callback) {
+    var participant;
+    if (callback == null) {
+      callback = noop;
+    }
+    participant = this.participants[otherIdentity];
+    if (!participant) {
+      return callback("participant not in room: " + otheridentity);
+    }
+    participant.cancel();
+    return callback();
+  };
+
+  CallObject.prototype._createParticipant = function(otherIdentity) {
+    return this.participants[otherIdentity] = new Participant(otherIdentity, this.room);
   };
 
   return CallObject;
 
 })();
 
+BackboneEvents.mixin(CallObject.prototype);
+
 CineIOPeer = require('./main');
 
 
 
-},{"./main":22}],19:[function(require,module,exports){
+},{"./main":22,"backbone-events-standalone":3}],19:[function(require,module,exports){
 var ChromeScreenSharer, ScreenShareError, ScreenSharer, ssBase,
   __hasProp = {}.hasOwnProperty,
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
@@ -4489,8 +4554,8 @@ CineIOPeer = {
   sendDataToAll: function(data) {
     return CineIOPeer._signalConnection.sendDataToAllPeers(data);
   },
-  call: function(identity, room, callback) {
-    var options;
+  call: function(otheridentity, room, callback) {
+    var callPlacedCallback, options;
     if (room == null) {
       room = null;
     }
@@ -4503,7 +4568,7 @@ CineIOPeer = {
     }
     options = {
       action: 'call',
-      otheridentity: identity
+      otheridentity: otheridentity
     };
     if (CineIOPeer.config.identity) {
       options.identity = CineIOPeer.config.identity.identity;
@@ -4512,7 +4577,15 @@ CineIOPeer = {
       options.room = room;
     }
     CineIOPeer._signalConnection.write(options);
-    return setTimeout(callback);
+    callPlacedCallback = function(data) {
+      if (data.ack === 'call' && data.otheridentity === otheridentity) {
+        callback(null, {
+          call: data.call
+        });
+        return CineIOPeer.off('call-placed', callPlacedCallback);
+      }
+    };
+    return CineIOPeer.on('call-placed', callPlacedCallback);
   },
   join: function(room, callback) {
     if (callback == null) {
@@ -5273,6 +5346,7 @@ Connection = (function() {
   };
 
   Connection.prototype._signalHandler = function(data) {
+    var callObj;
     switch (data.action) {
       case 'error':
         return CineIOPeer.trigger('error', data);
@@ -5284,21 +5358,33 @@ Connection = (function() {
       case 'ack':
         if (data.source === 'call') {
           CineIOPeer.config.rooms.push(data.room);
+          callObj = this._callFromRoom(data.room, {
+            initiated: true,
+            called: data.otheridentity
+          });
           return CineIOPeer.trigger('call-placed', {
-            call: this._callFromRoom(true, data)
+            call: callObj
           });
         }
         break;
       case 'call':
         return CineIOPeer.trigger('call', {
-          call: this._callFromRoom(false, data)
+          identity: data.identity,
+          call: this._callFromRoom(data.room)
+        });
+      case 'call-cancel':
+        return this._callFromRoom(data.room).trigger('call-cancel', {
+          identity: data.identity
         });
       case 'call-reject':
-        return CineIOPeer.trigger('call-reject', {
-          call: this._callFromRoom(false, data)
+        return this._callFromRoom(data.room).trigger('call-reject', {
+          identity: data.identity
         });
       case 'room-leave':
         console.log('room-leave', data);
+        if (data.identity) {
+          this._callFromRoom(data.room).left(data.identity);
+        }
         this.write({
           action: 'room-goodbye',
           sparkId: data.sparkId

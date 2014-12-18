@@ -115,22 +115,30 @@ class Connection
       when 'ack'
         if data.source == 'call'
           CineIOPeer.config.rooms.push(data.room)
-          CineIOPeer.trigger('call-placed', call: @_callFromRoom(true, data))
+          callObj = @_callFromRoom(data.room, initiated: true, called: data.otheridentity)
+          CineIOPeer.trigger('call-placed', call: callObj)
       # END BASE
 
       # CALLING
       when 'call'
         # console.log('got incoming call', data)
-        CineIOPeer.trigger('call', call: @_callFromRoom(false, data))
+        CineIOPeer.trigger('call', identity: data.identity, call: @_callFromRoom(data.room))
 
+      # created from initiator
+      when 'call-cancel'
+        # console.log('got incoming call', data)
+        @_callFromRoom(data.room).trigger('call-cancel', identity: data.identity)
+
+      # created from recipient
       when 'call-reject'
         # console.log('got incoming call', data)
-        CineIOPeer.trigger('call-reject', call: @_callFromRoom(false, data))
+        @_callFromRoom(data.room).trigger('call-reject', identity: data.identity)
       # END CALLING
 
       # ROOMS
       when 'room-leave'
         console.log('room-leave', data)
+        @_callFromRoom(data.room).left(data.identity) if data.identity
         @write action: 'room-goodbye', sparkId: data.sparkId, data.room
         @_closePeerConnection(data)
 

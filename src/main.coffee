@@ -37,18 +37,22 @@ CineIOPeer =
   sendDataToAll: (data)->
     CineIOPeer._signalConnection.sendDataToAllPeers(data)
 
-  call: (identity, room=null, callback=noop)->
+  call: (otheridentity, room=null, callback=noop)->
     if typeof room == 'function'
       callback = room
       room = null
     options =
       action: 'call'
-      otheridentity: identity
+      otheridentity: otheridentity
     options.identity = CineIOPeer.config.identity.identity if CineIOPeer.config.identity
     options.room = room if room
     # console.log('calling', identity)
     CineIOPeer._signalConnection.write options
-    setTimeout callback
+    callPlacedCallback = (data)->
+      if data.ack == 'call' && data.otheridentity == otheridentity
+        callback(null, call: data.call)
+        CineIOPeer.off 'call-placed', callPlacedCallback
+    CineIOPeer.on 'call-placed', callPlacedCallback
 
   join: (room, callback=noop)->
     # console.log('Joining', room)
