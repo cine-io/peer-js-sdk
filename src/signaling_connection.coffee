@@ -95,9 +95,9 @@ class Connection
   _connectionEnded: ->
     console.log("Connection closed")
 
-  _callFromRoom: (initiated, data)->
-    @calls[data.room] ||= new CallObject(initiated, data)
-    @calls[data.room]
+  _callFromRoom: (room, options)->
+    @calls[room] ||= new CallObject(room, options)
+    @calls[room]
 
   _signalHandler: (data)=>
     # console.log("got data")

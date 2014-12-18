@@ -5339,10 +5339,10 @@ Connection = (function() {
     return console.log("Connection closed");
   };
 
-  Connection.prototype._callFromRoom = function(initiated, data) {
-    var _base, _name;
-    (_base = this.calls)[_name = data.room] || (_base[_name] = new CallObject(initiated, data));
-    return this.calls[data.room];
+  Connection.prototype._callFromRoom = function(room, options) {
+    var _base;
+    (_base = this.calls)[room] || (_base[room] = new CallObject(room, options));
+    return this.calls[room];
   };
 
   Connection.prototype._signalHandler = function(data) {
