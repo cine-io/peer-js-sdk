@@ -49,9 +49,9 @@ CineIOPeer =
     # console.log('calling', identity)
     CineIOPeer._signalConnection.write options
     callPlacedCallback = (data)->
-      if data.ack == 'call' && data.otheridentity == otheridentity
-        callback(null, call: data.call)
+      if data.otheridentity == otheridentity
         CineIOPeer.off 'call-placed', callPlacedCallback
+        callback(null, call: data.call)
     CineIOPeer.on 'call-placed', callPlacedCallback
 
   join: (room, callback=noop)->

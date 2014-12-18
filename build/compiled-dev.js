@@ -4277,6 +4277,10 @@ Participant = (function() {
     return this.state = ENDED;
   };
 
+  Participant.prototype.left = function() {
+    return this.state = ENDED;
+  };
+
   return Participant;
 
 })();
@@ -4287,18 +4291,32 @@ module.exports = CallObject = (function() {
     this.options = options != null ? options : {};
     this.state = this.options.initiated ? IN_CALL : INITIATED;
     this.participants = {};
-    if (options.called) {
-      this._createParticipant(options.called);
+    if (this.options.called) {
+      this._createParticipant(this.options.called);
     }
   }
 
-  CallObject.prototype.answer = function() {
+  CallObject.prototype.answer = function(callback) {
+    if (callback == null) {
+      callback = noop;
+    }
     this.state = IN_CALL;
-    return CineIOPeer.join(this._data.room, callback);
+    return CineIOPeer.join(this.room, callback);
   };
 
-  CallObject.prototype.reject = function() {
+  CallObject.prototype.isInCall = function() {
+    return this.state === IN_CALL;
+  };
+
+  CallObject.prototype.isEnded = function() {
+    return this.state === ENDED;
+  };
+
+  CallObject.prototype.reject = function(callback) {
     var options;
+    if (callback == null) {
+      callback = noop;
+    }
     this.state = ENDED;
     options = {
       action: 'call-reject',
@@ -4308,7 +4326,8 @@ module.exports = CallObject = (function() {
     if (CineIOPeer.config.identity) {
       options.identity = CineIOPeer.config.identity.identity;
     }
-    return CineIOPeer._signalConnection.write(options);
+    CineIOPeer._signalConnection.write(options);
+    return callback();
   };
 
   CallObject.prototype.hangup = function(callback) {
@@ -4317,6 +4336,15 @@ module.exports = CallObject = (function() {
     }
     this.state = ENDED;
     return CineIOPeer.leave(this.room, callback);
+  };
+
+  CallObject.prototype.left = function(identity) {
+    var participant;
+    participant = this.participants[identity];
+    if (!participant) {
+      return;
+    }
+    return participant.left();
   };
 
   CallObject.prototype.invite = function(otherIdentity, callback) {
@@ -4578,11 +4606,11 @@ CineIOPeer = {
     }
     CineIOPeer._signalConnection.write(options);
     callPlacedCallback = function(data) {
-      if (data.ack === 'call' && data.otheridentity === otheridentity) {
-        callback(null, {
+      if (data.otheridentity === otheridentity) {
+        CineIOPeer.off('call-placed', callPlacedCallback);
+        return callback(null, {
           call: data.call
         });
-        return CineIOPeer.off('call-placed', callPlacedCallback);
       }
     };
     return CineIOPeer.on('call-placed', callPlacedCallback);
@@ -5363,7 +5391,8 @@ Connection = (function() {
             called: data.otheridentity
           });
           return CineIOPeer.trigger('call-placed', {
-            call: callObj
+            call: callObj,
+            otheridentity: data.otheridentity
           });
         }
         break;

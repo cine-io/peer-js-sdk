@@ -32,19 +32,26 @@ class Participant
     CineIOPeer._signalConnection.write options
     @state = ENDED
 
+  left: ->
+    @state = ENDED
+
 module.exports = class CallObject
   constructor: (@room, @options={})->
     @state = if @options.initiated then IN_CALL else INITIATED
     @participants = {}
 
-    @_createParticipant(options.called)if options.called
+    @_createParticipant(@options.called) if @options.called
 
   # global call functions
-  answer: ->
+  answer: (callback=noop)->
     @state = IN_CALL
-    CineIOPeer.join(@_data.room, callback)
+    CineIOPeer.join(@room, callback)
 
-  reject: ->
+  isInCall: ->
+    @state == IN_CALL
+  isEnded: ->
+    @state == ENDED
+  reject: (callback=noop)->
     @state = ENDED
     options =
       action: 'call-reject'
@@ -55,10 +62,16 @@ module.exports = class CallObject
     options.identity = CineIOPeer.config.identity.identity if CineIOPeer.config.identity
 
     CineIOPeer._signalConnection.write options
+    callback()
 
   hangup: (callback=noop)->
     @state = ENDED
     CineIOPeer.leave @room, callback
+
+  left: (identity)->
+    participant = @participants[identity]
+    return unless participant
+    participant.left()
   # end global call functions
 
   # individual connection actions

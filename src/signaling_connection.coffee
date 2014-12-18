@@ -116,7 +116,7 @@ class Connection
         if data.source == 'call'
           CineIOPeer.config.rooms.push(data.room)
           callObj = @_callFromRoom(data.room, initiated: true, called: data.otheridentity)
-          CineIOPeer.trigger('call-placed', call: callObj)
+          CineIOPeer.trigger('call-placed', call: callObj, otheridentity: data.otheridentity)
       # END BASE
 
       # CALLING
