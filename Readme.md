@@ -102,34 +102,20 @@ Calling is a super neat feature! But it is a bit more complex to setup. Calling 
 
 Identifying is done with a secure token generated using your **CINE_IO_SECRET_KEY**. We don't want anybody to impersonate a different user and therefore we require a secure timestamped generated hash. This part must be done on your server as it requires your **CINE_IO_SECRET_KEY**.
 
-The signature is generated using:
+The pseudo code for generating a secure signature is:
 
-`signature = "identity=" + identity + "&timestamp=" + timestamp + secretKey`
-
-```JavaScript
-// In Node.js
-var crypto = require('crypto');
-
-function generateSignature(identity, timestamp, secretKey) {
-  var
-    shasum = crypto.createHash('sha1'),
-    signatureToSha = "identity=" + identity + "&timestamp=" + timestamp + secretKey;
-  shasum.update(signatureToSha);
-  return shasum.digest('hex');
-};
-
-function generateSecureIdentity(identity, secretKey) {
-  var
-    timestamp = Math.floor(Date.now() / 1000),
-    signature = generateSignature(identity, timestamp, secretKey),
-    response = {
-      timestamp: timestamp,
-      signature: signature,
-      identity: identity
-    };
-  return response;
-};
+```java
+Integer timestamp = getSecondsFromEpoch();
+String signatureString = "identity=" + identity + "&timestamp=" + timestamp + secretKey;
+String signature = sha1.hexdigest(signatureString);
+KeyValueStore response = {"identity": identity, "signature": signature, "timestamp": timestamp};
 ```
+
+You can find language specific implemtations in our:
+
+* [Ruby Gem](https://github.com/cine-io/cineio-ruby#identity-signature-generation)
+* [Node Package](https://github.com/cine-io/cineio-node#identity-signature-generation)
+* [Python Egg](https://github.com/cine-io/cineio-python#identity-signature-generation)
 
 This response can now be used in `CineIOPeer`. Identifying a user:
 
