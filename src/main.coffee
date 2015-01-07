@@ -155,10 +155,15 @@ CineIOPeer =
     onStreamReceived = (err, screenShareStream)=>
       clearTimeout requestTimeout
       if err
-        CineIOPeer.trigger 'media-rejected',
-          type: 'screen'
-          local: true
-        return callback(err)
+        if err.extensionRequired
+          CineIOPeer.trigger 'extension-required',
+            url: err.url
+          return callback()
+        else
+          CineIOPeer.trigger 'media-rejected',
+            type: 'screen'
+            local: true
+          return callback(err)
       videoEl = @_createVideoElementFromStream(screenShareStream, mirror: false)
       CineIOPeer.screenShareStream = screenShareStream
       CineIOPeer._signalConnection.addLocalStream(screenShareStream)
@@ -176,6 +181,21 @@ CineIOPeer =
     CineIOPeer._removeStream(CineIOPeer.screenShareStream, 'screen')
     delete CineIOPeer.screenShareStream
     callback()
+
+  installScreenShareExtension: (callback=noop)->
+    return callback("not chrome") unless browserDetect.isChrome
+
+    head = document.getElementsByTagName('head')[0]
+    headLink = document.createElement("link")
+    headLink.href = Config.chromeExtension
+    headLink.rel = 'chrome-webstore-item'
+    head.appendChild(headLink)
+    success = ->
+      CineIOPeer._screenSharer.extensionInstalled()
+      callback()
+    failure = ->
+      callback("did not install extension")
+    chrome.webstore.install(Config.chromeExtension, success, failure)
 
   _muteAudio: ->
     CineIOPeer._muteStreamAudio(stream) for stream in CineIOPeer.localStreams()
@@ -336,5 +356,7 @@ window.CineIOPeer = CineIOPeer if typeof window isnt 'undefined'
 
 module.exports = CineIOPeer
 
+Config = require('./config')
 signalingConnection = require('./signaling_connection')
 screenSharer = require('./screen_sharer')
+browserDetect = require('./browser_detect')

@@ -14,6 +14,10 @@ class ChromeScreenSharer extends ScreenSharer
     window.addEventListener("message", @_receiveMessage.bind(this), false)
     window.postMessage({ name: "cineScreenShareCheckForExtension" }, "*")
 
+  extensionInstalled: ->
+    @_extensionInstalled = true
+    @_extensionReplyTries = 0
+
   share: (options, callback)->
     super(options, callback)
     @_shareAfterExtensionReplies()
@@ -22,7 +26,7 @@ class ChromeScreenSharer extends ScreenSharer
     return @_callback(
       new ScreenShareError(
         "Screen sharing in chrome requires the cine.io Screen Sharing extension.",
-        url: "https://chrome.google.com/webstore/detail/cineio-screen-sharing/ancoeogeclfnhienkmfmeeomadmofhmi")
+        extensionRequired: true)
       ) unless @_extensionInstalled or (++@_extensionReplyTries < 3)
 
     if @_extensionInstalled
@@ -32,7 +36,8 @@ class ChromeScreenSharer extends ScreenSharer
       setTimeout(@_shareAfterExtensionReplies.bind(this), 100)
 
   _receiveMessage: (event)->
-    console.log "received:", event
+    console.log "received:#{event.data.name}", event
+
     switch event.data.name
       when "cineScreenShareHasExtension"
         console.log "cine.io screen share extension is installed."

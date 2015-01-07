@@ -2,7 +2,7 @@ webrtcSupport = require('webrtcsupport')
 
 
 class ScreenShareError
-  constructor: (@msg, data)->
+  constructor: (@msg, data={})->
     for k, v of data
       this[k] = v
 

@@ -109,6 +109,21 @@ $(function() {
     data.call.answer()
   })
 
+  CineIOPeer.on('extension-required', function(data) {
+    var extensionLink = $("<a>", {href: '', text: "screen share extension"});
+    extensionLink.on('click', function(event){
+      event.preventDefault();
+      CineIOPeer.installScreenShareExtension(function(err){
+        if (err){
+          alert("Did not install extension");
+        } else {
+        }
+      });
+    });
+    $('#info').html("<span>Please install the</span>")
+    $('#info').append(extensionLink)
+  })
+
   CineIOPeer.on('media-request', function(data) { /* noop */ })
 
   CineIOPeer.on('peer-data', function(data) {

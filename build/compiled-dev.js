@@ -4230,6 +4230,23 @@ module.exports = {
 };
 
 },{}],18:[function(require,module,exports){
+var check;
+
+check = function(string) {
+  return navigator.userAgent.indexOf(string) !== -1;
+};
+
+exports.isChrome = check("Chrome");
+
+exports.isOpera = check("Opera");
+
+exports.isFirefox = check("Firefox");
+
+exports.isMSIE = check("MSIE");
+
+
+
+},{}],19:[function(require,module,exports){
 var BackboneEvents, CallObject, CineIOPeer, ENDED, INITIATED, IN_CALL, Participant, noop;
 
 BackboneEvents = require("backbone-events-standalone");
@@ -4411,7 +4428,7 @@ CineIOPeer = require('./main');
 
 
 
-},{"./main":22,"backbone-events-standalone":3}],19:[function(require,module,exports){
+},{"./main":23,"backbone-events-standalone":3}],20:[function(require,module,exports){
 var ChromeScreenSharer, ScreenShareError, ScreenSharer, ssBase,
   __hasProp = {}.hasOwnProperty,
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
@@ -4435,6 +4452,11 @@ ChromeScreenSharer = (function(_super) {
     }, "*");
   }
 
+  ChromeScreenSharer.prototype.extensionInstalled = function() {
+    this._extensionInstalled = true;
+    return this._extensionReplyTries = 0;
+  };
+
   ChromeScreenSharer.prototype.share = function(options, callback) {
     ChromeScreenSharer.__super__.share.call(this, options, callback);
     return this._shareAfterExtensionReplies();
@@ -4443,7 +4465,7 @@ ChromeScreenSharer = (function(_super) {
   ChromeScreenSharer.prototype._shareAfterExtensionReplies = function() {
     if (!(this._extensionInstalled || (++this._extensionReplyTries < 3))) {
       return this._callback(new ScreenShareError("Screen sharing in chrome requires the cine.io Screen Sharing extension.", {
-        url: "https://chrome.google.com/webstore/detail/cineio-screen-sharing/ancoeogeclfnhienkmfmeeomadmofhmi"
+        extensionRequired: true
       }));
     }
     if (this._extensionInstalled) {
@@ -4457,7 +4479,7 @@ ChromeScreenSharer = (function(_super) {
   };
 
   ChromeScreenSharer.prototype._receiveMessage = function(event) {
-    console.log("received:", event);
+    console.log("received:" + event.data.name, event);
     switch (event.data.name) {
       case "cineScreenShareHasExtension":
         console.log("cine.io screen share extension is installed.");
@@ -4492,7 +4514,7 @@ module.exports = ChromeScreenSharer;
 
 
 
-},{"./screen_share_base":23}],20:[function(require,module,exports){
+},{"./screen_share_base":24}],21:[function(require,module,exports){
 var protocol;
 
 protocol = location.protocol === 'https:' ? 'https' : 'http';
@@ -4505,9 +4527,11 @@ if ("development" === 'development') {
   exports.signalingServer = "" + protocol + "://localhost.cine.io:8443";
 }
 
+exports.chromeExtension = "https://chrome.google.com/webstore/detail/ancoeogeclfnhienkmfmeeomadmofhmi";
 
 
-},{}],21:[function(require,module,exports){
+
+},{}],22:[function(require,module,exports){
 var FirefoxScreenSharer, ScreenShareError, ScreenSharer, ssBase,
   __hasProp = {}.hasOwnProperty,
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
@@ -4544,8 +4568,8 @@ module.exports = FirefoxScreenSharer;
 
 
 
-},{"./screen_share_base":23}],22:[function(require,module,exports){
-var BackboneEvents, CineIOPeer, attachMediaStream, defaultOptions, getUserMedia, noop, screenSharer, signalingConnection, userOrDefault, webrtcSupport;
+},{"./screen_share_base":24}],23:[function(require,module,exports){
+var BackboneEvents, CineIOPeer, Config, attachMediaStream, browserDetect, defaultOptions, getUserMedia, noop, screenSharer, signalingConnection, userOrDefault, webrtcSupport;
 
 getUserMedia = require('getusermedia');
 
@@ -4807,11 +4831,18 @@ CineIOPeer = {
         var videoEl;
         clearTimeout(requestTimeout);
         if (err) {
-          CineIOPeer.trigger('media-rejected', {
-            type: 'screen',
-            local: true
-          });
-          return callback(err);
+          if (err.extensionRequired) {
+            CineIOPeer.trigger('extension-required', {
+              url: err.url
+            });
+            return callback();
+          } else {
+            CineIOPeer.trigger('media-rejected', {
+              type: 'screen',
+              local: true
+            });
+            return callback(err);
+          }
         }
         videoEl = _this._createVideoElementFromStream(screenShareStream, {
           mirror: false
@@ -4839,6 +4870,28 @@ CineIOPeer = {
     CineIOPeer._removeStream(CineIOPeer.screenShareStream, 'screen');
     delete CineIOPeer.screenShareStream;
     return callback();
+  },
+  installScreenShareExtension: function(callback) {
+    var failure, head, headLink, success;
+    if (callback == null) {
+      callback = noop;
+    }
+    if (!browserDetect.isChrome) {
+      return callback("not chrome");
+    }
+    head = document.getElementsByTagName('head')[0];
+    headLink = document.createElement("link");
+    headLink.href = Config.chromeExtension;
+    headLink.rel = 'chrome-webstore-item';
+    head.appendChild(headLink);
+    success = function() {
+      CineIOPeer._screenSharer.extensionInstalled();
+      return callback();
+    };
+    failure = function() {
+      return callback("did not install extension");
+    };
+    return chrome.webstore.install(Config.chromeExtension, success, failure);
   },
   _muteAudio: function() {
     var stream, _i, _len, _ref;
@@ -5103,13 +5156,17 @@ if (typeof window !== 'undefined') {
 
 module.exports = CineIOPeer;
 
+Config = require('./config');
+
 signalingConnection = require('./signaling_connection');
 
 screenSharer = require('./screen_sharer');
 
+browserDetect = require('./browser_detect');
 
 
-},{"./screen_sharer":24,"./signaling_connection":25,"attachmediastream":1,"backbone-events-standalone":3,"getusermedia":4,"webrtcsupport":17}],23:[function(require,module,exports){
+
+},{"./browser_detect":18,"./config":21,"./screen_sharer":25,"./signaling_connection":26,"attachmediastream":1,"backbone-events-standalone":3,"getusermedia":4,"webrtcsupport":17}],24:[function(require,module,exports){
 var CineIOPeer, ScreenShareError, ScreenSharer, webrtcSupport;
 
 webrtcSupport = require('webrtcsupport');
@@ -5118,6 +5175,9 @@ ScreenShareError = (function() {
   function ScreenShareError(msg, data) {
     var k, v;
     this.msg = msg;
+    if (data == null) {
+      data = {};
+    }
     for (k in data) {
       v = data[k];
       this[k] = v;
@@ -5175,10 +5235,12 @@ CineIOPeer = require('./main');
 
 
 
-},{"./main":22,"webrtcsupport":17}],24:[function(require,module,exports){
-var ScreenShareError, ScreenSharer;
+},{"./main":23,"webrtcsupport":17}],25:[function(require,module,exports){
+var ScreenShareError, ScreenSharer, browserDetect;
 
 ScreenShareError = require('./screen_share_base').ScreenShareError;
+
+browserDetect = require('./browser_detect');
 
 ScreenSharer = {
   get: function(options, cb) {
@@ -5189,10 +5251,10 @@ ScreenSharer = {
     if (!options.hasOwnProperty("audio")) {
       options.audio = false;
     }
-    if (navigator.webkitGetUserMedia) {
+    if (browserDetect.isChrome) {
       ChromeScreenSharer = require('./chrome_screen_sharer');
       return new ChromeScreenSharer(options, cb);
-    } else if (navigator.mozGetUserMedia) {
+    } else if (browserDetect.isFirefox) {
       FirefoxScreenSharer = require('./firefox_screen_sharer');
       return new FirefoxScreenSharer(options, cb);
     } else {
@@ -5205,7 +5267,7 @@ module.exports = ScreenSharer;
 
 
 
-},{"./chrome_screen_sharer":19,"./firefox_screen_sharer":21,"./screen_share_base":23}],25:[function(require,module,exports){
+},{"./browser_detect":18,"./chrome_screen_sharer":20,"./firefox_screen_sharer":22,"./screen_share_base":24}],26:[function(require,module,exports){
 var CallObject, CineIOPeer, Config, Connection, PENDING, PeerConnection, Primus, connectToCineSignaling, noop, sendToDataChannel, setSparkIdOnPeerConnection, uuid,
   __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
@@ -5701,7 +5763,7 @@ CallObject = require('./call');
 
 
 
-},{"./call":18,"./config":20,"./main":22,"./vendor/primus":26,"./vendor/uuid":27,"rtcpeerconnection":16}],26:[function(require,module,exports){
+},{"./call":19,"./config":21,"./main":23,"./vendor/primus":27,"./vendor/uuid":28,"rtcpeerconnection":16}],27:[function(require,module,exports){
 (function (name, context, definition) {  context[name] = definition.call(context);  if (typeof module !== "undefined" && module.exports) {    module.exports = context[name];  } else if (typeof define == "function" && define.amd) {    define(function reference() { return context[name]; });  }})("Primus", this, function Primus() {/*globals require, define */
 'use strict';
 
@@ -9805,7 +9867,7 @@ if (typeof define === 'function' && define.amd) {
 
 // [*] End of lib/all.js
 
-},{}],27:[function(require,module,exports){
+},{}],28:[function(require,module,exports){
 // https://gist.github.com/jed/982883
 function b(
   a                  // placeholder
@@ -9831,4 +9893,4 @@ function b(
 
 module.exports = b;
 
-},{}]},{},[22]);
+},{}]},{},[23]);
