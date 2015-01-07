@@ -1,3 +1,4 @@
+Config = require('./config')
 ssBase = require('./screen_share_base')
 ScreenSharer = ssBase.ScreenSharer
 ScreenShareError = ssBase.ScreenShareError
@@ -22,7 +23,9 @@ class ChromeScreenSharer extends ScreenSharer
     return @_callback(
       new ScreenShareError(
         "Screen sharing in chrome requires the cine.io Screen Sharing extension.",
-        url: "https://chrome.google.com/webstore/detail/cineio-screen-sharing/ancoeogeclfnhienkmfmeeomadmofhmi")
+        extensionRequired: true
+        type: 'chrome'
+        url: Config.chromeExtension)
       ) unless @_extensionInstalled or (++@_extensionReplyTries < 3)
 
     if @_extensionInstalled

@@ -155,10 +155,16 @@ CineIOPeer =
     onStreamReceived = (err, screenShareStream)=>
       clearTimeout requestTimeout
       if err
-        CineIOPeer.trigger 'media-rejected',
-          type: 'screen'
-          local: true
-        return callback(err)
+        if err.extensionRequired
+          CineIOPeer.trigger 'extension-required',
+            url: err.url
+            type: err.type
+          return callback()
+        else
+          CineIOPeer.trigger 'media-rejected',
+            type: 'screen'
+            local: true
+          return callback(err)
       videoEl = @_createVideoElementFromStream(screenShareStream, mirror: false)
       CineIOPeer.screenShareStream = screenShareStream
       CineIOPeer._signalConnection.addLocalStream(screenShareStream)
@@ -336,5 +342,7 @@ window.CineIOPeer = CineIOPeer if typeof window isnt 'undefined'
 
 module.exports = CineIOPeer
 
+Config = require('./config')
 signalingConnection = require('./signaling_connection')
 screenSharer = require('./screen_sharer')
+browserDetect = require('./browser_detect')
