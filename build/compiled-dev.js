@@ -4236,11 +4236,11 @@ check = function(string) {
   return navigator.userAgent.indexOf(string) !== -1;
 };
 
-exports.isChrome = check("Chrome");
+exports.isOpera = check("OPR");
 
-exports.isOpera = check("Opera");
+exports.isChrome = check("Chrome") && !exports.isOpera;
 
-exports.isFirefox = check("Firefox");
+exports.isFirefox = check("Firefox") && !exports.isOpera;
 
 exports.isMSIE = check("MSIE");
 
@@ -4810,6 +4810,9 @@ CineIOPeer = {
       return true;
     }
     return CineIOPeer._audioCapableStreams().length > 0 && !CineIOPeer.mutedMicrophone;
+  },
+  screenShareSupported: function() {
+    return browserDetect.isChrome || browserDetect.isFirefox;
   },
   startScreenShare: function(options, callback) {
     var onStreamReceived, requestTimeout;

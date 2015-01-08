@@ -144,6 +144,9 @@ CineIOPeer =
     return true if CineIOPeer.microphoneStream?
     CineIOPeer._audioCapableStreams().length > 0 && !CineIOPeer.mutedMicrophone
 
+  screenShareSupported: ->
+    browserDetect.isChrome || browserDetect.isFirefox
+
   startScreenShare: (options={}, callback=noop)->
     if typeof options == 'function'
       callback = options

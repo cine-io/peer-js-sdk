@@ -53,6 +53,14 @@ CineIOPeer.microphoneRunning();
 
 ### Screen Sharing
 
+#### Checking support
+
+To check if your browser supports screen sharing
+
+```JavaScript
+var supported = CineIOPeer.screenShareSupported()
+```
+
 #### Turning on and off screen sharing
 
 CineIOPeer has functions for turning on and off your desktop screen share.
