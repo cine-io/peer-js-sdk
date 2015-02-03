@@ -20,7 +20,7 @@ CineIOPeer =
 
   init: (publicKey)->
     CineIOPeer.config.publicKey = publicKey
-    CineIOPeer._signalConnection ||= signalingConnection.connect(publicKey: CineIOPeer.config.publicKey)
+    CineIOPeer._signalConnection ||= signalingConnection.connect()
     setTimeout CineIOPeer._checkSupport
 
   identify: (identity, timestamp, signature)->

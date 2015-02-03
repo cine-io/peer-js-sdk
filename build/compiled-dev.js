@@ -4274,24 +4274,18 @@ Participant = (function() {
       room: this.room,
       otheridentity: this.otherIdentity
     };
-    if (CineIOPeer.config.identity) {
-      options.identity = CineIOPeer.config.identity.identity;
-    }
     return CineIOPeer._signalConnection.write(options);
   };
 
   Participant.prototype.cancel = function() {
     var options;
+    this.state = ENDED;
     options = {
       action: 'call-cancel',
       room: this.room,
       otheridentity: this.otherIdentity
     };
-    if (CineIOPeer.config.identity) {
-      options.identity = CineIOPeer.config.identity.identity;
-    }
-    CineIOPeer._signalConnection.write(options);
-    return this.state = ENDED;
+    return CineIOPeer._signalConnection.write(options);
   };
 
   Participant.prototype.left = function() {
@@ -4341,12 +4335,8 @@ module.exports = CallObject = (function() {
     this.state = ENDED;
     options = {
       action: 'call-reject',
-      room: this.room,
-      otheridentity: this.otherIdentity
+      room: this.room
     };
-    if (CineIOPeer.config.identity) {
-      options.identity = CineIOPeer.config.identity.identity;
-    }
     CineIOPeer._signalConnection.write(options);
     return callback();
   };
@@ -4606,9 +4596,7 @@ CineIOPeer = {
   },
   init: function(publicKey) {
     CineIOPeer.config.publicKey = publicKey;
-    CineIOPeer._signalConnection || (CineIOPeer._signalConnection = signalingConnection.connect({
-      publicKey: CineIOPeer.config.publicKey
-    }));
+    CineIOPeer._signalConnection || (CineIOPeer._signalConnection = signalingConnection.connect());
     return setTimeout(CineIOPeer._checkSupport);
   },
   identify: function(identity, timestamp, signature) {

@@ -17,21 +17,18 @@ class Participant
       room: @room
       # recipient
       otheridentity: @otherIdentity
-    # initiator
-    options.identity = CineIOPeer.config.identity.identity if CineIOPeer.config.identity
 
     CineIOPeer._signalConnection.write options
 
   cancel: ->
+    @state = ENDED
     options =
       action: 'call-cancel'
       room: @room
       # recipient
       otheridentity: @otherIdentity
-    # initiator
-    options.identity = CineIOPeer.config.identity.identity if CineIOPeer.config.identity
+
     CineIOPeer._signalConnection.write options
-    @state = ENDED
 
   left: ->
     @state = ENDED
@@ -62,10 +59,6 @@ module.exports = class CallObject
     options =
       action: 'call-reject'
       room: @room
-      # initiator
-      otheridentity: @otherIdentity
-    # recipient
-    options.identity = CineIOPeer.config.identity.identity if CineIOPeer.config.identity
 
     CineIOPeer._signalConnection.write options
     callback()
