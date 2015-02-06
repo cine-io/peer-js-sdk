@@ -1,6 +1,6 @@
-# cine.io peer client
+# [cine.io](https://www.cine.io) Peer JS SDK
 
-The JavaScript SDK for [cine.io](https://www.cine.io) peer-to-peer communication.
+The JavaScript SDK for [cine.io](https://www.cine.io) [peer-to-peer](https://www.cine.io/products/peer) communication.
 
 
 ## Installation
