@@ -15,10 +15,12 @@ describe 'Call', ->
     @dataTrigger = (data)->
       done()
     CineIOPeer.on 'info', @dataTrigger
+    CineIOPeer.on 'error', @dataTrigger
     CineIOPeer.init('the-public-key')
 
   afterEach ->
     CineIOPeer.off 'info', @dataTrigger
+    CineIOPeer.off 'error', @dataTrigger
 
   beforeEach ->
     @call = new CallObject('Hogwarts Express')

@@ -3,6 +3,7 @@ CineIOPeer = require('../src/main')
 CallObject = require('../src/call')
 stubPrimus = require('./helpers/stub_primus')
 stubUserMedia = require('./helpers/stub_user_media')
+inPhantom = typeof window.URL == 'undefined'
 
 describe 'CineIOPeer', ->
   setupAndTeardown()
@@ -23,9 +24,11 @@ describe 'CineIOPeer', ->
     setupDataTrigger = (cb)->
       @dataTrigger = cb
       CineIOPeer.on 'info', @dataTrigger
+      CineIOPeer.on 'error', @dataTrigger
 
     afterEach ->
       CineIOPeer.off 'info', @dataTrigger
+      CineIOPeer.off 'error', @dataTrigger
 
     it 'initializes the config', (done)->
       setupDataTrigger.call this, ->
@@ -35,7 +38,7 @@ describe 'CineIOPeer', ->
 
     it 'checks for support', (done)->
       setupDataTrigger.call this, (data)->
-        expect(data).to.deep.equal(support: true)
+        expect(data).to.deep.equal(support: !inPhantom)
         done()
       CineIOPeer.init('my-public-key')
 
@@ -45,10 +48,12 @@ describe 'CineIOPeer', ->
       @dataTrigger = (data)->
         done()
       CineIOPeer.on 'info', @dataTrigger
+      CineIOPeer.on 'error', @dataTrigger
       CineIOPeer.init('the-public-key')
 
     afterEach ->
       CineIOPeer.off 'info', @dataTrigger
+      CineIOPeer.off 'error', @dataTrigger
 
     describe '.identify', ->
       it 'sets an identity', ->
