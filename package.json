@@ -13,6 +13,7 @@
     "attachmediastream": "1.0.1",
     "backbone-events-standalone": "0.2.4",
     "getusermedia": "1.1.0",
+    "jsonp": "0.1.0",
     "rtcpeerconnection": "2.6.6",
     "webrtcsupport": "1.1.0"
   },
