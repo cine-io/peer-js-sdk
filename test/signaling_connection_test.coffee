@@ -75,8 +75,9 @@ describe 'SignalingConnection', ->
         expect(@connection.fetchedIce).to.be.true
 
       it 'triggers an event', (done)->
-        handler = ->
+        handler = (data)->
           CineIOPeer.off 'gotIceServers', handler
+          expect(data).to.equal('some ice servers')
           done()
         CineIOPeer.on 'gotIceServers', handler
         @connection.primus.trigger 'data', action: 'rtc-servers', data: "some ice servers"
