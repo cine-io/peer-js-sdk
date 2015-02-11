@@ -48,13 +48,13 @@ class ChromeScreenSharer extends ScreenSharer
     return @_callback(new ScreenShareError("Screen access rejected.")) unless id
     console.log "ossr id =", id
     navigator.webkitGetUserMedia({
-        audio: @options.audio,
-        video: {
-          mandatory: {
-            chromeMediaSource: "desktop",
-            chromeMediaSourceId: id
-          }
+      audio: @options.audio,
+      video: {
+        mandatory: {
+          chromeMediaSource: "desktop",
+          chromeMediaSourceId: id
         }
+      }
     }, @_onStreamReceived.bind(this), @_onError.bind(this))
     return
 

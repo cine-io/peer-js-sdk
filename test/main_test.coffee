@@ -91,7 +91,7 @@ describe 'CineIOPeer', ->
         CineIOPeer._signalConnection.primus.trigger 'data', callPlaced
 
       it 'returns a call object', (done)->
-        CineIOPeer.call "Albus Dumbledore", (err, data)=>
+        CineIOPeer.call "Albus Dumbledore", (err, data)->
           expect(err).to.be.null
           expect(data.call.room).to.equal('some-room-returned-by-the-server')
           expect(data.call instanceof CallObject)

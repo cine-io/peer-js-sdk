@@ -5501,11 +5501,9 @@ Connection = (function() {
         }
         return this._ensurePeerConnection(data, {
           offer: false
-        }, (function(_this) {
-          return function(err, pc) {
-            return pc.processIce(data.candidate);
-          };
-        })(this));
+        }, function(err, pc) {
+          return pc.processIce(data.candidate);
+        });
       case 'rtc-offer':
         console.log('got offer', data);
         return this._ensurePeerConnection(data, {

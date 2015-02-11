@@ -161,7 +161,7 @@ class Connection
       when 'rtc-ice'
         #console.log('got remote ice', data)
         return unless data.sparkId
-        @_ensurePeerConnection data, offer: false, (err, pc)=>
+        @_ensurePeerConnection data, offer: false, (err, pc)->
           pc.processIce(data.candidate)
 
       when 'rtc-offer'
@@ -209,14 +209,14 @@ class Connection
     peerConnection.offer constraints, response
 
   _onCloseOfPeerConnection: (peerConnection)->
-      # console.log("remote closed", event)
-      return unless peerConnection.videoEls
-      for videoEl in peerConnection.videoEls
-        CineIOPeer.trigger 'media-removed',
-          peerConnection: peerConnection
-          videoElement: videoEl
-          remote: true
-      delete peerConnection.videoEls
+    # console.log("remote closed", event)
+    return unless peerConnection.videoEls
+    for videoEl in peerConnection.videoEls
+      CineIOPeer.trigger 'media-removed',
+        peerConnection: peerConnection
+        videoElement: videoEl
+        remote: true
+    delete peerConnection.videoEls
 
   _newMember: (otherClientUUID, otherClientSparkId, options, callback)=>
     # we must be pending to get ice candidates, do not create a new pc
@@ -287,8 +287,8 @@ class Connection
     @_ensureIce callback
 
   _ensureIce: (callback)=>
-      return setTimeout callback if @fetchedIce
-      CineIOPeer.once 'gotIceServers', callback
+    return setTimeout callback if @fetchedIce
+    CineIOPeer.once 'gotIceServers', callback
 
   _initializeNewPeerConnection: (options)->
     new PeerConnection(options)
