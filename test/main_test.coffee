@@ -1,5 +1,6 @@
 setupAndTeardown = require('./helpers/setup_and_teardown')
 CineIOPeer = require('../src/main')
+CallObject = require('../src/call')
 stubPrimus = require('./helpers/stub_primus')
 stubUserMedia = require('./helpers/stub_user_media')
 
@@ -9,7 +10,7 @@ describe 'CineIOPeer', ->
 
   describe '.version', ->
     it 'has a version', ->
-      expect(CineIOPeer.version).to.equal('0.0.2')
+      expect(CineIOPeer.version).to.equal('0.0.3')
 
   describe '.reset', ->
     it 'resets the config', ->
@@ -59,7 +60,11 @@ describe 'CineIOPeer', ->
         expect(@primusStub.write.calledOnce).to.be.true
         args = @primusStub.write.firstCall.args
         expect(args).to.have.length(1)
-        expect(args[0]).to.deep.equal(action: 'identify', identity: 'Minerva McGonagall', timestamp: 'timely-timestamp', signature: 'secure-signature', publicKey: 'the-public-key', client: 'web')
+        expect(args[0].action).to.equal('identify')
+        expect(args[0].identity).to.equal('Minerva McGonagall')
+        expect(args[0].timestamp).to.equal('timely-timestamp')
+        expect(args[0].signature).to.equal('secure-signature')
+        expect(args[0].publicKey).to.equal('the-public-key')
 
     describe '.call', ->
       stubUserMedia()
@@ -68,13 +73,54 @@ describe 'CineIOPeer', ->
         CineIOPeer.identify('Minerva McGonagall')
 
       it 'writes to the signaling connection', (done)->
-        CineIOPeer.call "Albus Dumbledore", (err)=>
-          expect(err).to.be.undefined
+        CineIOPeer.call "Albus Dumbledore", (err, data)=>
+          expect(err).to.be.null
           expect(@primusStub.write.calledTwice).to.be.true
           args = @primusStub.write.secondCall.args
-          expect(args).to.have.length
-          expect(args[0]).to.deep.equal(action: 'call', otheridentity: 'Albus Dumbledore', identity: 'Minerva McGonagall', publicKey: 'the-public-key')
+          expect(args).to.have.length(1)
+          expect(args[0].action).to.equal('call')
+          expect(args[0].otheridentity).to.equal('Albus Dumbledore')
+          expect(args[0].identity).to.equal('Minerva McGonagall')
+          expect(args[0].publicKey).to.equal('the-public-key')
           done()
+        callPlaced =
+           action: 'ack'
+           source: 'call'
+           room: 'some-room-returned-by-the-server'
+           otheridentity: 'Albus Dumbledore'
+        CineIOPeer._signalConnection.primus.trigger 'data', callPlaced
+
+      it 'returns a call object', (done)->
+        CineIOPeer.call "Albus Dumbledore", (err, data)=>
+          expect(err).to.be.null
+          expect(data.call.room).to.equal('some-room-returned-by-the-server')
+          expect(data.call instanceof CallObject)
+          done()
+        callPlaced =
+           action: 'ack'
+           source: 'call'
+           room: 'some-room-returned-by-the-server'
+           otheridentity: 'Albus Dumbledore'
+        CineIOPeer._signalConnection.primus.trigger 'data', callPlaced
+
+      it 'takes a room', (done)->
+        CineIOPeer.call "Albus Dumbledore", 'some-room', (err)=>
+          expect(err).to.be.null
+          expect(@primusStub.write.calledTwice).to.be.true
+          args = @primusStub.write.secondCall.args
+          expect(args).to.have.length(1)
+          expect(args[0].action).to.equal('call')
+          expect(args[0].otheridentity).to.equal('Albus Dumbledore')
+          expect(args[0].identity).to.equal('Minerva McGonagall')
+          expect(args[0].publicKey).to.equal('the-public-key')
+          done()
+        callPlaced =
+           action: 'ack'
+           source: 'call'
+           room: 'some-room'
+           otheridentity: 'Albus Dumbledore'
+        CineIOPeer._signalConnection.primus.trigger 'data', callPlaced
+
 
     describe '.join', ->
       stubUserMedia()
@@ -90,8 +136,10 @@ describe 'CineIOPeer', ->
           expect(err).to.be.undefined
           expect(@primusStub.write.calledOnce).to.be.true
           args = @primusStub.write.firstCall.args
-          expect(args).to.have.length
-          expect(args[0]).to.deep.equal(action: 'room-join', room: 'Gryffindor Common Room', publicKey: 'the-public-key')
+          expect(args).to.have.length(1)
+          expect(args[0].action).to.equal('room-join')
+          expect(args[0].room).to.equal('Gryffindor Common Room')
+          expect(args[0].publicKey).to.equal('the-public-key')
           done()
 
     describe '.leave', ->
@@ -119,8 +167,10 @@ describe 'CineIOPeer', ->
           CineIOPeer.leave("Gryffindor Common Room")
           expect(@primusStub.write.calledTwice).to.be.true
           args = @primusStub.write.secondCall.args
-          expect(args).to.have.length
-          expect(args[0]).to.deep.equal(action: 'room-leave', room: 'Gryffindor Common Room', publicKey: 'the-public-key')
+          expect(args).to.have.length(1)
+          expect(args[0].action).to.equal('room-leave')
+          expect(args[0].room).to.equal('Gryffindor Common Room')
+          expect(args[0].publicKey).to.equal('the-public-key')
           done()
 
     describe '.startCameraAndMicrophone', ->

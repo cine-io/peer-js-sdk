@@ -5484,7 +5484,6 @@ Connection = (function() {
         });
         return this.write({
           action: 'room-announce',
-          source: "web",
           sparkId: data.sparkId,
           room: data.room
         });

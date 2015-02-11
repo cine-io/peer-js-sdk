@@ -1,6 +1,6 @@
 setupAndTeardown = require('./helpers/setup_and_teardown')
 CineIOPeer = require('../src/main')
-Call = require('../src/call')
+CallObject = require('../src/call')
 stubPrimus = require('./helpers/stub_primus')
 stubUserMedia = require('./helpers/stub_user_media')
 
@@ -21,15 +21,17 @@ describe 'Call', ->
     CineIOPeer.off 'info', @dataTrigger
 
   beforeEach ->
-    @call = new Call(room: 'Hogwarts Express')
+    @call = new CallObject('Hogwarts Express')
 
   describe '#answer', ->
     it 'joins the room', (done)->
       @call.answer (err)=>
         expect(@primusStub.write.calledOnce).to.be.true
         args = @primusStub.write.firstCall.args
-        expect(args).to.have.length
-        expect(args[0]).to.deep.equal(action: 'room-join', room: 'Hogwarts Express', publicKey: 'the-public-key')
+        expect(args).to.have.length(1)
+        expect(args[0].action).to.equal('room-join')
+        expect(args[0].room).to.equal('Hogwarts Express')
+        expect(args[0].publicKey).to.equal('the-public-key')
         done()
 
   describe '#reject', ->
@@ -37,5 +39,7 @@ describe 'Call', ->
       @call.reject()
       expect(@primusStub.write.calledOnce).to.be.true
       args = @primusStub.write.firstCall.args
-      expect(args).to.have.length
-      expect(args[0]).to.deep.equal(action: 'call-reject', room: 'Hogwarts Express', publicKey: 'the-public-key')
+      expect(args).to.have.length(1)
+      expect(args[0].action).to.equal('call-reject')
+      expect(args[0].room).to.equal('Hogwarts Express')
+      expect(args[0].publicKey).to.equal('the-public-key')

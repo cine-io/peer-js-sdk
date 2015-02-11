@@ -17,7 +17,10 @@ module.exports = class FakePeerConnection
     setTimeout ->
       callback(null)
   handleAnswer: (@remoteAnswer)->
-  offer: (callback)->
+  offer: (constraints, callback)->
+    if typeof constraints == 'function'
+      callback = constraints
+      constraints = {}
     setTimeout ->
       callback(null, "some-offer-string")
   answer: (callback)->
