@@ -1,5 +1,7 @@
 # [cine.io](https://www.cine.io) Peer JS SDK
 
+[![Build Status](https://travis-ci.org/cine-io/peer-js-sdk.svg?branch=master)](https://travis-ci.org/cine-io/peer-js-sdk)
+
 The JavaScript SDK for [cine.io](https://www.cine.io) [peer-to-peer](https://www.cine.io/products/peer) communication.
 
 
