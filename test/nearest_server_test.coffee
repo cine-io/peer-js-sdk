@@ -1,5 +1,4 @@
 nearestServer = require('../src/nearest_server')
-jsonp = require('jsonp')
 
 describe 'nearestServer', ->
   beforeEach ->

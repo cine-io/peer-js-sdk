@@ -1,11 +1,19 @@
 BackboneEvents = require("backbone-events-standalone")
 
+class FakeBrowserPeerConnection
+  constructor: ->
+    @localDescription = null
+  offered: ->
+    @localDescription = 'full local description'
 module.exports = class FakePeerConnection
   constructor: (@options)->
     sinon.stub this, 'close'
     sinon.spy this, 'answer'
     sinon.spy this, 'offer'
+    sinon.spy this, 'handleAnswer'
     @streams = []
+    @offered = false
+    @pc = new FakeBrowserPeerConnection
   close: ->
   addStream: (stream)->
     @streams.push(stream)
@@ -21,7 +29,9 @@ module.exports = class FakePeerConnection
     if typeof constraints == 'function'
       callback = constraints
       constraints = {}
-    setTimeout ->
+    setTimeout =>
+      @offered = true
+      @pc.offered()
       callback(null, "some-offer-string")
   answer: (callback)->
     setTimeout ->

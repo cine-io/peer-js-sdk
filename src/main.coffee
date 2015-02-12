@@ -21,6 +21,7 @@ CineIOPeer =
   init: (publicKey)->
     CineIOPeer.config.publicKey = publicKey
     CineIOPeer._signalConnection ||= signalingConnection.connect()
+    CineIOPeer._broadcastBridge = new BroadcastBridge(this)
     setTimeout CineIOPeer._checkSupport
 
   identify: (identity, timestamp, signature)->
@@ -186,6 +187,30 @@ CineIOPeer =
     delete CineIOPeer.screenShareStream
     callback()
 
+  broadcastCameraAndMicrophone: (streamId, streamKey, callback=noop)->
+    return callback("cannot broadcast to multiple endpoints") if CineIOPeer.isBroadcastingCameraAndMicrophone()
+    CineIOPeer._isBroadcastingCameraAndMicrophone = true
+    CineIOPeer._broadcastBridge.startBroadcast('camera', CineIOPeer.cameraAndMicrophoneStream, streamId, streamKey, callback)
+
+  stopCameraAndMicrophoneBroadcast: (callback=noop)->
+    delete CineIOPeer._isBroadcastingCameraAndMicrophone
+    CineIOPeer._broadcastBridge.stopBroadcast('camera', callback)
+
+  isBroadcastingCameraAndMicrophone: ->
+    CineIOPeer._isBroadcastingCameraAndMicrophone?
+
+  broadcastScreenShare: (streamId, streamKey, callback=noop)->
+    return callback("cannot broadcast to multiple endpoints") if CineIOPeer.isBroadcastingScreenShare()
+    CineIOPeer._isBroadcastingScreenShare = true
+    CineIOPeer._broadcastBridge.startBroadcast('screen', CineIOPeer.screenShareStream, streamId, streamKey, callback)
+
+  stopScreenShareBroadcast: (streamId, streamKey, callback=noop)->
+    delete CineIOPeer._isBroadcastingScreenShare
+    CineIOPeer._broadcastBridge.stopBroadcast('screen', CineIOPeer.screenShareStream, streamId, streamKey, callback)
+
+  isBroadcastingScreenShare: ->
+    CineIOPeer._isBroadcastingScreenShare?
+
   _muteAudio: ->
     CineIOPeer._muteStreamAudio(stream) for stream in CineIOPeer.localStreams()
     CineIOPeer.mutedMicrophone = true
@@ -349,3 +374,4 @@ Config = require('./config')
 signalingConnection = require('./signaling_connection')
 screenSharer = require('./screen_sharer')
 browserDetect = require('./browser_detect')
+BroadcastBridge = require('./broadcast_bridge')
