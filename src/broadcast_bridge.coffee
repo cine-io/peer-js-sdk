@@ -140,7 +140,7 @@ module.exports = class BroadcastBridge
     return callback() unless @connection.connected
     @connection.stopBroadcast(streamType, callback)
 
-  _ensureConnection: (callback)->
+  _ensureConnection: (callback=noop)->
     if @connection.connected
       return setTimeout ->
         callback()

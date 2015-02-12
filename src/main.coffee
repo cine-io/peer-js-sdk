@@ -204,9 +204,9 @@ CineIOPeer =
     CineIOPeer._isBroadcastingScreenShare = true
     CineIOPeer._broadcastBridge.startBroadcast('screen', CineIOPeer.screenShareStream, streamId, streamKey, callback)
 
-  stopScreenShareBroadcast: (streamId, streamKey, callback=noop)->
+  stopScreenShareBroadcast: (callback=noop)->
     delete CineIOPeer._isBroadcastingScreenShare
-    CineIOPeer._broadcastBridge.stopBroadcast('screen', CineIOPeer.screenShareStream, streamId, streamKey, callback)
+    CineIOPeer._broadcastBridge.stopBroadcast('screen', callback)
 
   isBroadcastingScreenShare: ->
     CineIOPeer._isBroadcastingScreenShare?
