@@ -2,8 +2,6 @@ jsonp = require('jsonp')
 BASE_SERVER_URL = "https://www.cine.io/api/1/-/nearest-server?default=ok"
 
 nearestServer = null
-# nearestServer = {rtcPublish: "http://docker-local.cine.io:8080"}
-# nearestServer = {rtcPublish: "http://localhost.cine.io:8880"}
 fetchingNearestServer = null
 nearestServerCallbacks = null
 
@@ -28,3 +26,6 @@ module.exports._reset = ->
   nearestServerCallbacks = []
 
 module.exports._reset()
+# nearestServer = {rtcPublish: "http://docker-local.cine.io:8080"}
+# nearestServer = {rtcPublish: "https://docker-local.cine.io:8081"}
+# nearestServer = {rtcPublish: "http://localhost.cine.io:8880"}
