@@ -55,6 +55,8 @@ CineIOPeer.microphoneRunning();
 
 ### Screen Sharing
 
+Screen Sharing does work but the general state of screen sharing over WebRTC is generally broken all around. Chrome requires an [extension](https://chrome.google.com/webstore/detail/cineio-screen-sharing/ancoeogeclfnhienkmfmeeomadmofhmi). Firefox requires updating browser permissions, or an extension that does it for you (coming soon), which whitelists specific domains. If you need assistance contact [cine.io support](http://support.cine.io).
+
 #### Checking support
 
 To check if your browser supports screen sharing
@@ -71,8 +73,6 @@ CineIOPeer has functions for turning on and off your desktop screen share.
 CineIOPeer.startScreenShare(optionalCallback);
 CineIOPeer.stopScreenShare(optionalCallback);
 ```
-
-It's worth noting, that screen-sharing is only supported in Chrome via an [external browser extension](https://chrome.google.com/webstore/detail/cineio-screen-sharing/ancoeogeclfnhienkmfmeeomadmofhmi). On Firefox, screen-sharing works without an extension.
 
 #### Screen Share Status
 
