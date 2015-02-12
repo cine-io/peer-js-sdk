@@ -44,18 +44,18 @@ class ChromeScreenSharer extends ScreenSharer
       when "cineScreenShareResponse"
         return @_onScreenShareResponse(event.data.id)
 
-  _onScreenShareResponse: (id)->
+  _onScreenShareResponse: (id)=>
     return @_callback(new ScreenShareError("Screen access rejected.")) unless id
     console.log "ossr id =", id
-    navigator.webkitGetUserMedia({
-      audio: @options.audio,
-      video: {
-        mandatory: {
-          chromeMediaSource: "desktop",
+    screenShareOptions =
+      # audio sharing with desktop is not allowed in chrome
+      # https://code.google.com/p/chromium/issues/detail?id=223639
+      audio: false
+
+      video:
+        mandatory:
+          chromeMediaSource: "desktop"
           chromeMediaSourceId: id
-        }
-      }
-    }, @_onStreamReceived.bind(this), @_onError.bind(this))
-    return
+    navigator.webkitGetUserMedia(screenShareOptions, @_onStreamReceived.bind(this), @_onError.bind(this))
 
 module.exports = ChromeScreenSharer

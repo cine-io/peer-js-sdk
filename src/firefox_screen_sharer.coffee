@@ -6,11 +6,10 @@ class FirefoxScreenSharer extends ScreenSharer
   share: (options, callback)->
     super(options, callback)
     console.log "requesting screen share (moz) ..."
-    navigator.mozGetUserMedia({
-      audio: @options.audio,
-      video: {
+    constraints =
+      audio: @options.audio
+      video:
         mediaSource: "screen"
-      }
-    }, @_onStreamReceived.bind(this), @_onError.bind(this))
+    navigator.mozGetUserMedia(constraints, @_onStreamReceived.bind(this), @_onError.bind(this))
 
 module.exports = FirefoxScreenSharer
