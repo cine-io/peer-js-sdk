@@ -7,7 +7,7 @@ exports.create = ->
   exports._actuallyCreatePeerConnection(iceServers: iceServers)
 
 exports._actuallyCreatePeerConnection = (options)->
-  new PeerConnection()
+  new PeerConnection(options)
 
 exports._reset = ->
   iceServers = null

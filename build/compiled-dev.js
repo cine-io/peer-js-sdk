@@ -6058,7 +6058,7 @@ exports.create = function() {
 };
 
 exports._actuallyCreatePeerConnection = function(options) {
-  return new PeerConnection();
+  return new PeerConnection(options);
 };
 
 exports._reset = function() {
