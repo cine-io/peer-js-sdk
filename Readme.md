@@ -284,6 +284,18 @@ var optionalCallback = function(error){
 CineIOPeer.broadcastCameraAndMicrophone(streamId, password, optionalCallback)
 ```
 
+>The camera and microphone stream must already be started. Here is a complete example:
+```javascript
+CineIOPeer.startCameraAndMicrophone(function(err) {
+  if (err) { return console.log("camera/mic error", err); }
+  var streamId = "cine.io stream id";
+  var password = "stream password";
+  CineIOPeer.broadcastCameraAndMicrophone(streamId, password, function(err) {
+    if (err) { return console.log("broadcasting error", err); }
+  });
+});
+```
+
 ##### Stopping a webcam and microphone broadcast
 
 ```javascript
@@ -318,6 +330,18 @@ var optionalCallback = function(error){
   console.log("broadcasting");
 };
 CineIOPeer.broadcastScreenShare(streamId, password, optionalCallback)
+```
+
+>The screen share stream must already be started. Here is a complete example:
+```javascript
+CineIOPeer.startScreenShare(function(err) {
+  if (err) { return console.log("screen share error", err); }
+  var streamId = "cine.io stream id";
+  var password = "stream password";
+  CineIOPeer.broadcastScreenShare(streamId, password, function(err) {
+    if (err) { return console.log("broadcasting error", err); }
+  });
+});
 ```
 
 ##### Stopping a screen share broadcast
