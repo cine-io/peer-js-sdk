@@ -110,7 +110,7 @@ class Connection
         console.log('setting config', data)
         @iceServers = data.data
         @fetchedIce = true
-        CineIOPeer.trigger('gotIceServers')
+        CineIOPeer.trigger('gotIceServers', data.data)
 
       when 'ack'
         if data.source == 'call'

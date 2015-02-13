@@ -1100,6 +1100,572 @@ function hasOwnProperty(obj, prop) {
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 },{"./support/isBuffer":7,"_process":6,"inherits":5}],9:[function(require,module,exports){
+/**
+ * Module dependencies
+ */
+
+var debug = require('debug')('jsonp');
+
+/**
+ * Module exports.
+ */
+
+module.exports = jsonp;
+
+/**
+ * Callback index.
+ */
+
+var count = 0;
+
+/**
+ * Noop function.
+ */
+
+function noop(){}
+
+/**
+ * JSONP handler
+ *
+ * Options:
+ *  - param {String} qs parameter (`callback`)
+ *  - timeout {Number} how long after a timeout error is emitted (`60000`)
+ *
+ * @param {String} url
+ * @param {Object|Function} optional options / callback
+ * @param {Function} optional callback
+ */
+
+function jsonp(url, opts, fn){
+  if ('function' == typeof opts) {
+    fn = opts;
+    opts = {};
+  }
+  if (!opts) opts = {};
+
+  var prefix = opts.prefix || '__jp';
+  var param = opts.param || 'callback';
+  var timeout = null != opts.timeout ? opts.timeout : 60000;
+  var enc = encodeURIComponent;
+  var target = document.getElementsByTagName('script')[0] || document.head;
+  var script;
+  var timer;
+
+  // generate a unique id for this request
+  var id = prefix + (count++);
+
+  if (timeout) {
+    timer = setTimeout(function(){
+      cleanup();
+      if (fn) fn(new Error('Timeout'));
+    }, timeout);
+  }
+
+  function cleanup(){
+    if (script.parentNode) script.parentNode.removeChild(script);
+    window[id] = noop;
+    if (timer) clearTimeout(timer);
+  }
+
+  function cancel(){
+    if (window[id]) {
+      cleanup();
+    }
+  }
+
+  window[id] = function(data){
+    debug('jsonp got', data);
+    cleanup();
+    if (fn) fn(null, data);
+  };
+
+  // add qs component
+  url += (~url.indexOf('?') ? '&' : '?') + param + '=' + enc(id);
+  url = url.replace('?&', '?');
+
+  debug('jsonp req "%s"', url);
+
+  // create script
+  script = document.createElement('script');
+  script.src = url;
+  target.parentNode.insertBefore(script, target);
+
+  return cancel;
+}
+
+},{"debug":10}],10:[function(require,module,exports){
+
+/**
+ * This is the web browser implementation of `debug()`.
+ *
+ * Expose `debug()` as the module.
+ */
+
+exports = module.exports = require('./debug');
+exports.log = log;
+exports.formatArgs = formatArgs;
+exports.save = save;
+exports.load = load;
+exports.useColors = useColors;
+
+/**
+ * Use chrome.storage.local if we are in an app
+ */
+
+var storage;
+
+if (typeof chrome !== 'undefined' && typeof chrome.storage !== 'undefined')
+  storage = chrome.storage.local;
+else
+  storage = window.localStorage;
+
+/**
+ * Colors.
+ */
+
+exports.colors = [
+  'lightseagreen',
+  'forestgreen',
+  'goldenrod',
+  'dodgerblue',
+  'darkorchid',
+  'crimson'
+];
+
+/**
+ * Currently only WebKit-based Web Inspectors, Firefox >= v31,
+ * and the Firebug extension (any Firefox version) are known
+ * to support "%c" CSS customizations.
+ *
+ * TODO: add a `localStorage` variable to explicitly enable/disable colors
+ */
+
+function useColors() {
+  // is webkit? http://stackoverflow.com/a/16459606/376773
+  return ('WebkitAppearance' in document.documentElement.style) ||
+    // is firebug? http://stackoverflow.com/a/398120/376773
+    (window.console && (console.firebug || (console.exception && console.table))) ||
+    // is firefox >= v31?
+    // https://developer.mozilla.org/en-US/docs/Tools/Web_Console#Styling_messages
+    (navigator.userAgent.toLowerCase().match(/firefox\/(\d+)/) && parseInt(RegExp.$1, 10) >= 31);
+}
+
+/**
+ * Map %j to `JSON.stringify()`, since no Web Inspectors do that by default.
+ */
+
+exports.formatters.j = function(v) {
+  return JSON.stringify(v);
+};
+
+
+/**
+ * Colorize log arguments if enabled.
+ *
+ * @api public
+ */
+
+function formatArgs() {
+  var args = arguments;
+  var useColors = this.useColors;
+
+  args[0] = (useColors ? '%c' : '')
+    + this.namespace
+    + (useColors ? ' %c' : ' ')
+    + args[0]
+    + (useColors ? '%c ' : ' ')
+    + '+' + exports.humanize(this.diff);
+
+  if (!useColors) return args;
+
+  var c = 'color: ' + this.color;
+  args = [args[0], c, 'color: inherit'].concat(Array.prototype.slice.call(args, 1));
+
+  // the final "%c" is somewhat tricky, because there could be other
+  // arguments passed either before or after the %c, so we need to
+  // figure out the correct index to insert the CSS into
+  var index = 0;
+  var lastC = 0;
+  args[0].replace(/%[a-z%]/g, function(match) {
+    if ('%%' === match) return;
+    index++;
+    if ('%c' === match) {
+      // we only are interested in the *last* %c
+      // (the user may have provided their own)
+      lastC = index;
+    }
+  });
+
+  args.splice(lastC, 0, c);
+  return args;
+}
+
+/**
+ * Invokes `console.log()` when available.
+ * No-op when `console.log` is not a "function".
+ *
+ * @api public
+ */
+
+function log() {
+  // this hackery is required for IE8/9, where
+  // the `console.log` function doesn't have 'apply'
+  return 'object' === typeof console
+    && console.log
+    && Function.prototype.apply.call(console.log, console, arguments);
+}
+
+/**
+ * Save `namespaces`.
+ *
+ * @param {String} namespaces
+ * @api private
+ */
+
+function save(namespaces) {
+  try {
+    if (null == namespaces) {
+      storage.removeItem('debug');
+    } else {
+      storage.debug = namespaces;
+    }
+  } catch(e) {}
+}
+
+/**
+ * Load `namespaces`.
+ *
+ * @return {String} returns the previously persisted debug modes
+ * @api private
+ */
+
+function load() {
+  var r;
+  try {
+    r = storage.debug;
+  } catch(e) {}
+  return r;
+}
+
+/**
+ * Enable namespaces listed in `localStorage.debug` initially.
+ */
+
+exports.enable(load());
+
+},{"./debug":11}],11:[function(require,module,exports){
+
+/**
+ * This is the common logic for both the Node.js and web browser
+ * implementations of `debug()`.
+ *
+ * Expose `debug()` as the module.
+ */
+
+exports = module.exports = debug;
+exports.coerce = coerce;
+exports.disable = disable;
+exports.enable = enable;
+exports.enabled = enabled;
+exports.humanize = require('ms');
+
+/**
+ * The currently active debug mode names, and names to skip.
+ */
+
+exports.names = [];
+exports.skips = [];
+
+/**
+ * Map of special "%n" handling functions, for the debug "format" argument.
+ *
+ * Valid key names are a single, lowercased letter, i.e. "n".
+ */
+
+exports.formatters = {};
+
+/**
+ * Previously assigned color.
+ */
+
+var prevColor = 0;
+
+/**
+ * Previous log timestamp.
+ */
+
+var prevTime;
+
+/**
+ * Select a color.
+ *
+ * @return {Number}
+ * @api private
+ */
+
+function selectColor() {
+  return exports.colors[prevColor++ % exports.colors.length];
+}
+
+/**
+ * Create a debugger with the given `namespace`.
+ *
+ * @param {String} namespace
+ * @return {Function}
+ * @api public
+ */
+
+function debug(namespace) {
+
+  // define the `disabled` version
+  function disabled() {
+  }
+  disabled.enabled = false;
+
+  // define the `enabled` version
+  function enabled() {
+
+    var self = enabled;
+
+    // set `diff` timestamp
+    var curr = +new Date();
+    var ms = curr - (prevTime || curr);
+    self.diff = ms;
+    self.prev = prevTime;
+    self.curr = curr;
+    prevTime = curr;
+
+    // add the `color` if not set
+    if (null == self.useColors) self.useColors = exports.useColors();
+    if (null == self.color && self.useColors) self.color = selectColor();
+
+    var args = Array.prototype.slice.call(arguments);
+
+    args[0] = exports.coerce(args[0]);
+
+    if ('string' !== typeof args[0]) {
+      // anything else let's inspect with %o
+      args = ['%o'].concat(args);
+    }
+
+    // apply any `formatters` transformations
+    var index = 0;
+    args[0] = args[0].replace(/%([a-z%])/g, function(match, format) {
+      // if we encounter an escaped % then don't increase the array index
+      if (match === '%%') return match;
+      index++;
+      var formatter = exports.formatters[format];
+      if ('function' === typeof formatter) {
+        var val = args[index];
+        match = formatter.call(self, val);
+
+        // now we need to remove `args[index]` since it's inlined in the `format`
+        args.splice(index, 1);
+        index--;
+      }
+      return match;
+    });
+
+    if ('function' === typeof exports.formatArgs) {
+      args = exports.formatArgs.apply(self, args);
+    }
+    var logFn = enabled.log || exports.log || console.log.bind(console);
+    logFn.apply(self, args);
+  }
+  enabled.enabled = true;
+
+  var fn = exports.enabled(namespace) ? enabled : disabled;
+
+  fn.namespace = namespace;
+
+  return fn;
+}
+
+/**
+ * Enables a debug mode by namespaces. This can include modes
+ * separated by a colon and wildcards.
+ *
+ * @param {String} namespaces
+ * @api public
+ */
+
+function enable(namespaces) {
+  exports.save(namespaces);
+
+  var split = (namespaces || '').split(/[\s,]+/);
+  var len = split.length;
+
+  for (var i = 0; i < len; i++) {
+    if (!split[i]) continue; // ignore empty strings
+    namespaces = split[i].replace(/\*/g, '.*?');
+    if (namespaces[0] === '-') {
+      exports.skips.push(new RegExp('^' + namespaces.substr(1) + '$'));
+    } else {
+      exports.names.push(new RegExp('^' + namespaces + '$'));
+    }
+  }
+}
+
+/**
+ * Disable debug output.
+ *
+ * @api public
+ */
+
+function disable() {
+  exports.enable('');
+}
+
+/**
+ * Returns true if the given mode name is enabled, false otherwise.
+ *
+ * @param {String} name
+ * @return {Boolean}
+ * @api public
+ */
+
+function enabled(name) {
+  var i, len;
+  for (i = 0, len = exports.skips.length; i < len; i++) {
+    if (exports.skips[i].test(name)) {
+      return false;
+    }
+  }
+  for (i = 0, len = exports.names.length; i < len; i++) {
+    if (exports.names[i].test(name)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Coerce `val`.
+ *
+ * @param {Mixed} val
+ * @return {Mixed}
+ * @api private
+ */
+
+function coerce(val) {
+  if (val instanceof Error) return val.stack || val.message;
+  return val;
+}
+
+},{"ms":12}],12:[function(require,module,exports){
+/**
+ * Helpers.
+ */
+
+var s = 1000;
+var m = s * 60;
+var h = m * 60;
+var d = h * 24;
+var y = d * 365.25;
+
+/**
+ * Parse or format the given `val`.
+ *
+ * Options:
+ *
+ *  - `long` verbose formatting [false]
+ *
+ * @param {String|Number} val
+ * @param {Object} options
+ * @return {String|Number}
+ * @api public
+ */
+
+module.exports = function(val, options){
+  options = options || {};
+  if ('string' == typeof val) return parse(val);
+  return options.long
+    ? long(val)
+    : short(val);
+};
+
+/**
+ * Parse the given `str` and return milliseconds.
+ *
+ * @param {String} str
+ * @return {Number}
+ * @api private
+ */
+
+function parse(str) {
+  var match = /^((?:\d+)?\.?\d+) *(ms|seconds?|s|minutes?|m|hours?|h|days?|d|years?|y)?$/i.exec(str);
+  if (!match) return;
+  var n = parseFloat(match[1]);
+  var type = (match[2] || 'ms').toLowerCase();
+  switch (type) {
+    case 'years':
+    case 'year':
+    case 'y':
+      return n * y;
+    case 'days':
+    case 'day':
+    case 'd':
+      return n * d;
+    case 'hours':
+    case 'hour':
+    case 'h':
+      return n * h;
+    case 'minutes':
+    case 'minute':
+    case 'm':
+      return n * m;
+    case 'seconds':
+    case 'second':
+    case 's':
+      return n * s;
+    case 'ms':
+      return n;
+  }
+}
+
+/**
+ * Short format for `ms`.
+ *
+ * @param {Number} ms
+ * @return {String}
+ * @api private
+ */
+
+function short(ms) {
+  if (ms >= d) return Math.round(ms / d) + 'd';
+  if (ms >= h) return Math.round(ms / h) + 'h';
+  if (ms >= m) return Math.round(ms / m) + 'm';
+  if (ms >= s) return Math.round(ms / s) + 's';
+  return ms + 'ms';
+}
+
+/**
+ * Long format for `ms`.
+ *
+ * @param {Number} ms
+ * @return {String}
+ * @api private
+ */
+
+function long(ms) {
+  return plural(ms, d, 'day')
+    || plural(ms, h, 'hour')
+    || plural(ms, m, 'minute')
+    || plural(ms, s, 'second')
+    || ms + ' ms';
+}
+
+/**
+ * Pluralization helper.
+ */
+
+function plural(ms, n, name) {
+  if (ms < n) return;
+  if (ms < n * 1.5) return Math.floor(ms / n) + ' ' + name;
+  return Math.ceil(ms / n) + ' ' + name + 's';
+}
+
+},{}],13:[function(require,module,exports){
 var tosdp = require('./lib/tosdp');
 var tojson = require('./lib/tojson');
 
@@ -1112,7 +1678,7 @@ exports.toSessionJSON = tojson.toSessionJSON;
 exports.toMediaJSON = tojson.toMediaJSON;
 exports.toCandidateJSON = tojson.toCandidateJSON;
 
-},{"./lib/tojson":11,"./lib/tosdp":12}],10:[function(require,module,exports){
+},{"./lib/tojson":15,"./lib/tosdp":16}],14:[function(require,module,exports){
 exports.lines = function (sdp) {
     return sdp.split('\r\n').filter(function (line) {
         return line.length > 0;
@@ -1373,7 +1939,7 @@ exports.bandwidth = function (line) {
     return parsed;
 };
 
-},{}],11:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 var parsers = require('./parsers');
 var idCounter = Math.random();
 
@@ -1567,7 +2133,7 @@ exports.toCandidateJSON = function (line) {
     return candidate;
 };
 
-},{"./parsers":10}],12:[function(require,module,exports){
+},{"./parsers":14}],16:[function(require,module,exports){
 var senders = {
     'initiator': 'sendonly',
     'responder': 'recvonly',
@@ -1784,7 +2350,7 @@ exports.toCandidateSDP = function (candidate) {
     return 'a=candidate:' + sdp.join(' ');
 };
 
-},{}],13:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 // based on https://github.com/ESTOS/strophe.jingle/
 // adds wildemitter support
 var util = require('util');
@@ -2021,7 +2587,7 @@ TraceablePeerConnection.prototype.getStats = function (callback, errback) {
 
 module.exports = TraceablePeerConnection;
 
-},{"util":8,"webrtcsupport":17,"wildemitter":15}],14:[function(require,module,exports){
+},{"util":8,"webrtcsupport":21,"wildemitter":19}],18:[function(require,module,exports){
 //     Underscore.js 1.7.0
 //     http://underscorejs.org
 //     (c) 2009-2014 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
@@ -3438,7 +4004,7 @@ module.exports = TraceablePeerConnection;
   }
 }.call(this));
 
-},{}],15:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 /*
 WildEmitter.js is a slim little event emitter by @henrikjoreteg largely based
 on @visionmedia's Emitter from UI Kit.
@@ -3579,7 +4145,7 @@ WildEmitter.prototype.getWildcardCallbacks = function (eventName) {
     return result;
 };
 
-},{}],16:[function(require,module,exports){
+},{}],20:[function(require,module,exports){
 var _ = require('underscore');
 var util = require('util');
 var webrtc = require('webrtcsupport');
@@ -4188,7 +4754,7 @@ PeerConnection.prototype.getStats = function (cb) {
 
 module.exports = PeerConnection;
 
-},{"sdp-jingle-json":9,"traceablepeerconnection":13,"underscore":14,"util":8,"webrtcsupport":17,"wildemitter":15}],17:[function(require,module,exports){
+},{"sdp-jingle-json":13,"traceablepeerconnection":17,"underscore":18,"util":8,"webrtcsupport":21,"wildemitter":19}],21:[function(require,module,exports){
 // created by @HenrikJoreteg
 var prefix;
 var isChrome = false;
@@ -4229,7 +4795,235 @@ module.exports = {
     MediaStream: MediaStream
 };
 
-},{}],18:[function(require,module,exports){
+},{}],22:[function(require,module,exports){
+var BroadcastBridge, Connection, PeerConnection, Primus, connectToCineBroadcastBridge, nearestServer, noop, uuid,
+  __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
+
+PeerConnection = require('rtcpeerconnection');
+
+uuid = require('./vendor/uuid');
+
+Primus = require('./vendor/primus');
+
+nearestServer = require('./nearest_server');
+
+noop = function() {};
+
+connectToCineBroadcastBridge = function(broadcastUrl) {
+  return Primus.connect(broadcastUrl);
+};
+
+Connection = (function() {
+  function Connection(broadcastBridge, ns) {
+    this.broadcastBridge = broadcastBridge;
+    this._ensureIce = __bind(this._ensureIce, this);
+    this._ensureReady = __bind(this._ensureReady, this);
+    this._signalHandler = __bind(this._signalHandler, this);
+    this._onConnectionOpen = __bind(this._onConnectionOpen, this);
+    this.write = __bind(this.write, this);
+    this.myUUID = uuid();
+    this.peerConnections = {};
+    this.calls = {};
+    this.connected = false;
+  }
+
+  Connection.prototype.connectToCineBroadcastBridge = function(ns) {
+    this.primus = connectToCineBroadcastBridge(ns);
+    this.primus.on('open', this._onConnectionOpen);
+    this.primus.on('data', this._signalHandler);
+    this.primus.on('end', this._connectionEnded);
+    return this.connected = true;
+  };
+
+  Connection.prototype.write = function(data) {
+    var _ref;
+    data.client = "cineio-peer-js version-" + CineIOPeer.version;
+    data.publicKey = CineIOPeer.config.publicKey;
+    data.uuid = this.myUUID;
+    console.log("Writing", data);
+    return (_ref = this.primus).write.apply(_ref, arguments);
+  };
+
+  Connection.prototype.startBroadcast = function(streamType, streamId, streamKey, mediaStream, callback) {
+    console.log("ensuring ready");
+    return this._ensureReady((function(_this) {
+      return function() {
+        var peerConnection;
+        console.log("ready");
+        peerConnection = _this._initializeNewPeerConnection({
+          iceServers: _this.broadcastBridge.iceServers
+        });
+        _this.peerConnections[streamType] = peerConnection;
+        peerConnection.addStream(mediaStream);
+        console.log("waiting for ice");
+        peerConnection.on('close', function(event) {
+          _this._onCloseOfPeerConnection(peerConnection);
+          return delete _this.peerConnections[streamType];
+        });
+        return _this._createOffer(peerConnection, function(err, offer) {
+          console.log("MADE OFFER", err, offer);
+          if (err) {
+            return callback(err);
+          }
+          return peerConnection.on('endOfCandidates', function(candidate) {
+            var data;
+            console.log("got all candidates");
+            data = {
+              streamType: streamType,
+              action: 'broadcast-start',
+              offer: peerConnection.pc.localDescription,
+              streamId: streamId,
+              streamKey: streamKey
+            };
+            _this.write(data);
+            return callback();
+          });
+        });
+      };
+    })(this));
+  };
+
+  Connection.prototype.stopBroadcast = function(streamType, callback) {
+    var data;
+    if (this.peerConnections[streamType]) {
+      this.peerConnections[streamType].close();
+    }
+    data = {
+      streamType: streamType,
+      action: 'broadcast-stop'
+    };
+    this.write(data);
+    return callback();
+  };
+
+  Connection.prototype._onConnectionOpen = function() {
+    return this.write({
+      action: 'auth'
+    });
+  };
+
+  Connection.prototype._connectionEnded = function() {
+    return console.log("Connection closed");
+  };
+
+  Connection.prototype._signalHandler = function(data) {
+    var pc;
+    console.log("got data", data);
+    switch (data.action) {
+      case 'error':
+        return CineIOPeer.trigger('error', data);
+      case 'ack':
+        return console.log("ack");
+      case 'rtc-answer':
+        console.log('got answer', data);
+        pc = this.peerConnections[data.streamType];
+        return pc.handleAnswer(data.answer);
+    }
+  };
+
+  Connection.prototype._createOffer = function(peerConnection, callback) {
+    var constraints, response;
+    response = function(err, offer) {
+      if (err || !offer) {
+        console.log("FATAL ERROR in offer", err, offer);
+        return CineIOPeer.trigger("error", {
+          kind: 'offer',
+          fatal: true,
+          err: err
+        });
+      }
+      console.log('offering', err, offer);
+      return callback(err, offer);
+    };
+    constraints = {
+      mandatory: {
+        OfferToReceiveAudio: true,
+        OfferToReceiveVideo: true
+      }
+    };
+    return peerConnection.offer(constraints, response);
+  };
+
+  Connection.prototype._onCloseOfPeerConnection = function(peerConnection) {};
+
+  Connection.prototype._ensureReady = function(callback) {
+    return this._ensureIce(callback);
+  };
+
+  Connection.prototype._ensureIce = function(callback) {
+    if (this.broadcastBridge.iceReady) {
+      return setTimeout(callback);
+    }
+    return CineIOPeer.once('gotIceServers', callback);
+  };
+
+  Connection.prototype._initializeNewPeerConnection = function(options) {
+    return new PeerConnection(options);
+  };
+
+  return Connection;
+
+})();
+
+module.exports = BroadcastBridge = (function() {
+  function BroadcastBridge(CineIOPeer) {
+    this.CineIOPeer = CineIOPeer;
+    this.CineIOPeer.on('gotIceServers', (function(_this) {
+      return function(data) {
+        console.log("GOT ICE");
+        _this.iceReady = true;
+        return _this.iceServers = data;
+      };
+    })(this));
+    this.connection = new Connection(this);
+  }
+
+  BroadcastBridge.prototype.startBroadcast = function(streamType, mediaStream, streamId, streamKey, callback) {
+    if (callback == null) {
+      callback = noop;
+    }
+    return this._ensureConnection((function(_this) {
+      return function() {
+        return _this.connection.startBroadcast(streamType, streamId, streamKey, mediaStream, callback);
+      };
+    })(this));
+  };
+
+  BroadcastBridge.prototype.stopBroadcast = function(streamType, callback) {
+    if (!this.connection.connected) {
+      return callback();
+    }
+    return this.connection.stopBroadcast(streamType, callback);
+  };
+
+  BroadcastBridge.prototype._ensureConnection = function(callback) {
+    if (callback == null) {
+      callback = noop;
+    }
+    if (this.connection.connected) {
+      return setTimeout(function() {
+        return callback();
+      });
+    }
+    return nearestServer((function(_this) {
+      return function(err, ns) {
+        console.log("HERE I AM", err, ns);
+        if (err) {
+          return callback(err);
+        }
+        _this.connection.connectToCineBroadcastBridge(ns.rtcPublish);
+        return callback();
+      };
+    })(this));
+  };
+
+  return BroadcastBridge;
+
+})();
+
+
+
+},{"./nearest_server":29,"./vendor/primus":33,"./vendor/uuid":34,"rtcpeerconnection":20}],23:[function(require,module,exports){
 var check;
 
 check = function(string) {
@@ -4246,7 +5040,7 @@ exports.isMSIE = check("MSIE");
 
 
 
-},{}],19:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
 var BackboneEvents, CallObject, CineIOPeer, ENDED, INITIATED, IN_CALL, Participant, noop;
 
 BackboneEvents = require("backbone-events-standalone");
@@ -4418,8 +5212,9 @@ CineIOPeer = require('./main');
 
 
 
-},{"./main":23,"backbone-events-standalone":3}],20:[function(require,module,exports){
+},{"./main":28,"backbone-events-standalone":3}],25:[function(require,module,exports){
 var ChromeScreenSharer, Config, ScreenShareError, ScreenSharer, ssBase,
+  __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
   __hasProp = {}.hasOwnProperty,
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
@@ -4435,6 +5230,7 @@ ChromeScreenSharer = (function(_super) {
   __extends(ChromeScreenSharer, _super);
 
   function ChromeScreenSharer() {
+    this._onScreenShareResponse = __bind(this._onScreenShareResponse, this);
     ChromeScreenSharer.__super__.constructor.call(this);
     this._extensionInstalled = false;
     this._extensionReplyTries = 0;
@@ -4480,19 +5276,21 @@ ChromeScreenSharer = (function(_super) {
   };
 
   ChromeScreenSharer.prototype._onScreenShareResponse = function(id) {
+    var screenShareOptions;
     if (!id) {
       return this._callback(new ScreenShareError("Screen access rejected."));
     }
     console.log("ossr id =", id);
-    navigator.webkitGetUserMedia({
-      audio: this.options.audio,
+    screenShareOptions = {
+      audio: false,
       video: {
         mandatory: {
           chromeMediaSource: "desktop",
           chromeMediaSourceId: id
         }
       }
-    }, this._onStreamReceived.bind(this), this._onError.bind(this));
+    };
+    return navigator.webkitGetUserMedia(screenShareOptions, this._onStreamReceived.bind(this), this._onError.bind(this));
   };
 
   return ChromeScreenSharer;
@@ -4503,7 +5301,7 @@ module.exports = ChromeScreenSharer;
 
 
 
-},{"./config":21,"./screen_share_base":24}],21:[function(require,module,exports){
+},{"./config":26,"./screen_share_base":30}],26:[function(require,module,exports){
 var protocol;
 
 protocol = location.protocol === 'https:' ? 'https' : 'http';
@@ -4520,7 +5318,7 @@ exports.chromeExtension = "https://chrome.google.com/webstore/detail/cineio-scre
 
 
 
-},{}],22:[function(require,module,exports){
+},{}],27:[function(require,module,exports){
 var FirefoxScreenSharer, ScreenShareError, ScreenSharer, ssBase,
   __hasProp = {}.hasOwnProperty,
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
@@ -4539,14 +5337,16 @@ FirefoxScreenSharer = (function(_super) {
   }
 
   FirefoxScreenSharer.prototype.share = function(options, callback) {
+    var constraints;
     FirefoxScreenSharer.__super__.share.call(this, options, callback);
     console.log("requesting screen share (moz) ...");
-    return navigator.mozGetUserMedia({
+    constraints = {
       audio: this.options.audio,
       video: {
         mediaSource: "screen"
       }
-    }, this._onStreamReceived.bind(this), this._onError.bind(this));
+    };
+    return navigator.mozGetUserMedia(constraints, this._onStreamReceived.bind(this), this._onError.bind(this));
   };
 
   return FirefoxScreenSharer;
@@ -4557,8 +5357,8 @@ module.exports = FirefoxScreenSharer;
 
 
 
-},{"./screen_share_base":24}],23:[function(require,module,exports){
-var BackboneEvents, CineIOPeer, Config, attachMediaStream, browserDetect, defaultOptions, getUserMedia, noop, screenSharer, signalingConnection, userOrDefault, webrtcSupport;
+},{"./screen_share_base":30}],28:[function(require,module,exports){
+var BackboneEvents, BroadcastBridge, CineIOPeer, Config, attachMediaStream, browserDetect, defaultOptions, getUserMedia, noop, screenSharer, signalingConnection, userOrDefault, webrtcSupport;
 
 getUserMedia = require('getusermedia');
 
@@ -4587,7 +5387,7 @@ userOrDefault = function(userOptions, key) {
 };
 
 CineIOPeer = {
-  version: "0.0.3",
+  version: "0.0.4",
   reset: function() {
     return CineIOPeer.config = {
       rooms: [],
@@ -4597,6 +5397,7 @@ CineIOPeer = {
   init: function(publicKey) {
     CineIOPeer.config.publicKey = publicKey;
     CineIOPeer._signalConnection || (CineIOPeer._signalConnection = signalingConnection.connect());
+    CineIOPeer._broadcastBridge = new BroadcastBridge(this);
     return setTimeout(CineIOPeer._checkSupport);
   },
   identify: function(identity, timestamp, signature) {
@@ -4861,6 +5662,46 @@ CineIOPeer = {
     CineIOPeer._removeStream(CineIOPeer.screenShareStream, 'screen');
     delete CineIOPeer.screenShareStream;
     return callback();
+  },
+  broadcastCameraAndMicrophone: function(streamId, streamKey, callback) {
+    if (callback == null) {
+      callback = noop;
+    }
+    if (CineIOPeer.isBroadcastingCameraAndMicrophone()) {
+      return callback("cannot broadcast to multiple endpoints");
+    }
+    CineIOPeer._isBroadcastingCameraAndMicrophone = true;
+    return CineIOPeer._broadcastBridge.startBroadcast('camera', CineIOPeer.cameraAndMicrophoneStream, streamId, streamKey, callback);
+  },
+  stopCameraAndMicrophoneBroadcast: function(callback) {
+    if (callback == null) {
+      callback = noop;
+    }
+    delete CineIOPeer._isBroadcastingCameraAndMicrophone;
+    return CineIOPeer._broadcastBridge.stopBroadcast('camera', callback);
+  },
+  isBroadcastingCameraAndMicrophone: function() {
+    return CineIOPeer._isBroadcastingCameraAndMicrophone != null;
+  },
+  broadcastScreenShare: function(streamId, streamKey, callback) {
+    if (callback == null) {
+      callback = noop;
+    }
+    if (CineIOPeer.isBroadcastingScreenShare()) {
+      return callback("cannot broadcast to multiple endpoints");
+    }
+    CineIOPeer._isBroadcastingScreenShare = true;
+    return CineIOPeer._broadcastBridge.startBroadcast('screen', CineIOPeer.screenShareStream, streamId, streamKey, callback);
+  },
+  stopScreenShareBroadcast: function(callback) {
+    if (callback == null) {
+      callback = noop;
+    }
+    delete CineIOPeer._isBroadcastingScreenShare;
+    return CineIOPeer._broadcastBridge.stopBroadcast('screen', callback);
+  },
+  isBroadcastingScreenShare: function() {
+    return CineIOPeer._isBroadcastingScreenShare != null;
   },
   _muteAudio: function() {
     var stream, _i, _len, _ref;
@@ -5133,9 +5974,64 @@ screenSharer = require('./screen_sharer');
 
 browserDetect = require('./browser_detect');
 
+BroadcastBridge = require('./broadcast_bridge');
 
 
-},{"./browser_detect":18,"./config":21,"./screen_sharer":25,"./signaling_connection":26,"attachmediastream":1,"backbone-events-standalone":3,"getusermedia":4,"webrtcsupport":17}],24:[function(require,module,exports){
+
+},{"./broadcast_bridge":22,"./browser_detect":23,"./config":26,"./screen_sharer":31,"./signaling_connection":32,"attachmediastream":1,"backbone-events-standalone":3,"getusermedia":4,"webrtcsupport":21}],29:[function(require,module,exports){
+var BASE_SERVER_URL, fetchingNearestServer, jsonp, nearestServer, nearestServerCallbacks;
+
+jsonp = require('jsonp');
+
+BASE_SERVER_URL = "https://www.cine.io/api/1/-/nearest-server?default=ok";
+
+nearestServer = null;
+
+fetchingNearestServer = null;
+
+nearestServerCallbacks = null;
+
+module.exports = function(callback) {
+  if (nearestServer) {
+    return callback(null, nearestServer);
+  }
+  if (fetchingNearestServer) {
+    return nearestServerCallbacks.push(callback);
+  }
+  fetchingNearestServer = true;
+  return module.exports._makeJsonpCall(BASE_SERVER_URL, function(err, data) {
+    var cb, _i, _len;
+    nearestServer = data;
+    for (_i = 0, _len = nearestServerCallbacks.length; _i < _len; _i++) {
+      cb = nearestServerCallbacks[_i];
+      cb(err, nearestServer);
+    }
+    nearestServerCallbacks = [];
+    return callback(err, nearestServer);
+  });
+};
+
+module.exports._makeJsonpCall = function(url, callback) {
+  return jsonp(url, callback);
+};
+
+module.exports._reset = function() {
+  nearestServer = null;
+  fetchingNearestServer = false;
+  return nearestServerCallbacks = [];
+};
+
+module.exports._reset();
+
+if ("development" === 'development') {
+  nearestServer = {
+    rtcPublish: "https://docker-local.cine.io"
+  };
+}
+
+
+
+},{"jsonp":9}],30:[function(require,module,exports){
 var CineIOPeer, ScreenShareError, ScreenSharer, webrtcSupport;
 
 webrtcSupport = require('webrtcsupport');
@@ -5201,7 +6097,7 @@ CineIOPeer = require('./main');
 
 
 
-},{"./main":23,"webrtcsupport":17}],25:[function(require,module,exports){
+},{"./main":28,"webrtcsupport":21}],31:[function(require,module,exports){
 var ScreenShareError, ScreenSharer, browserDetect;
 
 ScreenShareError = require('./screen_share_base').ScreenShareError;
@@ -5233,7 +6129,7 @@ module.exports = ScreenSharer;
 
 
 
-},{"./browser_detect":18,"./chrome_screen_sharer":20,"./firefox_screen_sharer":22,"./screen_share_base":24}],26:[function(require,module,exports){
+},{"./browser_detect":23,"./chrome_screen_sharer":25,"./firefox_screen_sharer":27,"./screen_share_base":30}],32:[function(require,module,exports){
 var CallObject, CineIOPeer, Config, Connection, PENDING, PeerConnection, Primus, connectToCineSignaling, noop, sendToDataChannel, setSparkIdOnPeerConnection, uuid,
   __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
@@ -5437,7 +6333,7 @@ Connection = (function() {
         console.log('setting config', data);
         this.iceServers = data.data;
         this.fetchedIce = true;
-        return CineIOPeer.trigger('gotIceServers');
+        return CineIOPeer.trigger('gotIceServers', data.data);
       case 'ack':
         if (data.source === 'call') {
           CineIOPeer.config.rooms.push(data.room);
@@ -5726,7 +6622,7 @@ CallObject = require('./call');
 
 
 
-},{"./call":19,"./config":21,"./main":23,"./vendor/primus":27,"./vendor/uuid":28,"rtcpeerconnection":16}],27:[function(require,module,exports){
+},{"./call":24,"./config":26,"./main":28,"./vendor/primus":33,"./vendor/uuid":34,"rtcpeerconnection":20}],33:[function(require,module,exports){
 (function (name, context, definition) {  context[name] = definition.call(context);  if (typeof module !== "undefined" && module.exports) {    module.exports = context[name];  } else if (typeof define == "function" && define.amd) {    define(function reference() { return context[name]; });  }})("Primus", this, function Primus() {/*globals require, define */
 'use strict';
 
@@ -9830,7 +10726,7 @@ if (typeof define === 'function' && define.amd) {
 
 // [*] End of lib/all.js
 
-},{}],28:[function(require,module,exports){
+},{}],34:[function(require,module,exports){
 // https://gist.github.com/jed/982883
 function b(
   a                  // placeholder
@@ -9856,4 +10752,4 @@ function b(
 
 module.exports = b;
 
-},{}]},{},[23]);
+},{}]},{},[28]);

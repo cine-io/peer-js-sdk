@@ -55,6 +55,8 @@ CineIOPeer.microphoneRunning();
 
 ### Screen Sharing
 
+Screen Sharing does work but the general state of screen sharing over WebRTC is generally broken all around. Chrome requires an [extension](https://chrome.google.com/webstore/detail/cineio-screen-sharing/ancoeogeclfnhienkmfmeeomadmofhmi). Firefox requires updating browser permissions, or an extension that does it for you (coming soon), which whitelists specific domains. If you need assistance contact [cine.io support](http://support.cine.io).
+
 #### Checking support
 
 To check if your browser supports screen sharing
@@ -71,8 +73,6 @@ CineIOPeer has functions for turning on and off your desktop screen share.
 CineIOPeer.startScreenShare(optionalCallback);
 CineIOPeer.stopScreenShare(optionalCallback);
 ```
-
-It's worth noting, that screen-sharing is only supported in Chrome via an [external browser extension](https://chrome.google.com/webstore/detail/cineio-screen-sharing/ancoeogeclfnhienkmfmeeomadmofhmi). On Firefox, screen-sharing works without an extension.
 
 #### Screen Share Status
 
@@ -110,7 +110,9 @@ Calling is a super neat feature! But it is a bit more complex to setup. Calling 
 
 ##### Identifying a user
 
-Identifying is done with a secure token generated using your **CINE_IO_SECRET_KEY**. We don't want anybody to impersonate a different user and therefore we require a secure timestamped generated hash. This part must be done on your server as it requires your **CINE_IO_SECRET_KEY**.
+Identifying is done with a secure token generated using your **CINE_IO_SECRET_KEY**.
+We don't want anybody to impersonate a different user and therefore we require a secure timestamped generated hash.
+This part must be done on your server as it requires your **CINE_IO_SECRET_KEY**.
 
 The pseudo code for generating a secure signature is:
 
@@ -255,4 +257,80 @@ CineIOPeer.on('error', function(err) {
   }
 });
 
+```
+
+### WebRTC to RTMP/HLS Bridge
+
+Cine.io provides a WebRTC to RTMP/HLS bridge to enhance your conference applications with broadcast capabilities.
+
+#### Broadcast your webcam and microphone
+
+To broadcast your webcam and microphone to a cine.io live stream, start by requesting camera and microphone access.
+
+```javascript
+
+CineIOPeer.startCameraAndMicrophone(optionalCallback)
+
+```
+
+##### Starting a webcam and microphone broadcast
+
+```javascript
+var streamId = "cine.io stream id";
+var password = "stream password";
+var optionalCallback = function(error){
+  console.log("broadcasting");
+};
+CineIOPeer.broadcastCameraAndMicrophone(streamId, password, optionalCallback)
+```
+
+##### Stopping a webcam and microphone broadcast
+
+```javascript
+var optionalCallback = function(error){
+  console.log("broadcasting");
+};
+CineIOPeer.stopCameraAndMicrophoneBroadcast(optionalCallback)
+```
+
+##### Checking the status of your camera and microphone broadcast
+
+```javasript
+CineIOPeer.isBroadcastingCameraAndMicrophone();
+```
+
+#### Broadcast your screen share
+
+To broadcast your desktop to a cine.io live stream, start by requesting screen share access.
+
+```javascript
+
+CineIOPeer.startScreenShare(optionalCallback)
+
+```
+
+##### Starting a screen share broadcast
+
+```javascript
+var streamId = "cine.io stream id";
+var password = "stream password";
+var optionalCallback = function(error){
+  console.log("broadcasting");
+};
+CineIOPeer.broadcastScreenShare(streamId, password, optionalCallback)
+```
+
+##### Stopping a screen share broadcast
+
+```javascript
+var optionalCallback = function(error){
+  console.log("broadcasting");
+};
+CineIOPeer.stopScreenShareBroadcast(optionalCallback)
+```
+
+##### Checking the status of your screen share broadcast
+
+```javasript
+CineIOPeer.isBroadcastingScreenShare();
 ```

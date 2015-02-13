@@ -8,7 +8,7 @@ BackboneEvents.mixin PrimusStub::
 
 module.exports = ->
   beforeEach ->
-    @primusConnectStub = sinon.stub Primus, 'connect', (signalingServerUrl)=>
+    @primusConnectStub = sinon.stub Primus, 'connect', (url)=>
       @primusStub = new PrimusStub
 
       sinon.stub @primusStub, 'write'
