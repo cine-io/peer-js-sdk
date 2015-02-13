@@ -5303,7 +5303,7 @@ if ("development" === 'production') {
 }
 
 if ("development" === 'development') {
-  exports.signalingServer = "" + protocol + "://localhost.cine.io:8443";
+  exports.signalingServer = "https://localhost.cine.io:8443";
 }
 
 exports.chromeExtension = "https://chrome.google.com/webstore/detail/cineio-screen-sharing/ancoeogeclfnhienkmfmeeomadmofhmi";
