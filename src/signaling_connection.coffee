@@ -1,5 +1,5 @@
-PeerConnection = require('rtcpeerconnection')
 uuid = require('./vendor/uuid')
+PeerConnectionFactory = require('./peer_connection_factory')
 
 Primus = require('./vendor/primus')
 Config = require('./config')
@@ -227,7 +227,7 @@ class Connection
     @peerConnections[otherClientUUID] = PENDING
     @_ensureReady =>
       console.log("CREATING NEW PEER CONNECTION!!", otherClientUUID, options)
-      peerConnection = @_initializeNewPeerConnection(iceServers: @iceServers)
+      peerConnection = PeerConnectionFactory.create()
       @peerConnections[otherClientUUID] = peerConnection
       peerConnection.videoEls = []
       setSparkIdOnPeerConnection(peerConnection, otherClientSparkId)
@@ -289,9 +289,6 @@ class Connection
   _ensureIce: (callback)=>
     return setTimeout callback if @fetchedIce
     CineIOPeer.once 'gotIceServers', callback
-
-  _initializeNewPeerConnection: (options)->
-    new PeerConnection(options)
 
 exports.connect = (options)->
   new Connection(options)

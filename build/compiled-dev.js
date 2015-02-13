@@ -4796,12 +4796,12 @@ module.exports = {
 };
 
 },{}],22:[function(require,module,exports){
-var BroadcastBridge, Connection, PeerConnection, Primus, connectToCineBroadcastBridge, nearestServer, noop, uuid,
+var BroadcastBridge, Connection, PeerConnectionFactory, Primus, connectToCineBroadcastBridge, nearestServer, noop, uuid,
   __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
-PeerConnection = require('rtcpeerconnection');
-
 uuid = require('./vendor/uuid');
+
+PeerConnectionFactory = require('./peer_connection_factory');
 
 Primus = require('./vendor/primus');
 
@@ -4850,9 +4850,7 @@ Connection = (function() {
       return function() {
         var peerConnection;
         console.log("ready");
-        peerConnection = _this._initializeNewPeerConnection({
-          iceServers: _this.broadcastBridge.iceServers
-        });
+        peerConnection = PeerConnectionFactory.create();
         _this.peerConnections[streamType] = peerConnection;
         peerConnection.addStream(mediaStream);
         console.log("waiting for ice");
@@ -4957,10 +4955,6 @@ Connection = (function() {
     return CineIOPeer.once('gotIceServers', callback);
   };
 
-  Connection.prototype._initializeNewPeerConnection = function(options) {
-    return new PeerConnection(options);
-  };
-
   return Connection;
 
 })();
@@ -4970,9 +4964,7 @@ module.exports = BroadcastBridge = (function() {
     this.CineIOPeer = CineIOPeer;
     this.CineIOPeer.on('gotIceServers', (function(_this) {
       return function(data) {
-        console.log("GOT ICE");
-        _this.iceReady = true;
-        return _this.iceServers = data;
+        return _this.iceReady = true;
       };
     })(this));
     this.connection = new Connection(this);
@@ -5023,7 +5015,7 @@ module.exports = BroadcastBridge = (function() {
 
 
 
-},{"./nearest_server":29,"./vendor/primus":33,"./vendor/uuid":34,"rtcpeerconnection":20}],23:[function(require,module,exports){
+},{"./nearest_server":29,"./peer_connection_factory":30,"./vendor/primus":34,"./vendor/uuid":35}],23:[function(require,module,exports){
 var check;
 
 check = function(string) {
@@ -5301,7 +5293,7 @@ module.exports = ChromeScreenSharer;
 
 
 
-},{"./config":26,"./screen_share_base":30}],26:[function(require,module,exports){
+},{"./config":26,"./screen_share_base":31}],26:[function(require,module,exports){
 var protocol;
 
 protocol = location.protocol === 'https:' ? 'https' : 'http';
@@ -5357,7 +5349,7 @@ module.exports = FirefoxScreenSharer;
 
 
 
-},{"./screen_share_base":30}],28:[function(require,module,exports){
+},{"./screen_share_base":31}],28:[function(require,module,exports){
 var BackboneEvents, BroadcastBridge, CineIOPeer, Config, attachMediaStream, browserDetect, defaultOptions, getUserMedia, noop, screenSharer, signalingConnection, userOrDefault, webrtcSupport;
 
 getUserMedia = require('getusermedia');
@@ -5996,7 +5988,7 @@ BroadcastBridge = require('./broadcast_bridge');
 
 
 
-},{"./broadcast_bridge":22,"./browser_detect":23,"./config":26,"./screen_sharer":31,"./signaling_connection":32,"attachmediastream":1,"backbone-events-standalone":3,"getusermedia":4,"webrtcsupport":21}],29:[function(require,module,exports){
+},{"./broadcast_bridge":22,"./browser_detect":23,"./config":26,"./screen_sharer":32,"./signaling_connection":33,"attachmediastream":1,"backbone-events-standalone":3,"getusermedia":4,"webrtcsupport":21}],29:[function(require,module,exports){
 var BASE_SERVER_URL, fetchingNearestServer, jsonp, nearestServer, nearestServerCallbacks;
 
 jsonp = require('jsonp');
@@ -6050,6 +6042,38 @@ if ("development" === 'development') {
 
 
 },{"jsonp":9}],30:[function(require,module,exports){
+var Main, PeerConnection, iceServers;
+
+PeerConnection = require('rtcpeerconnection');
+
+iceServers = null;
+
+exports.create = function() {
+  if (!iceServers) {
+    return null;
+  }
+  return exports._actuallyCreatePeerConnection({
+    iceServers: iceServers
+  });
+};
+
+exports._actuallyCreatePeerConnection = function(options) {
+  return new PeerConnection();
+};
+
+exports._reset = function() {
+  return iceServers = null;
+};
+
+Main = require('./main');
+
+Main.on('gotIceServers', function(data) {
+  return iceServers = data;
+});
+
+
+
+},{"./main":28,"rtcpeerconnection":20}],31:[function(require,module,exports){
 var CineIOPeer, ScreenShareError, ScreenSharer, webrtcSupport;
 
 webrtcSupport = require('webrtcsupport');
@@ -6115,7 +6139,7 @@ CineIOPeer = require('./main');
 
 
 
-},{"./main":28,"webrtcsupport":21}],31:[function(require,module,exports){
+},{"./main":28,"webrtcsupport":21}],32:[function(require,module,exports){
 var ScreenShareError, ScreenSharer, browserDetect;
 
 ScreenShareError = require('./screen_share_base').ScreenShareError;
@@ -6147,13 +6171,13 @@ module.exports = ScreenSharer;
 
 
 
-},{"./browser_detect":23,"./chrome_screen_sharer":25,"./firefox_screen_sharer":27,"./screen_share_base":30}],32:[function(require,module,exports){
-var CallObject, CineIOPeer, Config, Connection, PENDING, PeerConnection, Primus, connectToCineSignaling, noop, sendToDataChannel, setSparkIdOnPeerConnection, uuid,
+},{"./browser_detect":23,"./chrome_screen_sharer":25,"./firefox_screen_sharer":27,"./screen_share_base":31}],33:[function(require,module,exports){
+var CallObject, CineIOPeer, Config, Connection, PENDING, PeerConnectionFactory, Primus, connectToCineSignaling, noop, sendToDataChannel, setSparkIdOnPeerConnection, uuid,
   __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
-PeerConnection = require('rtcpeerconnection');
-
 uuid = require('./vendor/uuid');
+
+PeerConnectionFactory = require('./peer_connection_factory');
 
 Primus = require('./vendor/primus');
 
@@ -6531,9 +6555,7 @@ Connection = (function() {
       return function() {
         var peerConnection, stream, _i, _len, _ref;
         console.log("CREATING NEW PEER CONNECTION!!", otherClientUUID, options);
-        peerConnection = _this._initializeNewPeerConnection({
-          iceServers: _this.iceServers
-        });
+        peerConnection = PeerConnectionFactory.create();
         _this.peerConnections[otherClientUUID] = peerConnection;
         peerConnection.videoEls = [];
         setSparkIdOnPeerConnection(peerConnection, otherClientSparkId);
@@ -6622,10 +6644,6 @@ Connection = (function() {
     return CineIOPeer.once('gotIceServers', callback);
   };
 
-  Connection.prototype._initializeNewPeerConnection = function(options) {
-    return new PeerConnection(options);
-  };
-
   return Connection;
 
 })();
@@ -6640,7 +6658,7 @@ CallObject = require('./call');
 
 
 
-},{"./call":24,"./config":26,"./main":28,"./vendor/primus":33,"./vendor/uuid":34,"rtcpeerconnection":20}],33:[function(require,module,exports){
+},{"./call":24,"./config":26,"./main":28,"./peer_connection_factory":30,"./vendor/primus":34,"./vendor/uuid":35}],34:[function(require,module,exports){
 (function (name, context, definition) {  context[name] = definition.call(context);  if (typeof module !== "undefined" && module.exports) {    module.exports = context[name];  } else if (typeof define == "function" && define.amd) {    define(function reference() { return context[name]; });  }})("Primus", this, function Primus() {/*globals require, define */
 'use strict';
 
@@ -10744,7 +10762,7 @@ if (typeof define === 'function' && define.amd) {
 
 // [*] End of lib/all.js
 
-},{}],34:[function(require,module,exports){
+},{}],35:[function(require,module,exports){
 // https://gist.github.com/jed/982883
 function b(
   a                  // placeholder

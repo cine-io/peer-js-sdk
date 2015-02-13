@@ -1,6 +1,5 @@
-PeerConnection = require('rtcpeerconnection')
 uuid = require('./vendor/uuid')
-
+PeerConnectionFactory = require('./peer_connection_factory')
 Primus = require('./vendor/primus')
 nearestServer = require('./nearest_server')
 
@@ -34,7 +33,7 @@ class Connection
     console.log("ensuring ready")
     @_ensureReady =>
       console.log("ready")
-      peerConnection = @_initializeNewPeerConnection(iceServers: @broadcastBridge.iceServers)
+      peerConnection = PeerConnectionFactory.create()
       @peerConnections[streamType] = peerConnection
       peerConnection.addStream(mediaStream)
       console.log("waiting for ice")
@@ -121,15 +120,11 @@ class Connection
     return setTimeout callback if @broadcastBridge.iceReady
     CineIOPeer.once 'gotIceServers', callback
 
-  _initializeNewPeerConnection: (options)->
-    new PeerConnection(options)
 
 module.exports = class BroadcastBridge
   constructor: (@CineIOPeer)->
     @CineIOPeer.on 'gotIceServers', (data)=>
-      console.log("GOT ICE")
       @iceReady = true
-      @iceServers = data
     @connection = new Connection(this)
 
   startBroadcast: (streamType, mediaStream, streamId, streamKey, callback=noop)->

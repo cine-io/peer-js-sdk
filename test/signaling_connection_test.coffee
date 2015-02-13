@@ -1,6 +1,7 @@
 setupAndTeardown = require('./helpers/setup_and_teardown')
 CineIOPeer = require('../src/main')
 SignalingConnection = require('../src/signaling_connection')
+PeerConnectionFactory = require('../src/peer_connection_factory')
 stubPrimus = require('./helpers/stub_primus')
 FakePeerConnection = require('./helpers/fake_peer_connection')
 FakeMediaStream = require('./helpers/fake_media_stream')
@@ -10,21 +11,26 @@ stubCreateObjectUrl = require("./helpers/stub_create_object_url")
 describe 'SignalingConnection', ->
   setupAndTeardown()
   stubPrimus()
+
   beforeEach ->
     CineIOPeer.config.publicKey = 'project-public-key'
+
   beforeEach ->
     @connection = SignalingConnection.connect()
 
   beforeEach ->
-    sinon.stub @connection, '_initializeNewPeerConnection', (options)=>
+    sinon.stub PeerConnectionFactory, 'create', =>
       if @fakeConnection
-        console.log("ugh fakeConnection", options.sparkId, @fakeConnection.options.sparkId)
+        console.log("ugh fakeConnection")
         throw new Error("Two connections made!!!")
-      @fakeConnection = new FakePeerConnection(options)
+      @fakeConnection = new FakePeerConnection()
+
+  afterEach ->
+    PeerConnectionFactory.create.restore()
 
   afterEach ->
     if @fakeConnection
-      console.log("deleting fakeConnection", @fakeConnection.options.sparkId)
+      console.log("deleting fakeConnection")
       delete @fakeConnection
 
   createNewPeer = (sparkId, iceCandidates, done)->

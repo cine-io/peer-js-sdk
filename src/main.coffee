@@ -2,6 +2,7 @@ getUserMedia = require('getusermedia')
 attachMediaStream = require('attachmediastream')
 webrtcSupport = require('webrtcsupport')
 BackboneEvents = require("backbone-events-standalone")
+
 noop = ->
 defaultOptions =
   video: true

@@ -2,6 +2,7 @@ async = require('async')
 CineIOPeer = require('../src/main')
 BroadcastBridge = require('../src/broadcast_bridge')
 nearestServer = require('../src/nearest_server')
+PeerConnectionFactory = require('../src/peer_connection_factory')
 setupAndTeardown = require('./helpers/setup_and_teardown')
 stubPrimus = require('./helpers/stub_primus')
 FakePeerConnection = require('./helpers/fake_peer_connection')
@@ -11,13 +12,29 @@ describe 'BroadcastBridge', ->
   setupAndTeardown()
   stubPrimus()
 
+  beforeEach ->
+    sinon.stub PeerConnectionFactory, 'create', =>
+      if @fakeConnection
+        console.log("ugh fakeConnection")
+        throw new Error("Two connections made!!!")
+      @fakeConnection = new FakePeerConnection()
+
+  afterEach ->
+    PeerConnectionFactory.create.restore()
+    PeerConnectionFactory._reset()
+
+  afterEach ->
+    if @fakeConnection
+      console.log("deleting fakeConnection", @fakeConnection)
+      delete @fakeConnection
+
   describe 'constructor', ->
     it 'waits for ice servers', ->
       bb = new BroadcastBridge(CineIOPeer)
       CineIOPeer.trigger('gotIceServers', some: 'ice data')
-      expect(bb.iceServers).to.deep.equal(some: 'ice data')
+      expect(bb.iceReady).to.be.true
 
-    it 'crates a connection', ->
+    it 'creates a connection', ->
       bb = new BroadcastBridge(CineIOPeer)
       CineIOPeer.trigger('gotIceServers', some: 'ice data')
       expect(bb.connection).to.be.ok
@@ -38,17 +55,6 @@ describe 'BroadcastBridge', ->
     beforeEach ->
       @subject = new BroadcastBridge(CineIOPeer)
 
-    beforeEach ->
-      sinon.stub @subject.connection, '_initializeNewPeerConnection', (options)=>
-        if @fakeConnection
-          console.log("ugh fakeConnection", options.sparkId, @fakeConnection.options.sparkId)
-          throw new Error("Two connections made!!!")
-        @fakeConnection = new FakePeerConnection(options)
-
-    afterEach ->
-      if @fakeConnection
-        console.log("deleting fakeConnection", @fakeConnection)
-        delete @fakeConnection
     describe '#startBroadcast', ->
       beforeEach ->
         CineIOPeer.trigger('gotIceServers', some: 'ice data')
