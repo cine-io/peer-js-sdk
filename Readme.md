@@ -110,7 +110,9 @@ Calling is a super neat feature! But it is a bit more complex to setup. Calling 
 
 ##### Identifying a user
 
-Identifying is done with a secure token generated using your **CINE_IO_SECRET_KEY**. We don't want anybody to impersonate a different user and therefore we require a secure timestamped generated hash. This part must be done on your server as it requires your **CINE_IO_SECRET_KEY**.
+Identifying is done with a secure token generated using your **CINE_IO_SECRET_KEY**.
+We don't want anybody to impersonate a different user and therefore we require a secure timestamped generated hash.
+This part must be done on your server as it requires your **CINE_IO_SECRET_KEY**.
 
 The pseudo code for generating a secure signature is:
 
@@ -255,4 +257,80 @@ CineIOPeer.on('error', function(err) {
   }
 });
 
+```
+
+### WebRTC to RTMP/HLS Bridge
+
+Cine.io provides a WebRTC to RTMP/HLS bridge to enhance your conference applications with broadcast capabilities.
+
+#### Broadcast your webcam and microphone
+
+To broadcast your webcam and microphone to a cine.io live stream, start by requesting camera and microphone access.
+
+```javascript
+
+CineIOPeer.startCameraAndMicrophone(optionalCallback)
+
+```
+
+##### Starting a webcam and microphone broadcast
+
+```javascript
+var streamId = "cine.io stream id";
+var password = "stream password";
+var optionalCallback = function(error){
+  console.log("broadcasting");
+};
+CineIOPeer.broadcastCameraAndMicrophone(streamId, password, optionalCallback)
+```
+
+##### Stopping a webcam and microphone broadcast
+
+```javascript
+var optionalCallback = function(error){
+  console.log("broadcasting");
+};
+CineIOPeer.stopCameraAndMicrophoneBroadcast(optionalCallback)
+```
+
+##### Checking the status of your camera and microphone broadcast
+
+```javasript
+CineIOPeer.isBroadcastingCameraAndMicrophone();
+```
+
+#### Broadcast your screen share
+
+To broadcast your desktop to a cine.io live stream, start by requesting screen share access.
+
+```javascript
+
+CineIOPeer.startScreenShare(optionalCallback)
+
+```
+
+##### Starting a screen share broadcast
+
+```javascript
+var streamId = "cine.io stream id";
+var password = "stream password";
+var optionalCallback = function(error){
+  console.log("broadcasting");
+};
+CineIOPeer.broadcastScreenShare(streamId, password, optionalCallback)
+```
+
+##### Stopping a screen share broadcast
+
+```javascript
+var optionalCallback = function(error){
+  console.log("broadcasting");
+};
+CineIOPeer.stopScreenShareBroadcast(optionalCallback)
+```
+
+##### Checking the status of your screen share broadcast
+
+```javasript
+CineIOPeer.isBroadcastingScreenShare();
 ```
