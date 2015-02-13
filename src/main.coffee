@@ -188,9 +188,15 @@ CineIOPeer =
     callback()
 
   broadcastCameraAndMicrophone: (streamId, streamKey, callback=noop)->
-    return callback("cannot broadcast to multiple endpoints") if CineIOPeer.isBroadcastingCameraAndMicrophone()
+    if CineIOPeer.isBroadcastingCameraAndMicrophone()
+      return setTimeout ->
+        callback("cannot broadcast to multiple endpoints")
+    stream = CineIOPeer.cameraAndMicrophoneStream
+    unless stream
+      return setTimeout ->
+        callback("stream not started")
     CineIOPeer._isBroadcastingCameraAndMicrophone = true
-    CineIOPeer._broadcastBridge.startBroadcast('camera', CineIOPeer.cameraAndMicrophoneStream, streamId, streamKey, callback)
+    CineIOPeer._broadcastBridge.startBroadcast('camera', stream, streamId, streamKey, callback)
 
   stopCameraAndMicrophoneBroadcast: (callback=noop)->
     delete CineIOPeer._isBroadcastingCameraAndMicrophone
@@ -200,9 +206,15 @@ CineIOPeer =
     CineIOPeer._isBroadcastingCameraAndMicrophone?
 
   broadcastScreenShare: (streamId, streamKey, callback=noop)->
-    return callback("cannot broadcast to multiple endpoints") if CineIOPeer.isBroadcastingScreenShare()
+    if CineIOPeer.isBroadcastingScreenShare()
+      return setTimeout ->
+        callback("cannot broadcast to multiple endpoints")
+    stream = CineIOPeer.screenShareStream
+    unless stream
+      return setTimeout ->
+        callback("stream not started")
     CineIOPeer._isBroadcastingScreenShare = true
-    CineIOPeer._broadcastBridge.startBroadcast('screen', CineIOPeer.screenShareStream, streamId, streamKey, callback)
+    CineIOPeer._broadcastBridge.startBroadcast('screen', stream, streamId, streamKey, callback)
 
   stopScreenShareBroadcast: (callback=noop)->
     delete CineIOPeer._isBroadcastingScreenShare

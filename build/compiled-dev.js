@@ -5664,14 +5664,19 @@ CineIOPeer = {
     return callback();
   },
   broadcastCameraAndMicrophone: function(streamId, streamKey, callback) {
+    var stream;
     if (callback == null) {
       callback = noop;
     }
     if (CineIOPeer.isBroadcastingCameraAndMicrophone()) {
       return callback("cannot broadcast to multiple endpoints");
     }
+    stream = CineIOPeer.cameraAndMicrophoneStream;
+    if (!stream) {
+      return callback("stream not started");
+    }
     CineIOPeer._isBroadcastingCameraAndMicrophone = true;
-    return CineIOPeer._broadcastBridge.startBroadcast('camera', CineIOPeer.cameraAndMicrophoneStream, streamId, streamKey, callback);
+    return CineIOPeer._broadcastBridge.startBroadcast('camera', stream, streamId, streamKey, callback);
   },
   stopCameraAndMicrophoneBroadcast: function(callback) {
     if (callback == null) {
@@ -5684,14 +5689,19 @@ CineIOPeer = {
     return CineIOPeer._isBroadcastingCameraAndMicrophone != null;
   },
   broadcastScreenShare: function(streamId, streamKey, callback) {
+    var stream;
     if (callback == null) {
       callback = noop;
     }
     if (CineIOPeer.isBroadcastingScreenShare()) {
       return callback("cannot broadcast to multiple endpoints");
     }
+    stream = CineIOPeer.screenShareStream;
+    if (!stream) {
+      return callback("stream not started");
+    }
     CineIOPeer._isBroadcastingScreenShare = true;
-    return CineIOPeer._broadcastBridge.startBroadcast('screen', CineIOPeer.screenShareStream, streamId, streamKey, callback);
+    return CineIOPeer._broadcastBridge.startBroadcast('screen', stream, streamId, streamKey, callback);
   },
   stopScreenShareBroadcast: function(callback) {
     if (callback == null) {
