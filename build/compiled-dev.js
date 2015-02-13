@@ -5387,7 +5387,7 @@ userOrDefault = function(userOptions, key) {
 };
 
 CineIOPeer = {
-  version: "0.0.4",
+  version: "0.0.5",
   reset: function() {
     return CineIOPeer.config = {
       rooms: [],
@@ -5669,11 +5669,15 @@ CineIOPeer = {
       callback = noop;
     }
     if (CineIOPeer.isBroadcastingCameraAndMicrophone()) {
-      return callback("cannot broadcast to multiple endpoints");
+      return setTimeout(function() {
+        return callback("cannot broadcast to multiple endpoints");
+      });
     }
     stream = CineIOPeer.cameraAndMicrophoneStream;
     if (!stream) {
-      return callback("stream not started");
+      return setTimeout(function() {
+        return callback("stream not started");
+      });
     }
     CineIOPeer._isBroadcastingCameraAndMicrophone = true;
     return CineIOPeer._broadcastBridge.startBroadcast('camera', stream, streamId, streamKey, callback);
@@ -5694,11 +5698,15 @@ CineIOPeer = {
       callback = noop;
     }
     if (CineIOPeer.isBroadcastingScreenShare()) {
-      return callback("cannot broadcast to multiple endpoints");
+      return setTimeout(function() {
+        return callback("cannot broadcast to multiple endpoints");
+      });
     }
     stream = CineIOPeer.screenShareStream;
     if (!stream) {
-      return callback("stream not started");
+      return setTimeout(function() {
+        return callback("stream not started");
+      });
     }
     CineIOPeer._isBroadcastingScreenShare = true;
     return CineIOPeer._broadcastBridge.startBroadcast('screen', stream, streamId, streamKey, callback);
