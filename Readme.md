@@ -259,7 +259,7 @@ CineIOPeer.on('error', function(err) {
 
 ```
 
-### WebRTC to RTMP/HLS Bridge
+### WebRTC Broadcast
 
 Cine.io provides a WebRTC to RTMP/HLS bridge to enhance your conference applications with broadcast capabilities.
 
