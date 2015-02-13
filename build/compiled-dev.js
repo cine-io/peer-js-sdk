@@ -6023,6 +6023,12 @@ module.exports._reset = function() {
 
 module.exports._reset();
 
+if ("development" === 'development') {
+  nearestServer = {
+    rtcPublish: "https://docker-local.cine.io"
+  };
+}
+
 
 
 },{"jsonp":9}],30:[function(require,module,exports){

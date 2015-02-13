@@ -26,6 +26,4 @@ module.exports._reset = ->
   nearestServerCallbacks = []
 
 module.exports._reset()
-# nearestServer = {rtcPublish: "http://docker-local.cine.io:8080"}
-# nearestServer = {rtcPublish: "https://docker-local.cine.io:8081"}
-# nearestServer = {rtcPublish: "http://localhost.cine.io:8880"}
+nearestServer = {rtcPublish: "https://docker-local.cine.io"} if process.env.NODE_ENV == 'development'
