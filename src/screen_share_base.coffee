@@ -1,4 +1,5 @@
 webrtcSupport = require('webrtcsupport')
+debug = require('./debug')('cine:peer:screen_share_base')
 
 
 class ScreenShareError
@@ -13,12 +14,12 @@ class ScreenSharer
     return @_callback(new ScreenShareError("Screen sharing not implemented in this browser / environment.")) unless webrtcSupport.screenSharing
 
   _onStreamReceived: (stream)->
-    console.log "Received local stream:", stream
+    debug "Received local stream:", stream
     stream.onended = @_onStreamEnded.bind(this)
     return @_callback(null, stream)
 
   _onStreamEnded: ->
-    console.log "Screen share ended."
+    debug "Screen share ended."
     CineIOPeer.stopScreenShare()
     return
 
@@ -26,7 +27,7 @@ class ScreenSharer
     errMsg = if err.name then err.name + (if err.message then " (#{err.message})" else "") else err
     errMsg = "Screen share failed: #{errMsg}"
     console.dir err
-    console.log errMsg
+    debug errMsg
     return @_callback(new ScreenShareError(errMsg))
 
 

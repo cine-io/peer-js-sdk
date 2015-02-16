@@ -4796,7 +4796,7 @@ module.exports = {
 };
 
 },{}],22:[function(require,module,exports){
-var BroadcastBridge, Connection, PeerConnectionFactory, Primus, connectToCineBroadcastBridge, nearestServer, noop, uuid,
+var BroadcastBridge, Connection, PeerConnectionFactory, Primus, connectToCineBroadcastBridge, debug, nearestServer, noop, uuid,
   __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
 uuid = require('./vendor/uuid');
@@ -4806,6 +4806,8 @@ PeerConnectionFactory = require('./peer_connection_factory');
 Primus = require('./vendor/primus');
 
 nearestServer = require('./nearest_server');
+
+debug = require('./debug')('cine:peer:broadcast_bridge');
 
 noop = function() {};
 
@@ -4840,32 +4842,32 @@ Connection = (function() {
     data.client = "cineio-peer-js version-" + CineIOPeer.version;
     data.publicKey = CineIOPeer.config.publicKey;
     data.uuid = this.myUUID;
-    console.log("Writing", data);
+    debug("Writing", data);
     return (_ref = this.primus).write.apply(_ref, arguments);
   };
 
   Connection.prototype.startBroadcast = function(streamType, streamId, streamKey, mediaStream, callback) {
-    console.log("ensuring ready");
+    debug("ensuring ready");
     return this._ensureReady((function(_this) {
       return function() {
         var peerConnection;
-        console.log("ready");
+        debug("ready");
         peerConnection = PeerConnectionFactory.create();
         _this.peerConnections[streamType] = peerConnection;
         peerConnection.addStream(mediaStream);
-        console.log("waiting for ice");
+        debug("waiting for ice");
         peerConnection.on('close', function(event) {
           _this._onCloseOfPeerConnection(peerConnection);
           return delete _this.peerConnections[streamType];
         });
         return _this._createOffer(peerConnection, function(err, offer) {
-          console.log("MADE OFFER", err, offer);
+          debug("MADE OFFER", err, offer);
           if (err) {
             return callback(err);
           }
           return peerConnection.on('endOfCandidates', function(candidate) {
             var data;
-            console.log("got all candidates");
+            debug("got all candidates");
             data = {
               streamType: streamType,
               action: 'broadcast-start',
@@ -4901,19 +4903,19 @@ Connection = (function() {
   };
 
   Connection.prototype._connectionEnded = function() {
-    return console.log("Connection closed");
+    return debug("Connection closed");
   };
 
   Connection.prototype._signalHandler = function(data) {
     var pc;
-    console.log("got data", data);
+    debug("got data", data);
     switch (data.action) {
       case 'error':
         return CineIOPeer.trigger('error', data);
       case 'ack':
-        return console.log("ack");
+        return debug("ack");
       case 'rtc-answer':
-        console.log('got answer', data);
+        debug('got answer', data);
         pc = this.peerConnections[data.streamType];
         return pc.handleAnswer(data.answer);
     }
@@ -4923,14 +4925,14 @@ Connection = (function() {
     var constraints, response;
     response = function(err, offer) {
       if (err || !offer) {
-        console.log("FATAL ERROR in offer", err, offer);
+        debug("FATAL ERROR in offer", err, offer);
         return CineIOPeer.trigger("error", {
           kind: 'offer',
           fatal: true,
           err: err
         });
       }
-      console.log('offering', err, offer);
+      debug('offering', err, offer);
       return callback(err, offer);
     };
     constraints = {
@@ -4999,7 +5001,7 @@ module.exports = BroadcastBridge = (function() {
     }
     return nearestServer((function(_this) {
       return function(err, ns) {
-        console.log("HERE I AM", err, ns);
+        debug("HERE I AM", err, ns);
         if (err) {
           return callback(err);
         }
@@ -5015,7 +5017,7 @@ module.exports = BroadcastBridge = (function() {
 
 
 
-},{"./nearest_server":29,"./peer_connection_factory":30,"./vendor/primus":34,"./vendor/uuid":35}],23:[function(require,module,exports){
+},{"./debug":27,"./nearest_server":30,"./peer_connection_factory":31,"./vendor/primus":35,"./vendor/uuid":36}],23:[function(require,module,exports){
 var check;
 
 check = function(string) {
@@ -5204,8 +5206,8 @@ CineIOPeer = require('./main');
 
 
 
-},{"./main":28,"backbone-events-standalone":3}],25:[function(require,module,exports){
-var ChromeScreenSharer, Config, ScreenShareError, ScreenSharer, ssBase,
+},{"./main":29,"backbone-events-standalone":3}],25:[function(require,module,exports){
+var ChromeScreenSharer, Config, ScreenShareError, ScreenSharer, debug, ssBase,
   __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
   __hasProp = {}.hasOwnProperty,
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
@@ -5217,6 +5219,8 @@ ssBase = require('./screen_share_base');
 ScreenSharer = ssBase.ScreenSharer;
 
 ScreenShareError = ssBase.ScreenShareError;
+
+debug = require('./debug')('cine:peer:chrome_screen_sharer');
 
 ChromeScreenSharer = (function(_super) {
   __extends(ChromeScreenSharer, _super);
@@ -5250,16 +5254,16 @@ ChromeScreenSharer = (function(_super) {
         name: "cineScreenShare"
       }, "*");
     } else {
-      console.log("Waiting for the screen sharing extension reply ...");
+      debug("Waiting for the screen sharing extension reply ...");
       return setTimeout(this._shareAfterExtensionReplies.bind(this), 100);
     }
   };
 
   ChromeScreenSharer.prototype._receiveMessage = function(event) {
-    console.log("received:", event);
+    debug("received:", event);
     switch (event.data.name) {
       case "cineScreenShareHasExtension":
-        console.log("cine.io screen share extension is installed.");
+        debug("cine.io screen share extension is installed.");
         this._extensionInstalled = true;
         break;
       case "cineScreenShareResponse":
@@ -5272,7 +5276,7 @@ ChromeScreenSharer = (function(_super) {
     if (!id) {
       return this._callback(new ScreenShareError("Screen access rejected."));
     }
-    console.log("ossr id =", id);
+    debug("ossr id =", id);
     screenShareOptions = {
       audio: false,
       video: {
@@ -5293,7 +5297,7 @@ module.exports = ChromeScreenSharer;
 
 
 
-},{"./config":26,"./screen_share_base":31}],26:[function(require,module,exports){
+},{"./config":26,"./debug":27,"./screen_share_base":32}],26:[function(require,module,exports){
 var protocol;
 
 protocol = location.protocol === 'https:' ? 'https' : 'http';
@@ -5311,7 +5315,26 @@ exports.chromeExtension = "https://chrome.google.com/webstore/detail/cineio-scre
 
 
 },{}],27:[function(require,module,exports){
-var FirefoxScreenSharer, ScreenShareError, ScreenSharer, ssBase,
+var __slice = [].slice;
+
+if ("development" === 'development') {
+  module.exports = function(value) {
+    return function() {
+      var messages;
+      messages = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+      return console.log.apply(console, [value].concat(__slice.call(messages)));
+    };
+  };
+} else {
+  module.exports = function() {
+    return function() {};
+  };
+}
+
+
+
+},{}],28:[function(require,module,exports){
+var FirefoxScreenSharer, ScreenShareError, ScreenSharer, debug, ssBase,
   __hasProp = {}.hasOwnProperty,
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
@@ -5320,6 +5343,8 @@ ssBase = require('./screen_share_base');
 ScreenSharer = ssBase.ScreenSharer;
 
 ScreenShareError = ssBase.ScreenShareError;
+
+debug = require('./debug')('cine:peer:firefox_screen_sharer');
 
 FirefoxScreenSharer = (function(_super) {
   __extends(FirefoxScreenSharer, _super);
@@ -5331,7 +5356,7 @@ FirefoxScreenSharer = (function(_super) {
   FirefoxScreenSharer.prototype.share = function(options, callback) {
     var constraints;
     FirefoxScreenSharer.__super__.share.call(this, options, callback);
-    console.log("requesting screen share (moz) ...");
+    debug("requesting screen share (moz) ...");
     constraints = {
       audio: this.options.audio,
       video: {
@@ -5349,8 +5374,8 @@ module.exports = FirefoxScreenSharer;
 
 
 
-},{"./screen_share_base":31}],28:[function(require,module,exports){
-var BackboneEvents, BroadcastBridge, CineIOPeer, Config, attachMediaStream, browserDetect, defaultOptions, getUserMedia, noop, screenSharer, signalingConnection, userOrDefault, webrtcSupport;
+},{"./debug":27,"./screen_share_base":32}],29:[function(require,module,exports){
+var BackboneEvents, BroadcastBridge, CineIOPeer, Config, attachMediaStream, browserDetect, debug, defaultOptions, getUserMedia, noop, screenSharer, signalingConnection, userOrDefault, webrtcSupport;
 
 getUserMedia = require('getusermedia');
 
@@ -5359,6 +5384,8 @@ attachMediaStream = require('attachmediastream');
 webrtcSupport = require('webrtcsupport');
 
 BackboneEvents = require("backbone-events-standalone");
+
+debug = require('./debug')('cine:peer:main');
 
 noop = function() {};
 
@@ -5393,6 +5420,7 @@ CineIOPeer = {
     return setTimeout(CineIOPeer._checkSupport);
   },
   identify: function(identity, timestamp, signature) {
+    debug('identifying as', identity);
     CineIOPeer.config.identity = {
       identity: identity,
       timestamp: timestamp,
@@ -5435,6 +5463,7 @@ CineIOPeer = {
     if (room) {
       options.room = room;
     }
+    debug('calling', identity);
     CineIOPeer._signalConnection.write(options);
     callPlacedCallback = function(data) {
       if (data.otheridentity === otheridentity) {
@@ -5450,6 +5479,7 @@ CineIOPeer = {
     if (callback == null) {
       callback = noop;
     }
+    debug('Joining', room);
     CineIOPeer.config.rooms.push(room);
     CineIOPeer._sendJoinRoom(room);
     return setTimeout(callback);
@@ -5867,6 +5897,7 @@ CineIOPeer = {
           type: 'camera',
           local: true
         });
+        debug("ERROR", err);
         return callback(err);
       }
       if (options.video && options.audio) {
@@ -5930,6 +5961,7 @@ CineIOPeer = {
       video: userOrDefault(options, 'video'),
       audio: userOrDefault(options, 'audio')
     };
+    debug('fetching media', options);
     return CineIOPeer._unsafeGetUserMedia(streamDoptions, (function(_this) {
       return function(err, stream) {
         var videoEl;
@@ -5988,7 +6020,7 @@ BroadcastBridge = require('./broadcast_bridge');
 
 
 
-},{"./broadcast_bridge":22,"./browser_detect":23,"./config":26,"./screen_sharer":32,"./signaling_connection":33,"attachmediastream":1,"backbone-events-standalone":3,"getusermedia":4,"webrtcsupport":21}],29:[function(require,module,exports){
+},{"./broadcast_bridge":22,"./browser_detect":23,"./config":26,"./debug":27,"./screen_sharer":33,"./signaling_connection":34,"attachmediastream":1,"backbone-events-standalone":3,"getusermedia":4,"webrtcsupport":21}],30:[function(require,module,exports){
 var BASE_SERVER_URL, fetchingNearestServer, jsonp, nearestServer, nearestServerCallbacks;
 
 jsonp = require('jsonp');
@@ -6033,15 +6065,9 @@ module.exports._reset = function() {
 
 module.exports._reset();
 
-if ("development" === 'development') {
-  nearestServer = {
-    rtcPublish: "https://docker-local.cine.io"
-  };
-}
 
 
-
-},{"jsonp":9}],30:[function(require,module,exports){
+},{"jsonp":9}],31:[function(require,module,exports){
 var Main, PeerConnection, iceServers;
 
 PeerConnection = require('rtcpeerconnection');
@@ -6073,10 +6099,12 @@ Main.on('gotIceServers', function(data) {
 
 
 
-},{"./main":28,"rtcpeerconnection":20}],31:[function(require,module,exports){
-var CineIOPeer, ScreenShareError, ScreenSharer, webrtcSupport;
+},{"./main":29,"rtcpeerconnection":20}],32:[function(require,module,exports){
+var CineIOPeer, ScreenShareError, ScreenSharer, debug, webrtcSupport;
 
 webrtcSupport = require('webrtcsupport');
+
+debug = require('./debug')('cine:peer:screen_share_base');
 
 ScreenShareError = (function() {
   function ScreenShareError(msg, data) {
@@ -6107,13 +6135,13 @@ ScreenSharer = (function() {
   };
 
   ScreenSharer.prototype._onStreamReceived = function(stream) {
-    console.log("Received local stream:", stream);
+    debug("Received local stream:", stream);
     stream.onended = this._onStreamEnded.bind(this);
     return this._callback(null, stream);
   };
 
   ScreenSharer.prototype._onStreamEnded = function() {
-    console.log("Screen share ended.");
+    debug("Screen share ended.");
     CineIOPeer.stopScreenShare();
   };
 
@@ -6122,7 +6150,7 @@ ScreenSharer = (function() {
     errMsg = err.name ? err.name + (err.message ? " (" + err.message + ")" : "") : err;
     errMsg = "Screen share failed: " + errMsg;
     console.dir(err);
-    console.log(errMsg);
+    debug(errMsg);
     return this._callback(new ScreenShareError(errMsg));
   };
 
@@ -6139,7 +6167,7 @@ CineIOPeer = require('./main');
 
 
 
-},{"./main":28,"webrtcsupport":21}],32:[function(require,module,exports){
+},{"./debug":27,"./main":29,"webrtcsupport":21}],33:[function(require,module,exports){
 var ScreenShareError, ScreenSharer, browserDetect;
 
 ScreenShareError = require('./screen_share_base').ScreenShareError;
@@ -6171,13 +6199,15 @@ module.exports = ScreenSharer;
 
 
 
-},{"./browser_detect":23,"./chrome_screen_sharer":25,"./firefox_screen_sharer":27,"./screen_share_base":31}],33:[function(require,module,exports){
-var CallObject, CineIOPeer, Config, Connection, PENDING, PeerConnectionFactory, Primus, connectToCineSignaling, noop, sendToDataChannel, setSparkIdOnPeerConnection, uuid,
+},{"./browser_detect":23,"./chrome_screen_sharer":25,"./firefox_screen_sharer":28,"./screen_share_base":32}],34:[function(require,module,exports){
+var CallObject, CineIOPeer, Config, Connection, PENDING, PeerConnectionFactory, Primus, connectToCineSignaling, debug, noop, sendToDataChannel, setSparkIdOnPeerConnection, uuid,
   __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
 uuid = require('./vendor/uuid');
 
 PeerConnectionFactory = require('./peer_connection_factory');
+
+debug = require('./debug')('cine:peer:signaling_connection');
 
 Primus = require('./vendor/primus');
 
@@ -6235,7 +6265,7 @@ Connection = (function() {
     if (CineIOPeer.config.identity) {
       data.identity = CineIOPeer.config.identity.identity;
     }
-    console.log("Writing", data);
+    debug("Writing", data);
     return (_ref = this.primus).write.apply(_ref, arguments);
   };
 
@@ -6248,7 +6278,7 @@ Connection = (function() {
     _results = [];
     for (otherClientUUID in _ref) {
       peerConnection = _ref[otherClientUUID];
-      console.log("adding local stream " + stream.id + " to " + otherClientUUID);
+      debug("adding local stream " + stream.id + " to " + otherClientUUID);
       peerConnection.addStream(stream);
       if (!options.silent) {
         _results.push(this._sendOffer(peerConnection));
@@ -6268,7 +6298,7 @@ Connection = (function() {
     _results = [];
     for (otherClientUUID in _ref) {
       peerConnection = _ref[otherClientUUID];
-      console.log("removing local stream " + stream.id + " from " + otherClientUUID);
+      debug("removing local stream " + stream.id + " from " + otherClientUUID);
       peerConnection.removeStream(stream);
       if (!options.silent) {
         _results.push(this._sendOffer(peerConnection));
@@ -6285,7 +6315,7 @@ Connection = (function() {
     _results = [];
     for (otherClientUUID in _ref) {
       peerConnection = _ref[otherClientUUID];
-      console.log("sending data " + data + " to " + otherClientUUID);
+      debug("sending data " + data + " to " + otherClientUUID);
       _results.push(this._sendDataToPeer(peerConnection, data));
     }
     return _results;
@@ -6316,12 +6346,12 @@ Connection = (function() {
     dataChannel.dataToSend = [];
     dataChannel.onopen = function(event) {
       var data, _i, _len, _ref;
-      console.log("ON OPEN", event);
+      debug("ON OPEN", event);
       if (dataChannel.readyState === "open") {
         _ref = dataChannel.dataToSend;
         for (_i = 0, _len = _ref.length; _i < _len; _i++) {
           data = _ref[_i];
-          console.log("Actually sending data", data);
+          debug("Actually sending data", data);
           sendToDataChannel(dataChannel, data);
         }
         return delete dataChannel.dataToSend;
@@ -6357,7 +6387,7 @@ Connection = (function() {
   };
 
   Connection.prototype._connectionEnded = function() {
-    return console.log("Connection closed");
+    return debug("Connection closed");
   };
 
   Connection.prototype._callFromRoom = function(room, options) {
@@ -6372,7 +6402,7 @@ Connection = (function() {
       case 'error':
         return CineIOPeer.trigger('error', data);
       case 'rtc-servers':
-        console.log('setting config', data);
+        debug('setting config', data);
         this.iceServers = data.data;
         this.fetchedIce = true;
         return CineIOPeer.trigger('gotIceServers', data.data);
@@ -6403,7 +6433,7 @@ Connection = (function() {
           identity: data.identity
         });
       case 'room-leave':
-        console.log('room-leave', data);
+        debug('room-leave', data);
         if (data.identity) {
           this._callFromRoom(data.room).left(data.identity);
         }
@@ -6413,7 +6443,7 @@ Connection = (function() {
         }, data.room);
         return this._closePeerConnection(data);
       case 'room-join':
-        console.log('room-join', data);
+        debug('room-join', data);
         if (data.identity) {
           this._callFromRoom(data.room).joined(data.identity);
         }
@@ -6426,12 +6456,12 @@ Connection = (function() {
           room: data.room
         });
       case 'room-announce':
-        console.log('room-announce', data);
+        debug('room-announce', data);
         return this._ensurePeerConnection(data, {
           offer: false
         });
       case 'room-goodbye':
-        console.log("room-goodbye", data);
+        debug("room-goodbye", data);
         return this._closePeerConnection(data);
       case 'rtc-ice':
         if (!data.sparkId) {
@@ -6443,7 +6473,7 @@ Connection = (function() {
           return pc.processIce(data.candidate);
         });
       case 'rtc-offer':
-        console.log('got offer', data);
+        debug('got offer', data);
         return this._ensurePeerConnection(data, {
           offer: false
         }, (function(_this) {
@@ -6494,14 +6524,14 @@ Connection = (function() {
         var otherClientSparkId;
         otherClientSparkId = peerConnection.otherClientSparkId;
         if (err || !offer) {
-          console.log("FATAL ERROR in offer", err, offer);
+          debug("FATAL ERROR in offer", err, offer);
           return CineIOPeer.trigger("error", {
             kind: 'offer',
             fatal: true,
             err: err
           });
         }
-        console.log('offering', err, otherClientSparkId, offer);
+        debug('offering', err, otherClientSparkId, offer);
         return _this.write({
           action: 'rtc-offer',
           offer: offer,
@@ -6554,7 +6584,7 @@ Connection = (function() {
     return this._ensureReady((function(_this) {
       return function() {
         var peerConnection, stream, _i, _len, _ref;
-        console.log("CREATING NEW PEER CONNECTION!!", otherClientUUID, options);
+        debug("CREATING NEW PEER CONNECTION!!", otherClientUUID, options);
         peerConnection = PeerConnectionFactory.create();
         _this.peerConnections[otherClientUUID] = peerConnection;
         peerConnection.videoEls = [];
@@ -6566,7 +6596,7 @@ Connection = (function() {
         }
         peerConnection.on('addStream', function(event) {
           var videoEl;
-          console.log("got remote stream", event);
+          debug("got remote stream", event);
           videoEl = CineIOPeer._createVideoElementFromStream(event.stream, {
             muted: false,
             mirror: false
@@ -6580,7 +6610,7 @@ Connection = (function() {
         });
         peerConnection.on('removeStream', function(event) {
           var index, videoEl;
-          console.log("removing remote stream", event);
+          debug("removing remote stream", event);
           videoEl = CineIOPeer._getVideoElementFromStream(event.stream);
           index = peerConnection.videoEls.indexOf(videoEl);
           if (index > -1) {
@@ -6593,7 +6623,7 @@ Connection = (function() {
           });
         });
         peerConnection.on('addChannel', function(dataChannel) {
-          console.log("GOT A NEW DATA CHANNEL", dataChannel);
+          debug("GOT A NEW DATA CHANNEL", dataChannel);
           return peerConnection.mainDataChannel = _this._prepareDataChannel(peerConnection, dataChannel);
         });
         peerConnection.on('ice', function(candidate) {
@@ -6658,7 +6688,7 @@ CallObject = require('./call');
 
 
 
-},{"./call":24,"./config":26,"./main":28,"./peer_connection_factory":30,"./vendor/primus":34,"./vendor/uuid":35}],34:[function(require,module,exports){
+},{"./call":24,"./config":26,"./debug":27,"./main":29,"./peer_connection_factory":31,"./vendor/primus":35,"./vendor/uuid":36}],35:[function(require,module,exports){
 (function (name, context, definition) {  context[name] = definition.call(context);  if (typeof module !== "undefined" && module.exports) {    module.exports = context[name];  } else if (typeof define == "function" && define.amd) {    define(function reference() { return context[name]; });  }})("Primus", this, function Primus() {/*globals require, define */
 'use strict';
 
@@ -10762,7 +10792,7 @@ if (typeof define === 'function' && define.amd) {
 
 // [*] End of lib/all.js
 
-},{}],35:[function(require,module,exports){
+},{}],36:[function(require,module,exports){
 // https://gist.github.com/jed/982883
 function b(
   a                  // placeholder
@@ -10788,4 +10818,4 @@ function b(
 
 module.exports = b;
 
-},{}]},{},[28]);
+},{}]},{},[29]);

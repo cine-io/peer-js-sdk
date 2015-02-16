@@ -2,6 +2,7 @@ getUserMedia = require('getusermedia')
 attachMediaStream = require('attachmediastream')
 webrtcSupport = require('webrtcsupport')
 BackboneEvents = require("backbone-events-standalone")
+debug = require('./debug')('cine:peer:main')
 
 noop = ->
 defaultOptions =
@@ -26,7 +27,7 @@ CineIOPeer =
     setTimeout CineIOPeer._checkSupport
 
   identify: (identity, timestamp, signature)->
-    # console.log('identifying as', identity)
+    debug('identifying as', identity)
     CineIOPeer.config.identity =
       identity: identity
       timestamp: timestamp
@@ -48,7 +49,7 @@ CineIOPeer =
       otheridentity: otheridentity
     options.identity = CineIOPeer.config.identity.identity if CineIOPeer.config.identity
     options.room = room if room
-    # console.log('calling', identity)
+    debug('calling', identity)
     CineIOPeer._signalConnection.write options
     callPlacedCallback = (data)->
       if data.otheridentity == otheridentity
@@ -57,7 +58,7 @@ CineIOPeer =
     CineIOPeer.on 'call-placed', callPlacedCallback
 
   join: (room, callback=noop)->
-    # console.log('Joining', room)
+    debug('Joining', room)
     CineIOPeer.config.rooms.push(room)
     CineIOPeer._sendJoinRoom(room)
     setTimeout callback
@@ -310,7 +311,7 @@ CineIOPeer =
         CineIOPeer.trigger 'media-rejected',
           type: 'camera'
           local: true
-        # console.log("ERROR", err)
+        debug("ERROR", err)
         return callback(err)
       if options.video && options.audio
         CineIOPeer.cameraAndMicrophoneStream = response.stream
@@ -353,7 +354,7 @@ CineIOPeer =
     streamDoptions =
       video: userOrDefault(options, 'video')
       audio: userOrDefault(options, 'audio')
-    # console.log('fetching media', options)
+    debug('fetching media', options)
 
     CineIOPeer._unsafeGetUserMedia streamDoptions, (err, stream)=>
       return callback(err) if err

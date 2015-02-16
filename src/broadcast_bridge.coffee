@@ -2,6 +2,7 @@ uuid = require('./vendor/uuid')
 PeerConnectionFactory = require('./peer_connection_factory')
 Primus = require('./vendor/primus')
 nearestServer = require('./nearest_server')
+debug = require('./debug')('cine:peer:broadcast_bridge')
 
 noop = ->
 
@@ -26,27 +27,27 @@ class Connection
     data.client = "cineio-peer-js version-#{CineIOPeer.version}"
     data.publicKey = CineIOPeer.config.publicKey
     data.uuid = @myUUID
-    console.log("Writing", data)
+    debug("Writing", data)
     @primus.write(arguments...)
 
   startBroadcast: (streamType, streamId, streamKey, mediaStream, callback)->
-    console.log("ensuring ready")
+    debug("ensuring ready")
     @_ensureReady =>
-      console.log("ready")
+      debug("ready")
       peerConnection = PeerConnectionFactory.create()
       @peerConnections[streamType] = peerConnection
       peerConnection.addStream(mediaStream)
-      console.log("waiting for ice")
+      debug("waiting for ice")
 
       peerConnection.on 'close', (event)=>
         @_onCloseOfPeerConnection(peerConnection)
         delete @peerConnections[streamType]
 
       @_createOffer peerConnection, (err, offer)=>
-        console.log("MADE OFFER", err, offer)
+        debug("MADE OFFER", err, offer)
         return callback(err) if err
         peerConnection.on 'endOfCandidates', (candidate)=>
-          console.log("got all candidates")
+          debug("got all candidates")
           # you have to do the offer first
           # but if you wait till the end of candidates
           # then your offer actually changes
@@ -73,34 +74,34 @@ class Connection
     @write action: 'auth'
 
   _connectionEnded: ->
-    console.log("Connection closed")
+    debug("Connection closed")
 
   _signalHandler: (data)=>
-    console.log("got data", data)
+    debug("got data", data)
     switch data.action
       # BASE
       when 'error'
         CineIOPeer.trigger('error', data)
 
       when 'ack'
-        console.log("ack")
+        debug("ack")
       # END BASE
 
       # RTC
       when 'rtc-answer'
-        console.log('got answer', data)
+        debug('got answer', data)
         pc = @peerConnections[data.streamType]
         pc.handleAnswer(data.answer)
       # END RTC
       # else
-      #   console.log("UNKNOWN DATA", data)
+      #   debug("UNKNOWN DATA", data)
 
   _createOffer: (peerConnection, callback)->
     response = (err, offer)->
       if err || !offer
-        console.log("FATAL ERROR in offer", err, offer)
+        debug("FATAL ERROR in offer", err, offer)
         return CineIOPeer.trigger("error", kind: 'offer', fatal: true, err: err)
-      console.log('offering', err, offer)
+      debug('offering', err, offer)
       callback(err, offer)
     # av = CineIOPeer.localStreams().length == 0
     constraints =
@@ -140,7 +141,7 @@ module.exports = class BroadcastBridge
       return setTimeout ->
         callback()
     nearestServer (err, ns)=>
-      console.log("HERE I AM", err, ns)
+      debug("HERE I AM", err, ns)
       return callback(err) if err
       @connection.connectToCineBroadcastBridge(ns.rtcPublish)
       callback()

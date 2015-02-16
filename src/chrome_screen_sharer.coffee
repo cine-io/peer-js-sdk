@@ -2,6 +2,7 @@ Config = require('./config')
 ssBase = require('./screen_share_base')
 ScreenSharer = ssBase.ScreenSharer
 ScreenShareError = ssBase.ScreenShareError
+debug = require('./debug')('cine:peer:chrome_screen_sharer')
 
 class ChromeScreenSharer extends ScreenSharer
   constructor: ->
@@ -31,14 +32,14 @@ class ChromeScreenSharer extends ScreenSharer
     if @_extensionInstalled
       window.postMessage({ name: "cineScreenShare" }, "*")
     else
-      console.log "Waiting for the screen sharing extension reply ..."
+      debug "Waiting for the screen sharing extension reply ..."
       setTimeout(@_shareAfterExtensionReplies.bind(this), 100)
 
   _receiveMessage: (event)->
-    console.log "received:", event
+    debug "received:", event
     switch event.data.name
       when "cineScreenShareHasExtension"
-        console.log "cine.io screen share extension is installed."
+        debug "cine.io screen share extension is installed."
         @_extensionInstalled = true
         return
       when "cineScreenShareResponse"
@@ -46,7 +47,7 @@ class ChromeScreenSharer extends ScreenSharer
 
   _onScreenShareResponse: (id)=>
     return @_callback(new ScreenShareError("Screen access rejected.")) unless id
-    console.log "ossr id =", id
+    debug "ossr id =", id
     screenShareOptions =
       # audio sharing with desktop is not allowed in chrome
       # https://code.google.com/p/chromium/issues/detail?id=223639

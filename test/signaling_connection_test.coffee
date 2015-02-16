@@ -7,6 +7,7 @@ FakePeerConnection = require('./helpers/fake_peer_connection')
 FakeMediaStream = require('./helpers/fake_media_stream')
 async = require('async')
 stubCreateObjectUrl = require("./helpers/stub_create_object_url")
+debug = require('../src/debug')('cine:peer:signaling_connection_test')
 
 describe 'SignalingConnection', ->
   setupAndTeardown()
@@ -21,7 +22,7 @@ describe 'SignalingConnection', ->
   beforeEach ->
     sinon.stub PeerConnectionFactory, 'create', =>
       if @fakeConnection
-        console.log("ugh fakeConnection")
+        debug("ugh fakeConnection")
         throw new Error("Two connections made!!!")
       @fakeConnection = new FakePeerConnection()
 
@@ -30,7 +31,7 @@ describe 'SignalingConnection', ->
 
   afterEach ->
     if @fakeConnection
-      console.log("deleting fakeConnection")
+      debug("deleting fakeConnection")
       delete @fakeConnection
 
   createNewPeer = (sparkId, iceCandidates, done)->

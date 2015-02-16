@@ -2,6 +2,7 @@ PeerConnectionFactory = require('../src/peer_connection_factory')
 CineIOPeer = require('../src/main')
 FakePeerConnection = require('./helpers/fake_peer_connection')
 setupAndTeardown = require('./helpers/setup_and_teardown')
+debug = require('../src/debug')('cine:peer:peer_connection_factory_test')
 
 describe 'PeerConnectionFactory', ->
   setupAndTeardown()
@@ -9,7 +10,7 @@ describe 'PeerConnectionFactory', ->
   beforeEach ->
     sinon.stub PeerConnectionFactory, '_actuallyCreatePeerConnection', (options)=>
       if @fakeConnection
-        console.log("ugh fakeConnection")
+        debug("ugh fakeConnection")
         throw new Error("Two connections made!!!")
       @fakeConnection = new FakePeerConnection(options)
 

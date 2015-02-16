@@ -7,6 +7,7 @@ setupAndTeardown = require('./helpers/setup_and_teardown')
 stubPrimus = require('./helpers/stub_primus')
 FakePeerConnection = require('./helpers/fake_peer_connection')
 FakeMediaStream = require('./helpers/fake_media_stream')
+debug = require('../src/debug')('cine:peer:broadcast_bridge_test')
 
 describe 'BroadcastBridge', ->
   setupAndTeardown()
@@ -15,7 +16,7 @@ describe 'BroadcastBridge', ->
   beforeEach ->
     sinon.stub PeerConnectionFactory, 'create', =>
       if @fakeConnection
-        console.log("ugh fakeConnection")
+        debug("ugh fakeConnection")
         throw new Error("Two connections made!!!")
       @fakeConnection = new FakePeerConnection()
 
@@ -25,7 +26,7 @@ describe 'BroadcastBridge', ->
 
   afterEach ->
     if @fakeConnection
-      console.log("deleting fakeConnection", @fakeConnection)
+      debug("deleting fakeConnection", @fakeConnection)
       delete @fakeConnection
 
   describe 'constructor', ->

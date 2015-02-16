@@ -1,5 +1,6 @@
 uuid = require('./vendor/uuid')
 PeerConnectionFactory = require('./peer_connection_factory')
+debug = require('./debug')('cine:peer:signaling_connection')
 
 Primus = require('./vendor/primus')
 Config = require('./config')
@@ -34,12 +35,12 @@ class Connection
     data.publicKey = CineIOPeer.config.publicKey
     data.uuid = @myUUID
     data.identity = CineIOPeer.config.identity.identity if CineIOPeer.config.identity
-    console.log("Writing", data)
+    debug("Writing", data)
     @primus.write(arguments...)
 
   addLocalStream: (stream, options={})=>
     for otherClientUUID, peerConnection of @peerConnections
-      console.log "adding local stream #{stream.id} to #{otherClientUUID}"
+      debug "adding local stream #{stream.id} to #{otherClientUUID}"
       peerConnection.addStream(stream)
       # need to reoffer every time there's a new stream
       # http://stackoverflow.com/questions/16015022/webrtc-how-to-add-stream-after-offer-and-answer
@@ -47,13 +48,13 @@ class Connection
 
   removeLocalStream: (stream, options={})=>
     for otherClientUUID, peerConnection of @peerConnections
-      console.log "removing local stream #{stream.id} from #{otherClientUUID}"
+      debug "removing local stream #{stream.id} from #{otherClientUUID}"
       peerConnection.removeStream(stream)
       @_sendOffer(peerConnection) unless options.silent
 
   sendDataToAllPeers: (data)->
     for otherClientUUID, peerConnection of @peerConnections
-      console.log "sending data #{data} to #{otherClientUUID}"
+      debug "sending data #{data} to #{otherClientUUID}"
       @_sendDataToPeer(peerConnection, data)
 
   _sendDataToPeer: (peerConnection, data)->
@@ -73,10 +74,10 @@ class Connection
   _prepareDataChannel: (peerConnection, dataChannel)->
     dataChannel.dataToSend = []
     dataChannel.onopen = (event)->
-      console.log("ON OPEN", event)
+      debug("ON OPEN", event)
       if dataChannel.readyState == "open"
         for data in dataChannel.dataToSend
-          console.log("Actually sending data", data)
+          debug("Actually sending data", data)
           sendToDataChannel(dataChannel, data)
         delete dataChannel.dataToSend
 
@@ -93,21 +94,21 @@ class Connection
     CineIOPeer._sendJoinRoom(room) for room in CineIOPeer.config.rooms
 
   _connectionEnded: ->
-    console.log("Connection closed")
+    debug("Connection closed")
 
   _callFromRoom: (room, options)->
     @calls[room] ||= new CallObject(room, options)
     @calls[room]
 
   _signalHandler: (data)=>
-    # console.log("got data")
+    # debug("got data")
     switch data.action
       # BASE
       when 'error'
         CineIOPeer.trigger('error', data)
 
       when 'rtc-servers'
-        console.log('setting config', data)
+        debug('setting config', data)
         @iceServers = data.data
         @fetchedIce = true
         CineIOPeer.trigger('gotIceServers', data.data)
@@ -121,54 +122,54 @@ class Connection
 
       # CALLING
       when 'call'
-        # console.log('got incoming call', data)
+        # debug('got incoming call', data)
         CineIOPeer.trigger('call', identity: data.identity, call: @_callFromRoom(data.room))
 
       # created from initiator
       when 'call-cancel'
-        # console.log('got incoming call', data)
+        # debug('got incoming call', data)
         @_callFromRoom(data.room).trigger('call-cancel', identity: data.identity)
 
       # created from recipient
       when 'call-reject'
-        # console.log('got incoming call', data)
+        # debug('got incoming call', data)
         @_callFromRoom(data.room).trigger('call-reject', identity: data.identity)
       # END CALLING
 
       # ROOMS
       when 'room-leave'
-        console.log('room-leave', data)
+        debug('room-leave', data)
         @_callFromRoom(data.room).left(data.identity) if data.identity
         @write action: 'room-goodbye', sparkId: data.sparkId, data.room
         @_closePeerConnection(data)
 
       when 'room-join'
-        console.log('room-join', data)
+        debug('room-join', data)
         @_callFromRoom(data.room).joined(data.identity) if data.identity
         @_ensurePeerConnection data, offer: true
         @write action: 'room-announce', sparkId: data.sparkId, room: data.room
 
       when 'room-announce'
-        console.log('room-announce', data)
+        debug('room-announce', data)
         @_ensurePeerConnection data, offer: false
 
       when 'room-goodbye'
-        console.log("room-goodbye", data)
+        debug("room-goodbye", data)
         @_closePeerConnection(data)
       # END ROOMS
 
       # RTC
       when 'rtc-ice'
-        #console.log('got remote ice', data)
+        # debug('got remote ice', data)
         return unless data.sparkId
         @_ensurePeerConnection data, offer: false, (err, pc)->
           pc.processIce(data.candidate)
 
       when 'rtc-offer'
-        console.log('got offer', data)
+        debug('got offer', data)
         @_ensurePeerConnection data, offer: false, (err, pc)=>
           pc.handleOffer data.offer, (err)=>
-            # console.log('handled offer', err)
+            # debug('handled offer', err)
             answerResponse = (err, answer)=>
               @write action: 'rtc-answer', answer: answer, sparkId: data.sparkId
             if CineIOPeer.localStreams().length == 0
@@ -178,12 +179,12 @@ class Connection
               pc.answer answerResponse
 
       when 'rtc-answer'
-        # console.log('got answer', data)
+        # debug('got answer', data)
         @_ensurePeerConnection data, offer: false, (err, pc)->
           pc.handleAnswer(data.answer)
       # END RTC
       # else
-      #   console.log("UNKNOWN DATA", data)
+        # debug("UNKNOWN DATA", data)
   _closePeerConnection: (data)=>
     otherClientUUID = data.sparkUUID
     return unless @peerConnections[otherClientUUID]
@@ -195,9 +196,9 @@ class Connection
     response = (err, offer)=>
       otherClientSparkId = peerConnection.otherClientSparkId
       if err || !offer
-        console.log("FATAL ERROR in offer", err, offer)
+        debug("FATAL ERROR in offer", err, offer)
         return CineIOPeer.trigger("error", kind: 'offer', fatal: true, err: err)
-      console.log('offering', err, otherClientSparkId, offer)
+      debug('offering', err, otherClientSparkId, offer)
       @write action: 'rtc-offer', offer: offer, sparkId: otherClientSparkId
     # av = CineIOPeer.localStreams().length == 0
     constraints =
@@ -209,7 +210,7 @@ class Connection
     peerConnection.offer constraints, response
 
   _onCloseOfPeerConnection: (peerConnection)->
-    # console.log("remote closed", event)
+    # debug("remote closed", event)
     return unless peerConnection.videoEls
     for videoEl in peerConnection.videoEls
       CineIOPeer.trigger 'media-removed',
@@ -226,7 +227,7 @@ class Connection
 
     @peerConnections[otherClientUUID] = PENDING
     @_ensureReady =>
-      console.log("CREATING NEW PEER CONNECTION!!", otherClientUUID, options)
+      debug("CREATING NEW PEER CONNECTION!!", otherClientUUID, options)
       peerConnection = PeerConnectionFactory.create()
       @peerConnections[otherClientUUID] = peerConnection
       peerConnection.videoEls = []
@@ -234,7 +235,7 @@ class Connection
       peerConnection.addStream(stream) for stream in CineIOPeer.localStreams()
 
       peerConnection.on 'addStream', (event)->
-        console.log("got remote stream", event)
+        debug("got remote stream", event)
         videoEl = CineIOPeer._createVideoElementFromStream(event.stream, muted: false, mirror: false)
         peerConnection.videoEls.push videoEl
         CineIOPeer.trigger 'media-added',
@@ -243,7 +244,7 @@ class Connection
           remote: true
 
       peerConnection.on 'removeStream', (event)->
-        console.log("removing remote stream", event)
+        debug("removing remote stream", event)
         videoEl = CineIOPeer._getVideoElementFromStream(event.stream)
         index = peerConnection.videoEls.indexOf(videoEl)
         peerConnection.videoEls.splice(index, 1) if index > -1
@@ -254,11 +255,11 @@ class Connection
           remote: true
 
       peerConnection.on 'addChannel', (dataChannel)=>
-        console.log("GOT A NEW DATA CHANNEL", dataChannel)
+        debug("GOT A NEW DATA CHANNEL", dataChannel)
         peerConnection.mainDataChannel = @_prepareDataChannel(peerConnection, dataChannel)
 
       peerConnection.on 'ice', (candidate)=>
-        #console.log('got my ice', candidate.candidate.candidate)
+        # debug('got my ice', candidate.candidate.candidate)
         @write action: 'rtc-ice', candidate: candidate, sparkId: peerConnection.otherClientSparkId
 
       # unlikely there will be a mainDataChannel but good to check as we would want to offer
