@@ -5406,7 +5406,7 @@ userOrDefault = function(userOptions, key) {
 };
 
 CineIOPeer = {
-  version: "0.0.6",
+  version: "0.0.7",
   reset: function() {
     return CineIOPeer.config = {
       rooms: [],
@@ -5463,7 +5463,7 @@ CineIOPeer = {
     if (room) {
       options.room = room;
     }
-    debug('calling', identity);
+    debug('calling', otheridentity);
     CineIOPeer._signalConnection.write(options);
     callPlacedCallback = function(data) {
       if (data.otheridentity === otheridentity) {

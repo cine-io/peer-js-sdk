@@ -16,7 +16,7 @@ userOrDefault = (userOptions, key)->
   if Object.prototype.hasOwnProperty.call(userOptions, key) then userOptions[key] else defaultOptions[key]
 
 CineIOPeer =
-  version: "0.0.6"
+  version: "0.0.7"
   reset: ->
     CineIOPeer.config = {rooms: [], videoElements: {}}
 
@@ -49,7 +49,7 @@ CineIOPeer =
       otheridentity: otheridentity
     options.identity = CineIOPeer.config.identity.identity if CineIOPeer.config.identity
     options.room = room if room
-    debug('calling', identity)
+    debug('calling', otheridentity)
     CineIOPeer._signalConnection.write options
     callPlacedCallback = (data)->
       if data.otheridentity == otheridentity
