@@ -11,7 +11,7 @@ describe 'CineIOPeer', ->
 
   describe '.version', ->
     it 'has a version', ->
-      expect(CineIOPeer.version).to.equal('0.0.7')
+      expect(CineIOPeer.version).to.equal('0.0.8')
 
   describe '.reset', ->
     it 'resets the config', ->

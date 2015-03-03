@@ -16,7 +16,7 @@ userOrDefault = (userOptions, key)->
   if Object.prototype.hasOwnProperty.call(userOptions, key) then userOptions[key] else defaultOptions[key]
 
 CineIOPeer =
-  version: "0.0.7"
+  version: "0.0.8"
   reset: ->
     CineIOPeer.config = {rooms: [], videoElements: {}}
 

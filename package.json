@@ -4,7 +4,7 @@
   "domains": [
     "cine.io"
   ],
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "peer client for cine.io",
   "scripts": {
     "test": "coffeelint src/ test/ && grunt test"
