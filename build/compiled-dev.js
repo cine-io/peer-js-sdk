@@ -6265,6 +6265,9 @@ Connection = (function() {
     if (CineIOPeer.config.identity) {
       data.identity = CineIOPeer.config.identity.identity;
     }
+    data.support = {
+      trickleIce: true
+    };
     debug("Writing", data);
     return (_ref = this.primus).write.apply(_ref, arguments);
   };
@@ -6448,7 +6451,8 @@ Connection = (function() {
           this._callFromRoom(data.room).joined(data.identity);
         }
         this._ensurePeerConnection(data, {
-          offer: true
+          offer: true,
+          support: data.support
         });
         return this.write({
           action: 'room-announce',
@@ -6458,7 +6462,8 @@ Connection = (function() {
       case 'room-announce':
         debug('room-announce', data);
         return this._ensurePeerConnection(data, {
-          offer: false
+          offer: false,
+          support: data.support
         });
       case 'room-goodbye':
         debug("room-goodbye", data);
@@ -6468,36 +6473,47 @@ Connection = (function() {
           return;
         }
         return this._ensurePeerConnection(data, {
-          offer: false
+          offer: false,
+          support: data.support
         }, function(err, pc) {
           return pc.processIce(data.candidate);
         });
       case 'rtc-offer':
         debug('got offer', data);
         return this._ensurePeerConnection(data, {
-          offer: false
+          offer: false,
+          support: data.support
         }, (function(_this) {
           return function(err, pc) {
             return pc.handleOffer(data.offer, function(err) {
-              var answerResponse;
-              answerResponse = function(err, answer) {
-                return _this.write({
-                  action: 'rtc-answer',
-                  answer: answer,
-                  sparkId: data.sparkId
-                });
+              var handleAnswer;
+              debug('handled offer', err);
+              handleAnswer = function(err, answer) {
+                var actuallySendAnswer;
+                actuallySendAnswer = function() {
+                  answer.sdp = pc.pc.localDescription.sdp;
+                  return _this.write({
+                    action: 'rtc-answer',
+                    answer: answer,
+                    sparkId: data.sparkId
+                  });
+                };
+                if (!pc.gotEndOfCandidates && pc.support.trickleIce === false) {
+                  console.log("waiting for endOfCandidates");
+                  return pc.once('endOfCandidates', actuallySendAnswer);
+                } else {
+                  console.log("not waiting for end of candidates");
+                  return actuallySendAnswer();
+                }
               };
-              if (CineIOPeer.localStreams().length === 0) {
-                return pc.answer(answerResponse);
-              } else {
-                return pc.answer(answerResponse);
-              }
+              return pc.answer(handleAnswer);
             });
           };
         })(this));
       case 'rtc-answer':
         return this._ensurePeerConnection(data, {
-          offer: false
+          offer: false,
+          support: data.support
         }, function(err, pc) {
           return pc.handleAnswer(data.answer);
         });
@@ -6521,7 +6537,7 @@ Connection = (function() {
     var constraints, response;
     response = (function(_this) {
       return function(err, offer) {
-        var otherClientSparkId;
+        var otherClientSparkId, reallySendOffer;
         otherClientSparkId = peerConnection.otherClientSparkId;
         if (err || !offer) {
           debug("FATAL ERROR in offer", err, offer);
@@ -6531,12 +6547,20 @@ Connection = (function() {
             err: err
           });
         }
-        debug('offering', err, otherClientSparkId, offer);
-        return _this.write({
-          action: 'rtc-offer',
-          offer: offer,
-          sparkId: otherClientSparkId
-        });
+        reallySendOffer = function() {
+          debug('offering', err, otherClientSparkId, offer);
+          offer.sdp = peerConnection.pc.localDescription.sdp;
+          return _this.write({
+            action: 'rtc-offer',
+            offer: offer,
+            sparkId: otherClientSparkId
+          });
+        };
+        if (!peerConnection.gotEndOfCandidates && peerConnection.support.trickleIce === false) {
+          return peerConnection.once('endOfCandidates', reallySendOffer);
+        } else {
+          return reallySendOffer();
+        }
       };
     })(this);
     constraints = {
@@ -6588,6 +6612,7 @@ Connection = (function() {
         peerConnection = PeerConnectionFactory.create();
         _this.peerConnections[otherClientUUID] = peerConnection;
         peerConnection.videoEls = [];
+        peerConnection.support = options.support || {};
         setSparkIdOnPeerConnection(peerConnection, otherClientSparkId);
         _ref = CineIOPeer.localStreams();
         for (_i = 0, _len = _ref.length; _i < _len; _i++) {
@@ -6627,6 +6652,9 @@ Connection = (function() {
           return peerConnection.mainDataChannel = _this._prepareDataChannel(peerConnection, dataChannel);
         });
         peerConnection.on('ice', function(candidate) {
+          if (peerConnection.support.trickleIce === false) {
+            return;
+          }
           return _this.write({
             action: 'rtc-ice',
             candidate: candidate,
@@ -6636,6 +6664,10 @@ Connection = (function() {
         if (options.offer && CineIOPeer.localStreams().length > 0 || peerConnection.mainDataChannel) {
           _this._sendOffer(peerConnection);
         }
+        peerConnection.on('endOfCandidates', function(event) {
+          debug("got end of candidates");
+          return peerConnection.gotEndOfCandidates = true;
+        });
         peerConnection.on('close', function(event) {
           _this._onCloseOfPeerConnection(peerConnection);
           return delete _this.peerConnections[otherClientUUID];

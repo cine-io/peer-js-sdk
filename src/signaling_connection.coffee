@@ -35,6 +35,8 @@ class Connection
     data.publicKey = CineIOPeer.config.publicKey
     data.uuid = @myUUID
     data.identity = CineIOPeer.config.identity.identity if CineIOPeer.config.identity
+    data.support =
+      trickleIce: true
     debug("Writing", data)
     @primus.write(arguments...)
 
@@ -146,12 +148,12 @@ class Connection
       when 'room-join'
         debug('room-join', data)
         @_callFromRoom(data.room).joined(data.identity) if data.identity
-        @_ensurePeerConnection data, offer: true
+        @_ensurePeerConnection data, offer: true, support: data.support
         @write action: 'room-announce', sparkId: data.sparkId, room: data.room
 
       when 'room-announce'
         debug('room-announce', data)
-        @_ensurePeerConnection data, offer: false
+        @_ensurePeerConnection data, offer: false, support: data.support
 
       when 'room-goodbye'
         debug("room-goodbye", data)
@@ -162,25 +164,37 @@ class Connection
       when 'rtc-ice'
         # debug('got remote ice', data)
         return unless data.sparkId
-        @_ensurePeerConnection data, offer: false, (err, pc)->
+        @_ensurePeerConnection data, offer: false, support: data.support, (err, pc)->
           pc.processIce(data.candidate)
 
       when 'rtc-offer'
         debug('got offer', data)
-        @_ensurePeerConnection data, offer: false, (err, pc)=>
+        @_ensurePeerConnection data, offer: false, support: data.support, (err, pc)=>
           pc.handleOffer data.offer, (err)=>
-            # debug('handled offer', err)
-            answerResponse = (err, answer)=>
-              @write action: 'rtc-answer', answer: answer, sparkId: data.sparkId
-            if CineIOPeer.localStreams().length == 0
-              # pc.answerBroadcastOnly answerResponse
-              pc.answer answerResponse
-            else
-              pc.answer answerResponse
+            debug('handled offer', err)
+            handleAnswer = (err, answer)=>
+              actuallySendAnswer = =>
+                # no harm in always overwriting the offer sdp with the local description
+                answer.sdp = pc.pc.localDescription.sdp
+                @write action: 'rtc-answer', answer: answer, sparkId: data.sparkId
+                # debug('handling answer', answer, pc.pc.localDescription.sdp)
+
+              # if the peer connection has not gotten the list of candidates
+              # and it does not support trickle ice,
+              # then wait for the ice and then send the answer
+              if !pc.gotEndOfCandidates && pc.support.trickleIce == false
+                console.log("waiting for endOfCandidates")
+                pc.once 'endOfCandidates', actuallySendAnswer
+              else
+                console.log("not waiting for end of candidates")
+                actuallySendAnswer()
+
+            pc.answer handleAnswer
+
 
       when 'rtc-answer'
         # debug('got answer', data)
-        @_ensurePeerConnection data, offer: false, (err, pc)->
+        @_ensurePeerConnection data, offer: false, support: data.support, (err, pc)->
           pc.handleAnswer(data.answer)
       # END RTC
       # else
@@ -198,8 +212,21 @@ class Connection
       if err || !offer
         debug("FATAL ERROR in offer", err, offer)
         return CineIOPeer.trigger("error", kind: 'offer', fatal: true, err: err)
-      debug('offering', err, otherClientSparkId, offer)
-      @write action: 'rtc-offer', offer: offer, sparkId: otherClientSparkId
+
+      reallySendOffer = =>
+        debug('offering', err, otherClientSparkId, offer)
+        # no harm in always overwriting the offer sdp with the local description
+        offer.sdp = peerConnection.pc.localDescription.sdp
+        @write action: 'rtc-offer', offer: offer, sparkId: otherClientSparkId
+
+      # if the peer connection has not gotten the list of candidates
+      # and it does not support trickle ice,
+      # then wait for the ice and then send the offer
+      if !peerConnection.gotEndOfCandidates && peerConnection.support.trickleIce == false
+        peerConnection.once 'endOfCandidates', reallySendOffer
+      else
+        reallySendOffer()
+
     # av = CineIOPeer.localStreams().length == 0
     constraints =
       mandatory:
@@ -231,6 +258,9 @@ class Connection
       peerConnection = PeerConnectionFactory.create()
       @peerConnections[otherClientUUID] = peerConnection
       peerConnection.videoEls = []
+
+      peerConnection.support = options.support || {}
+
       setSparkIdOnPeerConnection(peerConnection, otherClientSparkId)
       peerConnection.addStream(stream) for stream in CineIOPeer.localStreams()
 
@@ -259,13 +289,16 @@ class Connection
         peerConnection.mainDataChannel = @_prepareDataChannel(peerConnection, dataChannel)
 
       peerConnection.on 'ice', (candidate)=>
+        return if peerConnection.support.trickleIce == false
         # debug('got my ice', candidate.candidate.candidate)
         @write action: 'rtc-ice', candidate: candidate, sparkId: peerConnection.otherClientSparkId
 
       # unlikely there will be a mainDataChannel but good to check as we would want to offer
       if options.offer && CineIOPeer.localStreams().length > 0 || peerConnection.mainDataChannel
         @_sendOffer(peerConnection)
-
+      peerConnection.on 'endOfCandidates', (event)->
+        debug("got end of candidates")
+        peerConnection.gotEndOfCandidates = true
       peerConnection.on 'close', (event)=>
         @_onCloseOfPeerConnection(peerConnection)
         delete @peerConnections[otherClientUUID]
