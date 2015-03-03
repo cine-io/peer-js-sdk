@@ -86,7 +86,7 @@ module.exports = class CallObject
 
   cancel: (otherIdentity, callback=noop)->
     participant = @participants[otherIdentity]
-    return callback("participant not in room: #{otheridentity}") unless participant
+    return callback("participant not in room: #{otherIdentity}") unless participant
     participant.cancel()
     callback()
 

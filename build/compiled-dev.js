@@ -5170,7 +5170,7 @@ module.exports = CallObject = (function() {
     }
     participant = this.participants[otherIdentity];
     if (!participant) {
-      return callback("participant not in room: " + otheridentity);
+      return callback("participant not in room: " + otherIdentity);
     }
     participant.cancel();
     return callback();
