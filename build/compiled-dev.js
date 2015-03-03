@@ -5406,7 +5406,7 @@ userOrDefault = function(userOptions, key) {
 };
 
 CineIOPeer = {
-  version: "0.0.8",
+  version: "0.0.9",
   reset: function() {
     return CineIOPeer.config = {
       rooms: [],
